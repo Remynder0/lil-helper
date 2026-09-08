@@ -1,0 +1,102 @@
+import React from 'react';
+import { getHeroById, Hero } from '../data/heroes';
+import { X } from 'lucide-react';
+
+interface HeroAvatarProps {
+  heroId: number | null;
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  showName?: boolean;
+  onRemove?: () => void;
+  accentColor?: 'hidden_king' | 'archmother' | 'default';
+  isHighlighted?: boolean;
+  className?: string;
+}
+
+const SIZE_MAP = {
+  xs: 'w-7 h-7 text-xs',
+  sm: 'w-10 h-10 text-xs',
+  md: 'w-14 h-14 text-sm',
+  lg: 'w-18 h-18 text-base',
+  xl: 'w-24 h-24 text-lg',
+};
+
+const IMAGE_SIZE_MAP = {
+  xs: 'w-7 h-7',
+  sm: 'w-10 h-10',
+  md: 'w-14 h-14',
+  lg: 'w-18 h-18',
+  xl: 'w-24 h-24',
+};
+
+export const HeroAvatar: React.FC<HeroAvatarProps> = ({
+  heroId,
+  size = 'md',
+  showName = false,
+  onRemove,
+  accentColor = 'default',
+  isHighlighted = false,
+  className = '',
+}) => {
+  const hero: Hero | undefined = heroId ? getHeroById(heroId) : undefined;
+
+  let borderColor = 'border-deadlock-border';
+  if (accentColor === 'hidden_king') {
+    borderColor = isHighlighted
+      ? 'border-deadlock-hidden-king ring-2 ring-deadlock-hidden-king/40 shadow-lg shadow-deadlock-hidden-king/20'
+      : 'border-deadlock-hidden-king/50';
+  } else if (accentColor === 'archmother') {
+    borderColor = isHighlighted
+      ? 'border-deadlock-archmother ring-2 ring-deadlock-archmother/40 shadow-lg shadow-deadlock-archmother/20'
+      : 'border-deadlock-archmother/50';
+  } else if (isHighlighted) {
+    borderColor = 'border-white ring-2 ring-white/30';
+  }
+
+  return (
+    <div className={`flex flex-col items-center gap-1.5 ${className}`}>
+      <div className={`relative group ${SIZE_MAP[size]}`}>
+        {hero ? (
+          <div
+            className={`relative overflow-hidden rounded-lg border-2 ${borderColor} bg-deadlock-panel transition-all duration-150 group-hover:border-white/80`}
+          >
+            <img
+              src={hero.iconUrl}
+              alt={hero.name}
+              className={`${IMAGE_SIZE_MAP[size]} object-cover select-none`}
+              loading="lazy"
+              onError={(e) => {
+                // Fallback to placeholder if image fails to load
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            {onRemove && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-red-400"
+                title={`Remove ${hero.name}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div
+            className={`w-full h-full rounded-lg border-2 border-dashed border-deadlock-border/70 bg-deadlock-panel/40 flex items-center justify-center text-deadlock-muted/60 transition-colors group-hover:border-deadlock-muted`}
+          >
+            <span className="text-xs font-mono font-bold">?</span>
+          </div>
+        )}
+      </div>
+
+      {showName && hero && (
+        <span className="text-xs font-medium text-gray-200 truncate max-w-[80px] text-center">
+          {hero.name}
+        </span>
+      )}
+    </div>
+  );
+};
