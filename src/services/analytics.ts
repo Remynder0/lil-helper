@@ -1,6 +1,10 @@
 import { Match } from '../types/match';
 import { getHeroById, Hero } from '../data/heroes';
 
+/* ==========================================================================
+   GLOBAL STATISTICS & HERO PERFORMANCE
+   ========================================================================== */
+
 export interface GlobalStats {
   totalMatches: number;
   totalWins: number;
@@ -128,6 +132,11 @@ export function calculateHeroPerformance(matches: Match[]): HeroPerformance[] {
   return list;
 }
 
+
+/* ==========================================================================
+   ENEMY MATCHUP MATRIX & NEMESES / COUNTERS
+   ========================================================================== */
+
 export interface EnemyMatchupStat {
   enemyHeroId: number;
   enemyHero: Hero | undefined;
@@ -182,3 +191,61 @@ export function calculateEnemyMatchups(
   return list;
 }
 
+
+/* ==========================================================================
+   ALLY SYNERGY ENGINE (TEAM COMPATIBILITY & COMBOS)
+   ========================================================================== */
+
+export interface AllySynergyStat {
+  allyHeroId: number;
+  allyHero: Hero | undefined;
+  matchesWith: number;
+  wins: number;
+  losses: number;
+  cancels: number;
+  winRate: number; // 0-100 percentage
+}
+
+/**
+ * Computes ally synergy statistics.
+ * If playerHeroId is provided, filters to matches where user played that hero (e.g. Abrams + Dynamo).
+ * If playerHeroId is null, computes synergy across all matches played.
+ */
+export function calculateAllySynergies(
+  matches: Match[],
+  playerHeroId: number | null = null
+): AllySynergyStat[] {
+  const filtered = playerHeroId !== null
+    ? matches.filter((m) => m.myHeroId === playerHeroId)
+    : matches;
+
+  const map = new Map<number, { matchesWith: number; wins: number; losses: number; cancels: number }>();
+
+  for (const m of filtered) {
+    for (const allyId of m.allies) {
+      const current = map.get(allyId) || { matchesWith: 0, wins: 0, losses: 0, cancels: 0 };
+      current.matchesWith += 1;
+      if (m.result === 'win') current.wins += 1;
+      else if (m.result === 'loss') current.losses += 1;
+      else if (m.result === 'cancel') current.cancels += 1;
+      map.set(allyId, current);
+    }
+  }
+
+  const list: AllySynergyStat[] = [];
+  for (const [allyHeroId, stat] of map.entries()) {
+    const decided = stat.wins + stat.losses;
+    const winRate = decided > 0 ? Math.round((stat.wins / decided) * 100) : 0;
+    list.push({
+      allyHeroId,
+      allyHero: getHeroById(allyHeroId),
+      matchesWith: stat.matchesWith,
+      wins: stat.wins,
+      losses: stat.losses,
+      cancels: stat.cancels,
+      winRate,
+    });
+  }
+
+  return list;
+}

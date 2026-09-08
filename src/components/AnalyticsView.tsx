@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import { EnemyMatchupsView } from './EnemyMatchupsView';
+import { AllySynergiesView } from './AllySynergiesView';
 import {
   calculateGlobalStats,
   calculatePatronStats,
@@ -19,6 +20,7 @@ import {
   ChevronUp,
   Swords,
   BarChart2,
+  Users,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -26,7 +28,7 @@ interface AnalyticsViewProps {
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
-type AnalyticsSubTab = 'overview' | 'matchups';
+type AnalyticsSubTab = 'overview' | 'matchups' | 'synergies';
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
@@ -70,7 +72,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
     <div className="flex flex-col gap-6">
       {/* Subtab Navigation */}
       <div className="flex items-center justify-between border-b border-deadlock-border pb-3">
-        <div className="flex items-center gap-2 bg-deadlock-panel p-1 rounded-lg border border-deadlock-border">
+        <div className="flex items-center gap-2 bg-deadlock-panel p-1 rounded-lg border border-deadlock-border flex-wrap">
           <button
             type="button"
             onClick={() => setSubTab('overview')}
@@ -95,16 +97,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             <Swords className="w-3.5 h-3.5" />
             <span>Enemy Matchups & Counters</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('synergies')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
+              subTab === 'synergies'
+                ? 'bg-deadlock-border text-white shadow-sm'
+                : 'text-deadlock-muted hover:text-white'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Ally Synergies & Combos</span>
+          </button>
         </div>
 
-        <span className="text-xs text-deadlock-muted">
+        <span className="text-xs text-deadlock-muted hidden sm:inline">
           Based on {matches.length} recorded match{matches.length !== 1 ? 'es' : ''}
         </span>
       </div>
 
-      {subTab === 'matchups' ? (
-        <EnemyMatchupsView matches={matches} />
-      ) : (
+      {subTab === 'matchups' && <EnemyMatchupsView matches={matches} />}
+      {subTab === 'synergies' && <AllySynergiesView matches={matches} />}
+      {subTab === 'overview' && (
         <>
 
       {/* SECTION 1: GLOBAL STATS CARDS */}
