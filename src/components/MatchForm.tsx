@@ -3,9 +3,10 @@ import { HeroAvatar } from './HeroAvatar';
 import { HeroPicker } from './HeroPicker';
 import { Match, MatchDraftInput, Side, MatchResult, validateMatchInput } from '../types/match';
 import { persistMatch } from '../services/storage';
-import { Shield, Sparkles, Trophy, Skull, CheckCircle, AlertCircle, RotateCcw, Save } from 'lucide-react';
+import { Shield, Sparkles, Trophy, Skull, Ban, CheckCircle, AlertCircle, RotateCcw, Save } from 'lucide-react';
 
 interface MatchFormProps {
+  editingMatch?: Match | null;
   onMatchSaved?: (savedMatch: Match) => void;
   onCancel?: () => void;
   className?: string;
@@ -14,17 +15,18 @@ interface MatchFormProps {
 type ActiveDraftSection = 'my_hero' | 'allies' | 'enemies';
 
 export const MatchForm: React.FC<MatchFormProps> = ({
+  editingMatch,
   onMatchSaved,
   onCancel,
   className = '',
 }) => {
-  // Form State
-  const [side, setSide] = useState<Side>('hidden_king');
-  const [myHeroId, setMyHeroId] = useState<number | null>(null);
-  const [allies, setAllies] = useState<number[]>([]);
-  const [enemies, setEnemies] = useState<number[]>([]);
-  const [result, setResult] = useState<MatchResult | null>(null);
-  const [notes, setNotes] = useState<string>('');
+  // Form State initialized from editingMatch if provided
+  const [side, setSide] = useState<Side>(editingMatch ? editingMatch.side : 'hidden_king');
+  const [myHeroId, setMyHeroId] = useState<number | null>(editingMatch ? editingMatch.myHeroId : null);
+  const [allies, setAllies] = useState<number[]>(editingMatch ? editingMatch.allies : []);
+  const [enemies, setEnemies] = useState<number[]>(editingMatch ? editingMatch.enemies : []);
+  const [result, setResult] = useState<MatchResult | null>(editingMatch ? editingMatch.result : null);
+  const [notes, setNotes] = useState<string>(editingMatch?.notes || '');
 
   // Active slot targeting
   const [activeSection, setActiveSection] = useState<ActiveDraftSection>('my_hero');
@@ -122,8 +124,8 @@ export const MatchForm: React.FC<MatchFormProps> = ({
     setIsSubmitting(true);
     try {
       const matchToSave: Match = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `match_${Date.now()}`,
-        date: new Date().toISOString(),
+        id: editingMatch ? editingMatch.id : (crypto.randomUUID ? crypto.randomUUID() : `match_${Date.now()}`),
+        date: editingMatch ? editingMatch.date : new Date().toISOString(),
         side,
         myHeroId: myHeroId!,
         allies,
@@ -133,11 +135,13 @@ export const MatchForm: React.FC<MatchFormProps> = ({
       };
 
       const saved = await persistMatch(matchToSave);
-      setSuccessMessage('Match successfully recorded!');
+      setSuccessMessage(editingMatch ? 'Match successfully updated!' : 'Match successfully recorded!');
       if (onMatchSaved) {
         onMatchSaved(saved);
       }
-      handleReset();
+      if (!editingMatch) {
+        handleReset();
+      }
     } catch (err) {
       console.error('Failed to save match:', err);
       setValidationErrors(['An unexpected error occurred while saving the match.']);
@@ -150,6 +154,34 @@ export const MatchForm: React.FC<MatchFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className={`flex flex-col gap-5 ${className}`}>
+      {/* Editing Mode Banner */}
+      {editingMatch && (
+        <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs text-amber-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Editing recorded match from{' '}
+              <strong>
+                {new Date(editingMatch.date).toLocaleDateString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </strong>
+            </span>
+          </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-medium transition-colors"
+            >
+              Cancel Edit
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Top Banner: Faction Selector & Outcome Selection */}
       <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Faction Choice */}
@@ -206,7 +238,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
             <button
               type="button"
               onClick={() => setResult('loss')}
-              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${
+              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all ${
                 result === 'loss'
                   ? 'bg-deadlock-loss text-white shadow-md shadow-deadlock-loss/30 ring-1 ring-red-400'
                   : 'text-deadlock-muted hover:text-red-400'
@@ -214,6 +246,18 @@ export const MatchForm: React.FC<MatchFormProps> = ({
             >
               <Skull className="w-4 h-4" />
               <span>DEFEAT</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setResult('cancel')}
+              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all ${
+                result === 'cancel'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 shadow-md shadow-amber-500/20 ring-1 ring-amber-400'
+                  : 'text-deadlock-muted hover:text-amber-300'
+              }`}
+            >
+              <Ban className="w-4 h-4" />
+              <span>CANCELLED</span>
             </button>
           </div>
         </div>
@@ -435,7 +479,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-gray-200 shadow-lg shadow-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>{isSubmitting ? 'Saving...' : 'Save Match'}</span>
+              <span>{isSubmitting ? 'Saving...' : editingMatch ? 'Update Match' : 'Save Match'}</span>
             </button>
           </div>
         </div>

@@ -32,12 +32,13 @@ pub enum Side {
     Archmother,
 }
 
-/// Represents the final match outcome: Win or Loss.
+/// Represents the final match outcome: Win, Loss, or Cancel (AFK / match abandoned).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum MatchResult {
     Win,
     Loss,
+    Cancel,
 }
 
 /// Represents a single recorded Deadlock match.

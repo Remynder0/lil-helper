@@ -1,5 +1,11 @@
 export type Side = 'hidden_king' | 'archmother';
-export type MatchResult = 'win' | 'loss';
+export type MatchResult = 'win' | 'loss' | 'cancel';
+
+export const RESULT_LABELS: Record<MatchResult, string> = {
+  win: 'Victory',
+  loss: 'Defeat',
+  cancel: 'Cancelled',
+};
 
 export const SIDE_LABELS: Record<Side, string> = {
   hidden_king: 'The Hidden King',
