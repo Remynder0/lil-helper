@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { MatchForm } from './components/MatchForm';
 import { HistoryList } from './components/HistoryList';
+import { AnalyticsView } from './components/AnalyticsView';
 import { fetchAllMatches, removeMatch } from './services/storage';
 import { Match } from './types/match';
-import { PlusCircle, History, Download, Upload } from 'lucide-react';
+import { PlusCircle, History, BarChart2, Download, Upload } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
 
-type AppTab = 'log_match' | 'history';
+type AppTab = 'log_match' | 'history' | 'analytics';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('log_match');
@@ -168,6 +169,21 @@ export const App: React.FC = () => {
               <History className="w-3.5 h-3.5" />
               <span>History ({totalMatches})</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMatch(null);
+                setActiveTab('analytics');
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-deadlock-border text-white shadow-sm'
+                  : 'text-deadlock-muted hover:text-white'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>Analytics</span>
+            </button>
           </div>
 
           {/* Backup / Restore buttons */}
@@ -204,19 +220,23 @@ export const App: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col gap-6">
-        {activeTab === 'log_match' ? (
+        {activeTab === 'log_match' && (
           <MatchForm
             key={editingMatch ? editingMatch.id : 'new_match'}
             editingMatch={editingMatch}
             onMatchSaved={handleMatchSaved}
             onCancel={editingMatch ? handleCancelEdit : undefined}
           />
-        ) : (
+        )}
+        {activeTab === 'history' && (
           <HistoryList
             matches={matches}
             onEditMatch={handleEditMatch}
             onDeleteMatch={handleDeleteMatch}
           />
+        )}
+        {activeTab === 'analytics' && (
+          <AnalyticsView matches={matches} />
         )}
       </main>
     </div>
