@@ -49,9 +49,9 @@ This document defines the instructions, architectural standards, and workflow ru
 ## 📊 Domain Knowledge: Deadlock
 
 - **Teams**: 6 vs 6.
-- **Sides**:
-  - **The Amber Hand** (Orange faction)
-  - **The Sapphire Flame** (Blue faction)
+- **Sides (Patrons)**:
+  - **The Hidden King** (Gold / Yellow patron)
+  - **The Archmother** (Blue / Purple patron)
 - **Draft Composition**:
   - Exactly 1 played hero (`my_hero`).
   - Exactly 5 allied heroes (`allies`).

@@ -6,13 +6,13 @@
   --color-deadlock-border: #30363d;
   --color-deadlock-muted: #8b949e;
   
-  --color-deadlock-amber: #f59e0b;
-  --color-deadlock-amber-light: #fbbf24;
-  --color-deadlock-amber-dark: #b45309;
+  --color-deadlock-hidden-king: #f59e0b;
+  --color-deadlock-hidden-king-light: #fbbf24;
+  --color-deadlock-hidden-king-dark: #b45309;
   
-  --color-deadlock-sapphire: #38bdf8;
-  --color-deadlock-sapphire-light: #7dd3fc;
-  --color-deadlock-sapphire-dark: #0369a1;
+  --color-deadlock-archmother: #38bdf8;
+  --color-deadlock-archmother-light: #7dd3fc;
+  --color-deadlock-archmother-dark: #0369a1;
 
   --color-deadlock-win: #22c55e;
   --color-deadlock-loss: #ef4444;

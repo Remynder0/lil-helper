@@ -19,7 +19,7 @@ This application provides:
 - **Fast Post-Match Logging**: Record an entire 6v6 draft in under 20 seconds via a responsive hero icon picker.
 - **Matchup Matrix (Nemesis Detection)**: Uncover which enemy heroes consistently lower your win rate when playing specific heroes.
 - **Ally Synergies**: Identify which teammate heroes maximize your winning chances.
-- **Side Impact**: Track performance disparities between **The Amber Hand** and **The Sapphire Flame**.
+- **Side Impact**: Track performance disparities between **The Hidden King** and **The Archmother**.
 - **Minimal System Footprint**: Engineered with Tauri v2 to use under **35 MB of RAM**, guaranteeing zero FPS drop while Deadlock runs.
 
 ---
@@ -50,7 +50,7 @@ This project is tracked using a **GitHub Projects Kanban Board**:
   - Match recording form (Side, My Hero, 5 Allies, 6 Enemies, Win/Loss, Notes).
   - Match history dashboard with composition inspection and record deletion.
 - **Milestone 3: Analytics Engine (V1)**
-  - Win rate dashboard: Overall, per-hero, and Side breakdown (*Amber* vs *Sapphire*).
+  - Win rate dashboard: Overall, per-hero, and Side breakdown (*The Hidden King* vs *The Archmother*).
   - Matchup counter matrix: Favorable targets vs Nemesis heroes.
   - Teammate synergy scoring.
 - **Milestone 4: Draft Assistant & Deep Stats (V2)**
