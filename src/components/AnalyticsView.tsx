@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
+import { EnemyMatchupsView } from './EnemyMatchupsView';
 import {
   calculateGlobalStats,
   calculatePatronStats,
@@ -16,6 +17,8 @@ import {
   Crown,
   ChevronDown,
   ChevronUp,
+  Swords,
+  BarChart2,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -23,8 +26,10 @@ interface AnalyticsViewProps {
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
+type AnalyticsSubTab = 'overview' | 'matchups';
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
+  const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
@@ -63,6 +68,45 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Subtab Navigation */}
+      <div className="flex items-center justify-between border-b border-deadlock-border pb-3">
+        <div className="flex items-center gap-2 bg-deadlock-panel p-1 rounded-lg border border-deadlock-border">
+          <button
+            type="button"
+            onClick={() => setSubTab('overview')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
+              subTab === 'overview'
+                ? 'bg-deadlock-border text-white shadow-sm'
+                : 'text-deadlock-muted hover:text-white'
+            }`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>Overview & Heroes</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('matchups')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
+              subTab === 'matchups'
+                ? 'bg-deadlock-border text-white shadow-sm'
+                : 'text-deadlock-muted hover:text-white'
+            }`}
+          >
+            <Swords className="w-3.5 h-3.5" />
+            <span>Enemy Matchups & Counters</span>
+          </button>
+        </div>
+
+        <span className="text-xs text-deadlock-muted">
+          Based on {matches.length} recorded match{matches.length !== 1 ? 'es' : ''}
+        </span>
+      </div>
+
+      {subTab === 'matchups' ? (
+        <EnemyMatchupsView matches={matches} />
+      ) : (
+        <>
+
       {/* SECTION 1: GLOBAL STATS CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {/* Total Matches */}
@@ -360,6 +404,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
