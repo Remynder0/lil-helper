@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { HeroAvatar } from './HeroAvatar';
 import { getHeroById } from '../data/heroes';
-import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS } from '../types/match';
+import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS, LANE_LABELS, LANE_OUTCOME_LABELS } from '../types/match';
 import {
   Trophy,
   Skull,
@@ -327,6 +327,36 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       <span className="text-xs font-semibold text-gray-200 mt-0.5">
                         Played: <strong className="text-white">{myHero?.name || 'Unknown'}</strong>
                       </span>
+
+                      {/* Lane Badge (if tracked) */}
+                      {m.lane && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              m.lane === 'yellow'
+                                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
+                                : m.lane === 'blue'
+                                ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                                : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                            }`}
+                          >
+                            {LANE_LABELS[m.lane]}
+                          </span>
+                          {m.laneOutcome && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                m.laneOutcome === 'won'
+                                  ? 'bg-deadlock-win/15 border-deadlock-win/40 text-deadlock-win'
+                                  : m.laneOutcome === 'lost'
+                                  ? 'bg-deadlock-loss/15 border-deadlock-loss/40 text-deadlock-loss'
+                                  : 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
+                              }`}
+                            >
+                              {LANE_OUTCOME_LABELS[m.laneOutcome]}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -428,6 +458,54 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       </div>
                     ) : (
                       <span className="text-deadlock-muted italic">No notes recorded for this match.</span>
+                    )}
+
+                    {/* Lane Details (Issue #11) */}
+                    {m.lane && (
+                      <div className="bg-deadlock-panel/80 p-3 rounded-lg border border-deadlock-border/50 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-gray-300 uppercase tracking-wider text-[10px]">
+                            Lane Phase: {LANE_LABELS[m.lane]} (Duo Lane)
+                          </span>
+                          {m.laneOutcome && (
+                            <span
+                              className={`text-[11px] font-black uppercase tracking-wider ${
+                                m.laneOutcome === 'won'
+                                  ? 'text-deadlock-win'
+                                  : m.laneOutcome === 'lost'
+                                  ? 'text-deadlock-loss'
+                                  : 'text-yellow-400'
+                              }`}
+                            >
+                              Result: {LANE_OUTCOME_LABELS[m.laneOutcome]}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
+                          {m.laneAllyId && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-deadlock-muted">Partner:</span>
+                              <HeroAvatar heroId={m.laneAllyId} size="xs" />
+                              <span className="font-semibold text-white">{getHeroById(m.laneAllyId)?.name}</span>
+                            </div>
+                          )}
+
+                          {m.laneOpponents && m.laneOpponents.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-deadlock-muted">Faced:</span>
+                              <div className="flex items-center gap-1.5">
+                                {m.laneOpponents.map((oppId) => (
+                                  <div key={oppId} className="flex items-center gap-1">
+                                    <HeroAvatar heroId={oppId} size="xs" />
+                                    <span className="font-semibold text-white">{getHeroById(oppId)?.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
 
                     {/* Team Composition Breakdown */}

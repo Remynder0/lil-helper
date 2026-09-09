@@ -3,6 +3,7 @@ import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import { EnemyMatchupsView } from './EnemyMatchupsView';
 import { AllySynergiesView } from './AllySynergiesView';
+import { LanePerformanceView } from './LanePerformanceView';
 import {
   calculateGlobalStats,
   calculatePatronStats,
@@ -21,6 +22,7 @@ import {
   Swords,
   BarChart2,
   Users,
+  Compass,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -28,7 +30,7 @@ interface AnalyticsViewProps {
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
-type AnalyticsSubTab = 'overview' | 'matchups' | 'synergies';
+type AnalyticsSubTab = 'overview' | 'matchups' | 'synergies' | 'lanes';
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
@@ -109,6 +111,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             <Users className="w-3.5 h-3.5" />
             <span>Ally Synergies & Combos</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('lanes')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
+              subTab === 'lanes'
+                ? 'bg-deadlock-border text-white shadow-sm'
+                : 'text-deadlock-muted hover:text-white'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Lane Matchups</span>
+          </button>
         </div>
 
         <span className="text-xs text-deadlock-muted hidden sm:inline">
@@ -118,6 +132,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
 
       {subTab === 'matchups' && <EnemyMatchupsView matches={matches} />}
       {subTab === 'synergies' && <AllySynergiesView matches={matches} />}
+      {subTab === 'lanes' && <LanePerformanceView matches={matches} />}
       {subTab === 'overview' && (
         <>
 

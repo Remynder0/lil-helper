@@ -41,6 +41,24 @@ pub enum MatchResult {
     Cancel,
 }
 
+/// Represents the three duo lanes in Deadlock: Yellow, Blue, Green.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LaneColor {
+    Yellow,
+    Blue,
+    Green,
+}
+
+/// Represents the lane phase outcome: Won, Lost, or Even.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LaneOutcome {
+    Won,
+    Lost,
+    Even,
+}
+
 /// Represents a single recorded Deadlock match.
 ///
 /// Rust concept: `struct`
@@ -51,9 +69,9 @@ pub enum MatchResult {
 /// - `String`: an owned, heap-allocated, growable UTF-8 string.
 /// - `u32`: an unsigned 32-bit integer (0 to 4,294,967,295), perfect for Hero IDs.
 /// - `Vec<u32>`: a growable vector (dynamic array, like `ArrayList<Integer>` in Java or an array in JS).
-/// - `Option<String>`: Rust has NO `null` or `undefined`!
+/// - `Option<T>`: Rust has NO `null` or `undefined`!
 ///   Optional values use `Option<T>`, which can be either `Some(value)` or `None`.
-///   This prevents NullPointerExceptions completely at compile time.
+///   This ensures 100% backwards-compatibility with existing matches.
 ///
 /// `#[serde(rename_all = "camelCase")]`:
 /// Rust idiomatic convention is `snake_case` (e.g. `my_hero_id`).
@@ -71,4 +89,10 @@ pub struct MatchRecord {
     pub enemies: Vec<u32>,
     pub result: MatchResult,
     pub notes: Option<String>,
+
+    // Lane matchup tracking - Optional for backwards compatibility
+    pub lane: Option<LaneColor>,
+    pub lane_ally_id: Option<u32>,
+    pub lane_opponents: Option<Vec<u32>>,
+    pub lane_outcome: Option<LaneOutcome>,
 }

@@ -1,6 +1,22 @@
 export type Side = 'hidden_king' | 'archmother';
 export type MatchResult = 'win' | 'loss' | 'cancel';
 
+// Deadlock lanes: Yellow, Blue, Green (3 lanes for 6v6)
+export type LaneColor = 'yellow' | 'blue' | 'green';
+export type LaneOutcome = 'won' | 'lost' | 'even';
+
+export const LANE_LABELS: Record<LaneColor, string> = {
+  yellow: 'Yellow Lane',
+  blue: 'Blue Lane',
+  green: 'Green Lane',
+};
+
+export const LANE_OUTCOME_LABELS: Record<LaneOutcome, string> = {
+  won: 'Lane Won',
+  lost: 'Lane Lost',
+  even: 'Lane Even',
+};
+
 export const RESULT_LABELS: Record<MatchResult, string> = {
   win: 'Victory',
   loss: 'Defeat',
@@ -21,6 +37,12 @@ export interface Match {
   enemies: number[]; // exactly 6 hero IDs
   result: MatchResult;
   notes?: string;
+
+  // Lane matchup tracking - Optional for backwards compatibility
+  lane?: LaneColor;
+  laneAllyId?: number; // 1 ally on your duo lane
+  laneOpponents?: number[]; // 1 or 2 enemies on your duo lane
+  laneOutcome?: LaneOutcome;
 }
 
 export interface MatchDraftInput {
@@ -30,6 +52,12 @@ export interface MatchDraftInput {
   enemies: number[];
   result: MatchResult | null;
   notes?: string;
+
+  // Lane matchup tracking - Optional
+  lane?: LaneColor | null;
+  laneAllyId?: number | null;
+  laneOpponents?: number[];
+  laneOutcome?: LaneOutcome | null;
 }
 
 export interface ValidationError {

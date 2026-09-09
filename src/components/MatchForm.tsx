@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
 import { HeroAvatar } from './HeroAvatar';
 import { HeroPicker } from './HeroPicker';
-import { Match, MatchDraftInput, Side, MatchResult, validateMatchInput } from '../types/match';
+import { getHeroById } from '../data/heroes';
+import {
+  Match,
+  MatchDraftInput,
+  Side,
+  MatchResult,
+  LaneColor,
+  LaneOutcome,
+  LANE_OUTCOME_LABELS,
+  validateMatchInput,
+} from '../types/match';
 import { persistMatch } from '../services/storage';
-import { Shield, Sparkles, Trophy, Skull, Ban, CheckCircle, AlertCircle, RotateCcw, Save } from 'lucide-react';
+import { Shield, Sparkles, Trophy, Skull, Ban, CheckCircle, AlertCircle, RotateCcw, Save, Compass, Swords, Users } from 'lucide-react';
 
 interface MatchFormProps {
   editingMatch?: Match | null;
@@ -27,6 +37,12 @@ export const MatchForm: React.FC<MatchFormProps> = ({
   const [enemies, setEnemies] = useState<number[]>(editingMatch ? editingMatch.enemies : []);
   const [result, setResult] = useState<MatchResult | null>(editingMatch ? editingMatch.result : null);
   const [notes, setNotes] = useState<string>(editingMatch?.notes || '');
+
+  // Lane Matchup Tracking (3 lanes: Yellow, Blue, Green)
+  const [lane, setLane] = useState<LaneColor | null>(editingMatch?.lane || null);
+  const [laneAllyId, setLaneAllyId] = useState<number | null>(editingMatch?.laneAllyId || null);
+  const [laneOpponents, setLaneOpponents] = useState<number[]>(editingMatch?.laneOpponents || []);
+  const [laneOutcome, setLaneOutcome] = useState<LaneOutcome | null>(editingMatch?.laneOutcome || null);
 
   // Active slot targeting
   const [activeSection, setActiveSection] = useState<ActiveDraftSection>('my_hero');
@@ -95,6 +111,10 @@ export const MatchForm: React.FC<MatchFormProps> = ({
     setEnemies([]);
     setResult(null);
     setNotes('');
+    setLane(null);
+    setLaneAllyId(null);
+    setLaneOpponents([]);
+    setLaneOutcome(null);
     setActiveSection('my_hero');
     setValidationErrors([]);
     setSuccessMessage(null);
@@ -113,6 +133,10 @@ export const MatchForm: React.FC<MatchFormProps> = ({
       enemies,
       result,
       notes: notes.trim() ? notes.trim() : undefined,
+      lane: lane || undefined,
+      laneAllyId: laneAllyId || undefined,
+      laneOpponents: laneOpponents.length > 0 ? laneOpponents : undefined,
+      laneOutcome: laneOutcome || undefined,
     };
 
     const errors = validateMatchInput(input);
@@ -132,6 +156,10 @@ export const MatchForm: React.FC<MatchFormProps> = ({
         enemies,
         result: result!,
         notes: notes.trim() || undefined,
+        lane: lane || undefined,
+        laneAllyId: laneAllyId || undefined,
+        laneOpponents: laneOpponents.length > 0 ? laneOpponents : undefined,
+        laneOutcome: laneOutcome || undefined,
       };
 
       const saved = await persistMatch(matchToSave);
@@ -410,6 +438,190 @@ export const MatchForm: React.FC<MatchFormProps> = ({
         onSelectHero={handleHeroClick}
         accentColor={activeSection === 'enemies' ? enemySide : side}
       />
+
+      {/* Lane Assignment & Matchup */}
+      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col gap-4">
+        <div className="flex items-center justify-between pb-2 border-b border-deadlock-border/60">
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-deadlock-accent" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-200">
+              Lane Assignment & Matchup (Optional)
+            </h3>
+          </div>
+          {lane && (
+            <button
+              type="button"
+              onClick={() => {
+                setLane(null);
+                setLaneAllyId(null);
+                setLaneOpponents([]);
+                setLaneOutcome(null);
+              }}
+              className="text-[11px] text-deadlock-muted hover:text-white transition-colors"
+            >
+              Clear Lane Data
+            </button>
+          )}
+        </div>
+
+        {/* 1. Lane Selection (Yellow, Blue, Green) */}
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-deadlock-muted">
+            Which lane did you play on?
+          </span>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Yellow Lane */}
+            <button
+              type="button"
+              onClick={() => setLane(lane === 'yellow' ? null : 'yellow')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                lane === 'yellow'
+                  ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300 shadow-md shadow-yellow-500/10'
+                  : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:border-yellow-400/50 hover:text-yellow-200'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400" />
+              <span>Yellow Lane</span>
+            </button>
+
+            {/* Blue Lane */}
+            <button
+              type="button"
+              onClick={() => setLane(lane === 'blue' ? null : 'blue')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                lane === 'blue'
+                  ? 'bg-blue-500/20 border-blue-400 text-blue-300 shadow-md shadow-blue-500/10'
+                  : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:border-blue-400/50 hover:text-blue-200'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-blue-400 shadow-sm shadow-blue-400" />
+              <span>Blue Lane</span>
+            </button>
+
+            {/* Green Lane */}
+            <button
+              type="button"
+              onClick={() => setLane(lane === 'green' ? null : 'green')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                lane === 'green'
+                  ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-500/10'
+                  : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:border-emerald-400/50 hover:text-emerald-200'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
+              <span>Green Lane</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Lane Partner & Direct Opponents (visible if lane is selected) */}
+        {lane && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-deadlock-border/40">
+            {/* Lane Ally Partner */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-deadlock-muted flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-deadlock-archmother" />
+                <span>Your Lane Partner:</span>
+              </span>
+              {allies.length === 0 ? (
+                <p className="text-[11px] text-deadlock-muted italic">
+                  Select your allied team above to assign your lane partner.
+                </p>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {allies.map((allyId) => {
+                    const isSelected = laneAllyId === allyId;
+                    return (
+                      <button
+                        key={allyId}
+                        type="button"
+                        onClick={() => setLaneAllyId(isSelected ? null : allyId)}
+                        className={`flex items-center gap-1.5 p-1.5 pr-2.5 rounded-lg border text-xs transition-all ${
+                          isSelected
+                            ? 'bg-deadlock-archmother/20 border-deadlock-archmother text-white ring-1 ring-deadlock-archmother/50'
+                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                        }`}
+                      >
+                        <HeroAvatar heroId={allyId} size="xs" />
+                        <span className="font-semibold text-[11px]">{getHeroById(allyId)?.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Lane Direct Opponents (Up to 2 enemies) */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-deadlock-muted flex items-center gap-1.5">
+                <Swords className="w-3.5 h-3.5 text-deadlock-hidden-king" />
+                <span>Direct Lane Opponents ({laneOpponents.length}/2):</span>
+              </span>
+              {enemies.length === 0 ? (
+                <p className="text-[11px] text-deadlock-muted italic">
+                  Select enemy team heroes above to assign your lane opponents.
+                </p>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {enemies.map((enemyId) => {
+                    const isSelected = laneOpponents.includes(enemyId);
+                    return (
+                      <button
+                        key={enemyId}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setLaneOpponents(laneOpponents.filter((id) => id !== enemyId));
+                          } else if (laneOpponents.length < 2) {
+                            setLaneOpponents([...laneOpponents, enemyId]);
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 p-1.5 pr-2.5 rounded-lg border text-xs transition-all ${
+                          isSelected
+                            ? 'bg-deadlock-hidden-king/20 border-deadlock-hidden-king text-white ring-1 ring-deadlock-hidden-king/50'
+                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                        }`}
+                      >
+                        <HeroAvatar heroId={enemyId} size="xs" />
+                        <span className="font-semibold text-[11px]">{getHeroById(enemyId)?.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Lane Phase Outcome (Won / Even / Lost) */}
+        {lane && (
+          <div className="flex flex-col gap-2 pt-2 border-t border-deadlock-border/40">
+            <span className="text-xs font-medium text-deadlock-muted">
+              Lane Phase Result:
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              {(['won', 'even', 'lost'] as const).map((outcome) => (
+                <button
+                  key={outcome}
+                  type="button"
+                  onClick={() => setLaneOutcome(laneOutcome === outcome ? null : outcome)}
+                  className={`py-1.5 px-3 rounded-lg border text-xs font-bold capitalize transition-all ${
+                    laneOutcome === outcome
+                      ? outcome === 'won'
+                        ? 'bg-deadlock-win/20 border-deadlock-win text-deadlock-win shadow-sm'
+                        : outcome === 'lost'
+                        ? 'bg-deadlock-loss/20 border-deadlock-loss text-deadlock-loss shadow-sm'
+                        : 'bg-yellow-500/20 border-yellow-500 text-yellow-300 shadow-sm'
+                      : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                  }`}
+                >
+                  {LANE_OUTCOME_LABELS[outcome]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Notes & Actions */}
       <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col gap-3">
