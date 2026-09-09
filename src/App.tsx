@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { MatchForm } from './components/MatchForm';
 import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
+import { DraftAssistantView } from './components/DraftAssistantView';
 import { fetchAllMatches, removeMatch } from './services/storage';
 import { Match } from './types/match';
-import { PlusCircle, History, BarChart2, Download, Upload } from 'lucide-react';
+import { PlusCircle, History, BarChart2, Brain, Download, Upload } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
 
-type AppTab = 'log_match' | 'history' | 'analytics';
+type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('log_match');
@@ -184,6 +185,21 @@ export const App: React.FC = () => {
               <BarChart2 className="w-3.5 h-3.5" />
               <span>Analytics</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMatch(null);
+                setActiveTab('assistant');
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+                activeTab === 'assistant'
+                  ? 'bg-deadlock-accent text-white shadow-sm'
+                  : 'text-deadlock-muted hover:text-white'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Draft Assistant</span>
+            </button>
           </div>
 
           {/* Backup / Restore buttons */}
@@ -237,6 +253,9 @@ export const App: React.FC = () => {
         )}
         {activeTab === 'analytics' && (
           <AnalyticsView matches={matches} />
+        )}
+        {activeTab === 'assistant' && (
+          <DraftAssistantView matches={matches} />
         )}
       </main>
     </div>
