@@ -28,10 +28,11 @@ base64 = "0.23.1"
 windows = { version = "0.62.2", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_Graphics_Gdi"] }
 
 
-# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+# Optimized for fast CI and local builds without sacrificing binary performance
 [profile.release]
-codegen-units = 1
-lto = true
+codegen-units = 16
+lto = "thin"
 opt-level = 3
 panic = "abort"
 strip = true
+
