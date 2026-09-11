@@ -20,12 +20,15 @@ import {
 } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
 import { GameLogMonitor } from './components/GameLogMonitor';
+import { PlayerStateBadge } from './components/PlayerStateBadge';
+import { useDeadlockGameState } from './hooks/useDeadlockGameState';
 
 const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
 type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
 
 export const App: React.FC = () => {
+  const { gameContext } = useDeadlockGameState();
   const [activeTab, setActiveTab] = useState<AppTab>('log_match');
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -338,8 +341,16 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Steam Profile & Manual Refresh Sync */}
-          <div className="flex items-center gap-2 pl-2 border-l border-deadlock-border/60">
+          {/* Live Player Status & Steam Profile Sync */}
+          <div className="flex items-center gap-2.5 pl-2 border-l border-deadlock-border/60">
+            <PlayerStateBadge
+              state={gameContext.state}
+              stateLabel={gameContext.stateLabel}
+              playerName={gameContext.playerName}
+              heroName={gameContext.myHeroName}
+              mapName={gameContext.mapName}
+            />
+
             {profile ? (
               <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
                 {/* Profile Pill (Click to open modal/switch) */}
@@ -433,7 +444,7 @@ export const App: React.FC = () => {
           <AnalyticsView matches={matches} />
         )}
         {activeTab === 'assistant' && (
-          <DraftAssistantView matches={matches} />
+          <DraftAssistantView matches={matches} gameContext={gameContext} />
         )}
         {activeTab === 'logs' && (
           <GameLogMonitor />

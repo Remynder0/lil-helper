@@ -3,6 +3,7 @@ export interface Hero {
   id: number;
   key: string;
   name: string;
+  className: string;
   role: string;
   heroType: 'brawler' | 'marksman' | 'mystic' | 'assassin' | string;
   iconUrl: string;
@@ -16,6 +17,7 @@ export const HEROES: Hero[] = [
     "id": 6,
     "key": "abrams",
     "name": "Abrams",
+    "className": "hero_atlas",
     "role": "Charges into close combat",
     "heroType": "brawler",
     "iconUrl": "/heroes/abrams.webp",
@@ -31,6 +33,7 @@ export const HEROES: Hero[] = [
     "id": 77,
     "key": "apollo",
     "name": "Apollo",
+    "className": "hero_fencer",
     "role": "assassin",
     "heroType": "assassin",
     "iconUrl": "/heroes/apollo.webp",
@@ -46,6 +49,7 @@ export const HEROES: Hero[] = [
     "id": 15,
     "key": "bebop",
     "name": "Bebop",
+    "className": "hero_bebop",
     "role": "Hooks an enemy for a knockout combo",
     "heroType": "brawler",
     "iconUrl": "/heroes/bebop.webp",
@@ -61,6 +65,7 @@ export const HEROES: Hero[] = [
     "id": 72,
     "key": "billy",
     "name": "Billy",
+    "className": "hero_punkgoat",
     "role": "brawler",
     "heroType": "brawler",
     "iconUrl": "/heroes/billy.webp",
@@ -76,6 +81,7 @@ export const HEROES: Hero[] = [
     "id": 16,
     "key": "calico",
     "name": "Calico",
+    "className": "hero_nano",
     "role": "Wreaks havoc from the sidelines",
     "heroType": "assassin",
     "iconUrl": "/heroes/calico.webp",
@@ -91,6 +97,7 @@ export const HEROES: Hero[] = [
     "id": 81,
     "key": "celeste",
     "name": "Celeste",
+    "className": "hero_unicorn",
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/celeste.webp",
@@ -106,6 +113,7 @@ export const HEROES: Hero[] = [
     "id": 64,
     "key": "drifter",
     "name": "Drifter",
+    "className": "hero_drifter",
     "role": "assassin",
     "heroType": "assassin",
     "iconUrl": "/heroes/drifter.webp",
@@ -121,6 +129,7 @@ export const HEROES: Hero[] = [
     "id": 11,
     "key": "dynamo",
     "name": "Dynamo",
+    "className": "hero_dynamo",
     "role": "Locks down the enemy team",
     "heroType": "mystic",
     "iconUrl": "/heroes/dynamo.webp",
@@ -136,6 +145,7 @@ export const HEROES: Hero[] = [
     "id": 76,
     "key": "graves",
     "name": "Graves",
+    "className": "hero_necro",
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/graves.webp",
@@ -151,6 +161,7 @@ export const HEROES: Hero[] = [
     "id": 17,
     "key": "grey_talon",
     "name": "Grey Talon",
+    "className": "hero_orion",
     "role": "Delivers long range skill-shots",
     "heroType": "marksman",
     "iconUrl": "/heroes/grey_talon.webp",
@@ -166,6 +177,7 @@ export const HEROES: Hero[] = [
     "id": 13,
     "key": "haze",
     "name": "Haze",
+    "className": "hero_haze",
     "role": "Sneaks in and sprays bullets",
     "heroType": "assassin",
     "iconUrl": "/heroes/haze.webp",
@@ -181,6 +193,7 @@ export const HEROES: Hero[] = [
     "id": 14,
     "key": "holliday",
     "name": "Holliday",
+    "className": "hero_astro",
     "role": "Bounces about dispensing trick shots",
     "heroType": "marksman",
     "iconUrl": "/heroes/holliday.webp",
@@ -196,6 +209,7 @@ export const HEROES: Hero[] = [
     "id": 1,
     "key": "infernus",
     "name": "Infernus",
+    "className": "hero_inferno",
     "role": "Lights up enemies and watches them burn",
     "heroType": "marksman",
     "iconUrl": "/heroes/infernus.webp",
@@ -211,6 +225,7 @@ export const HEROES: Hero[] = [
     "id": 20,
     "key": "ivy",
     "name": "Ivy",
+    "className": "hero_tengu",
     "role": "Sets up a power duo with a lucky ally",
     "heroType": "marksman",
     "iconUrl": "/heroes/ivy.webp",
@@ -226,6 +241,7 @@ export const HEROES: Hero[] = [
     "id": 12,
     "key": "kelvin",
     "name": "Kelvin",
+    "className": "hero_kelvin",
     "role": "Freezes enemies in their tracks",
     "heroType": "brawler",
     "iconUrl": "/heroes/kelvin.webp",
@@ -241,6 +257,7 @@ export const HEROES: Hero[] = [
     "id": 4,
     "key": "lady_geist",
     "name": "Lady Geist",
+    "className": "hero_ghost",
     "role": "Sacrifices health then drains it back",
     "heroType": "mystic",
     "iconUrl": "/heroes/lady_geist.webp",
@@ -256,6 +273,7 @@ export const HEROES: Hero[] = [
     "id": 31,
     "key": "lash",
     "name": "Lash",
+    "className": "hero_lash",
     "role": "Dives down to stomp his foes",
     "heroType": "assassin",
     "iconUrl": "/heroes/lash.webp",
@@ -271,6 +289,7 @@ export const HEROES: Hero[] = [
     "id": 8,
     "key": "mcginnis",
     "name": "McGinnis",
+    "className": "hero_forge",
     "role": "Controls the battle with combat turrets",
     "heroType": "mystic",
     "iconUrl": "/heroes/mcginnis.webp",
@@ -286,6 +305,7 @@ export const HEROES: Hero[] = [
     "id": 63,
     "key": "mina",
     "name": "Mina",
+    "className": "hero_vampirebat",
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/mina.webp",
@@ -301,6 +321,7 @@ export const HEROES: Hero[] = [
     "id": 52,
     "key": "mirage",
     "name": "Mirage",
+    "className": "hero_mirage",
     "role": "Times his shots and catches fleeing targets",
     "heroType": "assassin",
     "iconUrl": "/heroes/mirage.webp",
@@ -316,6 +337,7 @@ export const HEROES: Hero[] = [
     "id": 18,
     "key": "mo___krill",
     "name": "Mo & Krill",
+    "className": "hero_krill",
     "role": "Burrows underneath his enemies",
     "heroType": "brawler",
     "iconUrl": "/heroes/mo___krill.webp",
@@ -331,6 +353,7 @@ export const HEROES: Hero[] = [
     "id": 67,
     "key": "paige",
     "name": "Paige",
+    "className": "hero_bookworm",
     "role": "mystic",
     "heroType": "mystic",
     "iconUrl": "/heroes/paige.webp",
@@ -346,6 +369,7 @@ export const HEROES: Hero[] = [
     "id": 10,
     "key": "paradox",
     "name": "Paradox",
+    "className": "hero_chrono",
     "role": "Manipulates Space and Time",
     "heroType": "marksman",
     "iconUrl": "/heroes/paradox.webp",
@@ -361,6 +385,7 @@ export const HEROES: Hero[] = [
     "id": 50,
     "key": "pocket",
     "name": "Pocket",
+    "className": "hero_synth",
     "role": "Infiltrates and disrupts the backline",
     "heroType": "assassin",
     "iconUrl": "/heroes/pocket.webp",
@@ -376,6 +401,7 @@ export const HEROES: Hero[] = [
     "id": 79,
     "key": "rem",
     "name": "Rem",
+    "className": "hero_familiar",
     "role": "Unknown",
     "heroType": "brawler",
     "iconUrl": "/heroes/rem.webp",
@@ -391,6 +417,7 @@ export const HEROES: Hero[] = [
     "id": 2,
     "key": "seven",
     "name": "Seven",
+    "className": "hero_gigawatt",
     "role": "Electrocutes crowds of enemies",
     "heroType": "mystic",
     "iconUrl": "/heroes/seven.webp",
@@ -406,6 +433,7 @@ export const HEROES: Hero[] = [
     "id": 19,
     "key": "shiv",
     "name": "Shiv",
+    "className": "hero_shiv",
     "role": "Bleeds out foes, then goes in for a kill",
     "heroType": "brawler",
     "iconUrl": "/heroes/shiv.webp",
@@ -421,6 +449,7 @@ export const HEROES: Hero[] = [
     "id": 80,
     "key": "silver",
     "name": "Silver",
+    "className": "hero_werewolf",
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/silver.webp",
@@ -436,6 +465,7 @@ export const HEROES: Hero[] = [
     "id": 60,
     "key": "sinclair",
     "name": "Sinclair",
+    "className": "hero_magician",
     "role": "Misdirect and hex enemies",
     "heroType": "mystic",
     "iconUrl": "/heroes/sinclair.webp",
@@ -451,6 +481,7 @@ export const HEROES: Hero[] = [
     "id": 69,
     "key": "the_doorman",
     "name": "The Doorman",
+    "className": "hero_doorman",
     "role": "mystic",
     "heroType": "mystic",
     "iconUrl": "/heroes/the_doorman.webp",
@@ -466,6 +497,7 @@ export const HEROES: Hero[] = [
     "id": 65,
     "key": "venator",
     "name": "Venator",
+    "className": "hero_priest",
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/venator.webp",
@@ -481,6 +513,7 @@ export const HEROES: Hero[] = [
     "id": 66,
     "key": "victor",
     "name": "Victor",
+    "className": "hero_frank",
     "role": "brawler",
     "heroType": "brawler",
     "iconUrl": "/heroes/victor.webp",
@@ -496,6 +529,7 @@ export const HEROES: Hero[] = [
     "id": 3,
     "key": "vindicta",
     "name": "Vindicta",
+    "className": "hero_hornet",
     "role": "Snipes the unsuspecting",
     "heroType": "marksman",
     "iconUrl": "/heroes/vindicta.webp",
@@ -511,6 +545,7 @@ export const HEROES: Hero[] = [
     "id": 35,
     "key": "viscous",
     "name": "Viscous",
+    "className": "hero_viscous",
     "role": "Rolls around deflecting bullets",
     "heroType": "mystic",
     "iconUrl": "/heroes/viscous.webp",
@@ -526,6 +561,7 @@ export const HEROES: Hero[] = [
     "id": 58,
     "key": "vyper",
     "name": "Vyper",
+    "className": "hero_viper",
     "role": "Slither in and assassinate enemies",
     "heroType": "assassin",
     "iconUrl": "/heroes/vyper.webp",
@@ -541,6 +577,7 @@ export const HEROES: Hero[] = [
     "id": 25,
     "key": "warden",
     "name": "Warden",
+    "className": "hero_warden",
     "role": "Weakens his enemies and chases them down",
     "heroType": "brawler",
     "iconUrl": "/heroes/warden.webp",
@@ -556,6 +593,7 @@ export const HEROES: Hero[] = [
     "id": 7,
     "key": "wraith",
     "name": "Wraith",
+    "className": "hero_wraith",
     "role": "Melts isolated targets",
     "heroType": "marksman",
     "iconUrl": "/heroes/wraith.webp",
@@ -571,6 +609,7 @@ export const HEROES: Hero[] = [
     "id": 27,
     "key": "yamato",
     "name": "Yamato",
+    "className": "hero_yamato",
     "role": "Delivers charged attacks with finesse",
     "heroType": "assassin",
     "iconUrl": "/heroes/yamato.webp",
@@ -587,6 +626,9 @@ export const HEROES: Hero[] = [
 export const HERO_MAP = new Map<number, Hero>(HEROES.map(h => [h.id, h]));
 export const HERO_BY_KEY = new Map<string, Hero>(HEROES.map(h => [h.key, h]));
 export const HERO_BY_NAME = new Map<string, Hero>(HEROES.map(h => [h.name.toLowerCase(), h]));
+export const HERO_BY_CLASS_NAME = new Map<string, Hero>(
+  HEROES.filter(h => h.className).map(h => [h.className.toLowerCase(), h])
+);
 
 export function getHeroById(id: number): Hero | undefined {
   return HERO_MAP.get(id);
@@ -596,6 +638,38 @@ export function getHeroByKey(key: string): Hero | undefined {
   return HERO_BY_KEY.get(key);
 }
 
+export function getHeroByClassName(className: string): Hero | undefined {
+  return HERO_BY_CLASS_NAME.get(className.toLowerCase());
+}
+
 export function findHeroByName(name: string): Hero | undefined {
   return HERO_BY_NAME.get(name.trim().toLowerCase());
+}
+
+/**
+ * Resolves a hero by its API class_name, key, or model path fragment.
+ * Handles strings like "hero_atlas", "hero_gigawatt", "models/heroes_wip/wraith/wraith.vmdl".
+ */
+export function findHeroBySource2Name(rawInput: string): Hero | undefined {
+  if (!rawInput) return undefined;
+
+  const cleanInput = rawInput.toLowerCase().replace(/\\/g, '/');
+
+  // 1. Direct class_name match (e.g. "hero_atlas", "hero_gigawatt")
+  const byClass = getHeroByClassName(cleanInput) || getHeroByClassName('hero_' + cleanInput);
+  if (byClass) return byClass;
+
+  // 2. Check if any hero's official className (e.g. "atlas" from "hero_atlas") or key is in path
+  for (const hero of HEROES) {
+    if (hero.className) {
+      const baseClass = hero.className.replace(/^hero_/, '');
+      const regex = new RegExp(`(?:^|[/_])${baseClass}(?:$|[/_])`, 'i');
+      if (regex.test(cleanInput)) {
+        return hero;
+      }
+    }
+  }
+
+  // 3. Fallback: search by standard key or name
+  return getHeroByKey(cleanInput) || findHeroByName(cleanInput);
 }

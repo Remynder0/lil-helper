@@ -3,8 +3,6 @@ import path from 'node:path';
 
 const API_URL = 'https://assets.deadlock-api.com/v1/heroes';
 
-
-
 async function run() {
   console.log('Fetching Deadlock heroes from API...');
   const res = await fetch(API_URL);
@@ -13,7 +11,7 @@ async function run() {
   const heroesDir = path.resolve('public/heroes');
   fs.mkdirSync(heroesDir, { recursive: true });
 
-  const activeHeroes = heroesData.filter(h =>  (h.player_selectable && h.in_development !== true) || h.id === 1); // Always include the first hero (ID 1)
+  const activeHeroes = heroesData.filter(h => (h.player_selectable && h.in_development !== true) || h.id === 1); // Always include the first hero (ID 1)
   
   // Sort alphabetically by name
   activeHeroes.sort((a, b) => a.name.localeCompare(b.name));
@@ -26,7 +24,7 @@ async function run() {
     const localImgName = `${slug}.webp`;
     const localImgPath = path.join(heroesDir, localImgName);
 
-    if (imgUrl) {
+    if (imgUrl && !fs.existsSync(localImgPath)) {
       try {
         const imgRes = await fetch(imgUrl);
         const buffer = await imgRes.arrayBuffer();
@@ -41,6 +39,7 @@ async function run() {
       id: h.id,
       key: slug,
       name: h.name,
+      className: h.class_name || '',
       role: h.description?.role || h.hero_type || 'Unknown',
       heroType: h.hero_type || 'brawler',
       iconUrl: `/heroes/${localImgName}`,
@@ -56,6 +55,7 @@ export interface Hero {
   id: number;
   key: string;
   name: string;
+  className: string;
   role: string;
   heroType: 'brawler' | 'marksman' | 'mystic' | 'assassin' | string;
   iconUrl: string;
@@ -69,6 +69,9 @@ export const HEROES: Hero[] = ${JSON.stringify(heroRecords, null, 2)};
 export const HERO_MAP = new Map<number, Hero>(HEROES.map(h => [h.id, h]));
 export const HERO_BY_KEY = new Map<string, Hero>(HEROES.map(h => [h.key, h]));
 export const HERO_BY_NAME = new Map<string, Hero>(HEROES.map(h => [h.name.toLowerCase(), h]));
+export const HERO_BY_CLASS_NAME = new Map<string, Hero>(
+  HEROES.filter(h => h.className).map(h => [h.className.toLowerCase(), h])
+);
 
 export function getHeroById(id: number): Hero | undefined {
   return HERO_MAP.get(id);
@@ -78,14 +81,46 @@ export function getHeroByKey(key: string): Hero | undefined {
   return HERO_BY_KEY.get(key);
 }
 
+export function getHeroByClassName(className: string): Hero | undefined {
+  return HERO_BY_CLASS_NAME.get(className.toLowerCase());
+}
+
 export function findHeroByName(name: string): Hero | undefined {
   return HERO_BY_NAME.get(name.trim().toLowerCase());
+}
+
+/**
+ * Resolves a hero by its API class_name, key, or model path fragment.
+ * Handles strings like "hero_atlas", "hero_gigawatt", "models/heroes_wip/wraith/wraith.vmdl".
+ */
+export function findHeroBySource2Name(rawInput: string): Hero | undefined {
+  if (!rawInput) return undefined;
+
+  const cleanInput = rawInput.toLowerCase().replace(/\\\\/g, '/');
+
+  // 1. Direct class_name match (e.g. "hero_atlas", "hero_gigawatt")
+  const byClass = getHeroByClassName(cleanInput) || getHeroByClassName('hero_' + cleanInput);
+  if (byClass) return byClass;
+
+  // 2. Check if any hero's official className (e.g. "atlas" from "hero_atlas") or key is in path
+  for (const hero of HEROES) {
+    if (hero.className) {
+      const baseClass = hero.className.replace(/^hero_/, '');
+      const regex = new RegExp(\`(?:^|[/_])\${baseClass}(?:$|[/_])\`, 'i');
+      if (regex.test(cleanInput)) {
+        return hero;
+      }
+    }
+  }
+
+  // 3. Fallback: search by standard key or name
+  return getHeroByKey(cleanInput) || findHeroByName(cleanInput);
 }
 `;
 
   fs.mkdirSync(path.resolve('src/data'), { recursive: true });
   fs.writeFileSync(path.resolve('src/data/heroes.ts'), tsContent, 'utf-8');
-  console.log(`Generated src/data/heroes.ts with ${heroRecords.length} heroes!`);
+  console.log(`Generated src/data/heroes.ts with ${heroRecords.length} heroes using official class_name!`);
 }
 
 run().catch(console.error);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Match, Side, LaneColor, LANE_LABELS, SIDE_LABELS } from '../types/match';
 import { getHeroById } from '../data/heroes';
 import { HeroAvatar } from './HeroAvatar';
@@ -18,17 +18,21 @@ import {
   Compass,
   ArrowRight,
   Sparkles,
+  Gamepad2,
+  Zap,
 } from 'lucide-react';
+import { ParsedGameContext } from '../services/logWatcher';
 
 interface DraftAssistantViewProps {
   matches: Match[];
+  gameContext?: ParsedGameContext;
 }
 
 type ActiveSlot =
   | { type: 'lane'; lane: LaneColor; team: 'allies' | 'enemies'; index: number }
   | { type: 'ban'; index: number };
 
-export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches }) => {
+export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches, gameContext }) => {
   // 1. Patron Factions (Side)
   const [side, setSide] = useState<Side>('hidden_king');
   const enemySide: Side = side === 'hidden_king' ? 'archmother' : 'hidden_king';
@@ -46,6 +50,25 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
     blue: { allies: [null, null], enemies: [null, null] },
     green: { allies: [null, null], enemies: [null, null] },
   });
+
+  // Auto-sync player's hero from gameContext if detected
+  useEffect(() => {
+    if (gameContext?.myHeroId && gameContext.myHeroId !== myHeroId) {
+      setMyHeroId(gameContext.myHeroId);
+      setLanes((prev) => {
+        if (!prev[assignedLane].allies[0]) {
+          return {
+            ...prev,
+            [assignedLane]: {
+              ...prev[assignedLane],
+              allies: [gameContext.myHeroId, prev[assignedLane].allies[1]],
+            },
+          };
+        }
+        return prev;
+      });
+    }
+  }, [gameContext?.myHeroId, assignedLane, myHeroId]);
 
   // 5. Active slot targeting for one-click hero picker assignment
   const [activeSlot, setActiveSlot] = useState<ActiveSlot | null>({
@@ -162,6 +185,53 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
     setActiveSlot({ type: 'lane', lane: 'green', team: 'allies', index: 0 });
   };
 
+  const handleAutoFillFromLog = () => {
+    if (!gameContext) return;
+
+    if (gameContext.myHeroId) {
+      setMyHeroId(gameContext.myHeroId);
+    }
+
+    const heroesToPlace = [...gameContext.detectedHeroIds];
+
+    setLanes((prev) => {
+      const nextLanes = {
+        yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
+        blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
+        green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
+      };
+
+      // Ensure my hero is in my assigned lane
+      if (gameContext.myHeroId) {
+        nextLanes[assignedLane].allies[0] = gameContext.myHeroId;
+      }
+
+      const emptySlots: Array<{ lane: LaneColor; team: 'enemies' | 'allies'; index: number }> = [
+        { lane: assignedLane, team: 'enemies', index: 0 },
+        { lane: assignedLane, team: 'enemies', index: 1 },
+        { lane: 'yellow', team: 'enemies', index: 0 },
+        { lane: 'yellow', team: 'enemies', index: 1 },
+        { lane: 'blue', team: 'enemies', index: 0 },
+        { lane: 'blue', team: 'enemies', index: 1 },
+        { lane: assignedLane, team: 'allies', index: 1 },
+        { lane: 'yellow', team: 'allies', index: 0 },
+        { lane: 'yellow', team: 'allies', index: 1 },
+        { lane: 'blue', team: 'allies', index: 0 },
+        { lane: 'blue', team: 'allies', index: 1 },
+      ];
+
+      for (const slot of emptySlots) {
+        if (heroesToPlace.length === 0) break;
+        if (!nextLanes[slot.lane][slot.team][slot.index]) {
+          const heroId = heroesToPlace.shift()!;
+          nextLanes[slot.lane][slot.team][slot.index] = heroId;
+        }
+      }
+
+      return nextLanes;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET */}
@@ -196,7 +266,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
               onClick={() => setSide('archmother')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
                 side === 'archmother'
-                  ? 'bg-deadlock-archmother/25 border border-deadlock-archmother text-blue-300 shadow-sm'
+                  ? 'bg-deadlock-archmother/25 border border-deadlock-archmother text-amber-300 shadow-sm'
                   : 'text-deadlock-muted hover:text-white'
               }`}
             >
@@ -255,6 +325,77 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
           </button>
         </div>
       </div>
+
+      {/* Live Game Sync Callout Banner */}
+      {gameContext && (gameContext.state === 'in_game' || gameContext.myHeroId || gameContext.detectedHeroIds.length > 0) && (
+        <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
+              <Gamepad2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Live Game Sync
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                  {gameContext.stateLabel}
+                </span>
+                {gameContext.mapName && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/40 text-deadlock-muted border border-deadlock-border">
+                    {gameContext.mapName}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-300 mt-0.5">
+                {gameContext.playerName ? `${gameContext.playerName} • ` : ''}
+                {gameContext.myHeroName ? `Playing ${gameContext.myHeroName}` : 'In Game'}
+                {gameContext.detectedHeroIds.length > 0
+                  ? ` (${gameContext.detectedHeroIds.length} other hero${gameContext.detectedHeroIds.length > 1 ? 'es' : ''} detected: `
+                  : ''}
+                {gameContext.detectedHeroIds.length > 0 && (
+                  <span className="text-emerald-300 font-medium">
+                    {gameContext.detectedHeroIds
+                      .map((id) => getHeroById(id)?.name || `#${id}`)
+                      .join(', ')}
+                    )
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
+            {/* Quick-pill for detected heroes to place into active slot */}
+            {gameContext.detectedHeroIds.map((hId) => {
+              const h = getHeroById(hId);
+              if (!h) return null;
+              return (
+                <button
+                  key={hId}
+                  type="button"
+                  onClick={() => handleSelectHero(hId)}
+                  className="px-2 py-1 bg-deadlock-dark hover:bg-emerald-950 border border-emerald-500/30 hover:border-emerald-400 rounded-lg text-xs font-bold text-emerald-300 flex items-center gap-1.5 transition-all shadow-sm"
+                  title={`Click to place ${h.name} into active slot`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>{h.name}</span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={handleAutoFillFromLog}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+              title="Populate draft board slots with detected heroes from game log"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Auto-Fill Draft</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. THE 3 DUO LANES BOARD (6v6: Yellow, Blue, Green) */}
       <div className="flex flex-col gap-3">

@@ -27,34 +27,78 @@ pub struct WatcherStatus {
     pub status_message: String,
 }
 
-/// Automatically searches common Steam paths for Deadlock's console.log
+/// Automatically searches Steam paths across all system drive letters (A to Z) for Deadlock's console.log
 pub fn detect_default_log_path() -> Option<PathBuf> {
-    let candidate_drives = ["C", "D", "E", "F", "G"];
-    for drive in candidate_drives {
-        let candidate = PathBuf::from(format!(
-            "{}:\\Program Files (x86)\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
-            drive
-        ));
-        if candidate.exists() {
-            return Some(candidate);
-        }
+    let candidate_subpaths = [
+        "SteamLibrary\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+        "SteamLibrary\\steamapps\\common\\Deadlock\\game\\citadel\\consol.log",
+        "Program Files (x86)\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+        "Program Files (x86)\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\consol.log",
+        "Program Files\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+        "Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+        "Steam\\steamapps\\common\\Deadlock\\game\\citadel\\consol.log",
+        "Games\\SteamLibrary\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+        "Jeux\\SteamLibrary\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
+    ];
 
-        let candidate_steam_lib = PathBuf::from(format!(
-            "{}:\\SteamLibrary\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
-            drive
-        ));
-        if candidate_steam_lib.exists() {
-            return Some(candidate_steam_lib);
-        }
-
-        let candidate_steam = PathBuf::from(format!(
-            "{}:\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log",
-            drive
-        ));
-        if candidate_steam.exists() {
-            return Some(candidate_steam);
+    // 1. Scan primary drives C..=Z
+    for drive_char in b'C'..=b'Z' {
+        let drive = drive_char as char;
+        for subpath in &candidate_subpaths {
+            let candidate = PathBuf::from(format!("{}:\\{}", drive, subpath));
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
     }
+
+    // Also check A: and B:
+    for drive in ['A', 'B'] {
+        for subpath in &candidate_subpaths {
+            let candidate = PathBuf::from(format!("{}:\\{}", drive, subpath));
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    // 2. Also try reading libraryfolders.vdf from common Steam paths
+    let steam_vdf_candidates = [
+        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf",
+        "C:\\Program Files\\Steam\\steamapps\\libraryfolders.vdf",
+        "C:\\Steam\\steamapps\\libraryfolders.vdf",
+        "D:\\SteamLibrary\\steamapps\\libraryfolders.vdf",
+    ];
+
+    for vdf_path_str in &steam_vdf_candidates {
+        let vdf_path = Path::new(vdf_path_str);
+        if vdf_path.exists() {
+            if let Ok(content) = fs::read_to_string(vdf_path) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("\"path\"") {
+                        let parts: Vec<&str> = trimmed.split('"').collect();
+                        if parts.len() >= 4 {
+                            let lib_path = parts[3].replace("\\\\", "\\");
+                            for log_file in ["console.log", "consol.log"] {
+                                let deadlock_log = PathBuf::from(&lib_path)
+                                    .join("steamapps")
+                                    .join("common")
+                                    .join("Deadlock")
+                                    .join("game")
+                                    .join("citadel")
+                                    .join(log_file);
+                                if deadlock_log.exists() {
+                                    return Some(deadlock_log);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     None
 }
 
