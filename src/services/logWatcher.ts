@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { findHeroBySource2Name, HEROES } from '../data/heroes';
+import { findHeroBySource2Name } from '../data/heroes';
 
 export interface LogEvent {
   timestamp: string;
@@ -141,34 +141,7 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
       }
     }
 
-    // Ignore internal Source 2 animation compile / skeleton warnings (causes false positives)
-    if (line.includes('Different skeleton') || line.includes('Creating Bone Masks') || line.includes('Bone Mask')) {
-      continue;
-    }
-
-    // 3. Detect any Loaded Hero Model or Spawning Hero in the match
-    if (
-      line.includes('models/heroes') ||
-      line.includes('hero_') ||
-      line.includes('citadel_player') ||
-      line.includes('selected hero')
-    ) {
-      for (const hero of HEROES) {
-        if (hero.className) {
-          const baseClass = hero.className.replace(/^hero_/, '');
-          const regex = new RegExp(`(?:^|[/_+.])${baseClass}(?:$|[/_+.\\s])`, 'i');
-          if (regex.test(line)) {
-            seenHeroIds.add(hero.id);
-          }
-        }
-        const keyRegex = new RegExp(`(?:^|[/_+.])${hero.key}(?:$|[/_+.\\s])`, 'i');
-        if (keyRegex.test(line)) {
-          seenHeroIds.add(hero.id);
-        }
-      }
-    }
-
-    // 4. Detect Map Name
+    // 3. Detect Map Name
     // e.g.: [Client] Created physics for dl_midtown
     const mapPhysicsMatch = line.match(/Created physics for\s+([a-zA-Z0-9_-]+)/i);
     if (mapPhysicsMatch) {

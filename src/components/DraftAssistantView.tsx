@@ -19,13 +19,15 @@ import {
   ArrowRight,
   Sparkles,
   Gamepad2,
-  Zap,
   Camera,
   Loader2,
   CheckCircle2,
+  Terminal,
+  Eye,
+  X,
 } from 'lucide-react';
 import { ParsedGameContext } from '../services/logWatcher';
-import { scanEscapeMenuDraft } from '../services/screenOcr';
+import { scanEscapeMenuDraft, ScreenScanResult } from '../services/screenOcr';
 
 interface DraftAssistantViewProps {
   matches: Match[];
@@ -221,56 +223,11 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
     setActiveSlot({ type: 'lane', lane: 'green', team: 'allies', index: 0 });
   };
 
-  const handleAutoFillFromLog = () => {
-    if (!gameContext) return;
-
-    if (gameContext.myHeroId) {
-      setMyHeroId(gameContext.myHeroId);
-    }
-
-    const heroesToPlace = [...gameContext.detectedHeroIds];
-
-    setLanes((prev) => {
-      const nextLanes = {
-        yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
-        blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
-        green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
-      };
-
-      // Ensure my hero is in my assigned lane
-      if (gameContext.myHeroId) {
-        nextLanes[assignedLane].allies[0] = gameContext.myHeroId;
-      }
-
-      const emptySlots: Array<{ lane: LaneColor; team: 'enemies' | 'allies'; index: number }> = [
-        { lane: assignedLane, team: 'enemies', index: 0 },
-        { lane: assignedLane, team: 'enemies', index: 1 },
-        { lane: 'yellow', team: 'enemies', index: 0 },
-        { lane: 'yellow', team: 'enemies', index: 1 },
-        { lane: 'blue', team: 'enemies', index: 0 },
-        { lane: 'blue', team: 'enemies', index: 1 },
-        { lane: assignedLane, team: 'allies', index: 1 },
-        { lane: 'yellow', team: 'allies', index: 0 },
-        { lane: 'yellow', team: 'allies', index: 1 },
-        { lane: 'blue', team: 'allies', index: 0 },
-        { lane: 'blue', team: 'allies', index: 1 },
-      ];
-
-      for (const slot of emptySlots) {
-        if (heroesToPlace.length === 0) break;
-        if (!nextLanes[slot.lane][slot.team][slot.index]) {
-          const heroId = heroesToPlace.shift()!;
-          nextLanes[slot.lane][slot.team][slot.index] = heroId;
-        }
-      }
-
-      return nextLanes;
-    });
-  };
-
   // Screen OCR Scanning (reads Deadlock Escape Menu on demand)
   const [isScanningScreen, setIsScanningScreen] = useState(false);
   const [scanStatusMessage, setScanStatusMessage] = useState<string | null>(null);
+  const [lastScanResult, setLastScanResult] = useState<ScreenScanResult | null>(null);
+  const [showOcrInspector, setShowOcrInspector] = useState(false);
 
   const handleScanScreen = async () => {
     try {
@@ -278,6 +235,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
       setScanStatusMessage('Capturing game screen & running OCR...');
 
       const result = await scanEscapeMenuDraft();
+      setLastScanResult(result);
       
       let alliesPlaced = 0;
       let enemiesPlaced = 0;
@@ -318,12 +276,17 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
         return nextLanes;
       });
 
-      setScanStatusMessage(`Scan complete: placed ${alliesPlaced} allies & ${enemiesPlaced} enemies across Yellow, Blue, Green!`);
-      setTimeout(() => setScanStatusMessage(null), 4000);
+      // Auto-assign player's side/patron if detected
+      if (result.detectedSide) {
+        setSide(result.detectedSide);
+      }
+
+      setScanStatusMessage(`Scan complete: ${alliesPlaced} allies & ${enemiesPlaced} enemies detected! Click "Journal OCR" to inspect details.`);
+      setTimeout(() => setScanStatusMessage(null), 8000);
     } catch (err) {
       console.error('Screen OCR scan failed:', err);
       setScanStatusMessage(`Scan error: ${err}`);
-      setTimeout(() => setScanStatusMessage(null), 5000);
+      setTimeout(() => setScanStatusMessage(null), 8000);
     } finally {
       setIsScanningScreen(false);
     }
@@ -425,8 +388,20 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
             ) : (
               <Camera className="w-3.5 h-3.5 text-purple-400" />
             )}
-            <span>{isScanningScreen ? 'Scanning...' : 'Scan Screen (Échap)'}</span>
+            <span>{isScanningScreen ? 'Scanning...' : 'Scan Screen (Escape)'}</span>
           </button>
+
+          {lastScanResult && (
+            <button
+              type="button"
+              onClick={() => setShowOcrInspector(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-950/40 hover:bg-blue-900/60 text-xs font-bold text-blue-300 transition-all shadow-sm cursor-pointer"
+              title="Inspect raw captured image, detected words and OCR diagnostic log"
+            >
+              <Terminal className="w-3.5 h-3.5 text-blue-400" />
+              <span>OCR Log</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -475,76 +450,35 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
               </div>
               <p className="text-xs text-gray-300 mt-0.5">
                 {gameContext.playerName ? `${gameContext.playerName} • ` : ''}
-                {gameContext.myHeroName ? `Playing ${gameContext.myHeroName}` : 'In Game'}
-                {gameContext.detectedHeroIds.length > 0
-                  ? ` (${gameContext.detectedHeroIds.length} other hero${gameContext.detectedHeroIds.length > 1 ? 'es' : ''} detected: `
-                  : ''}
-                {gameContext.detectedHeroIds.length > 0 && (
-                  <span className="text-emerald-300 font-medium">
-                    {gameContext.detectedHeroIds
-                      .map((id) => getHeroById(id)?.name || `#${id}`)
-                      .join(', ')}
-                    )
-                  </span>
-                )}
+                {gameContext.myHeroName ? `Playing ${gameContext.myHeroName}` : 'Connected to Deadlock'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
-            {/* Quick-pill for detected heroes to place into active slot */}
-            {gameContext.detectedHeroIds.map((hId) => {
-              const h = getHeroById(hId);
-              if (!h) return null;
+          {/* Quick Lane Selector */}
+          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-deadlock-border/80">
+            <span className="text-[10px] font-bold text-gray-400 px-1 uppercase tracking-wider">
+              Lane:
+            </span>
+            {(['yellow', 'blue', 'green'] as const).map((l) => {
+              const isSelected = assignedLane === l;
+              const colorDot = l === 'yellow' ? 'bg-yellow-400' : l === 'blue' ? 'bg-blue-400' : 'bg-emerald-400';
               return (
                 <button
-                  key={hId}
+                  key={l}
                   type="button"
-                  onClick={() => handleSelectHero(hId)}
-                  className="px-2 py-1 bg-deadlock-dark hover:bg-emerald-950 border border-emerald-500/30 hover:border-emerald-400 rounded-lg text-xs font-bold text-emerald-300 flex items-center gap-1.5 transition-all shadow-sm"
-                  title={`Click to place ${h.name} into active slot`}
+                  onClick={() => handleSetAssignedLane(l)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all ${
+                    isSelected
+                      ? 'bg-deadlock-accent text-black shadow-sm'
+                      : 'text-deadlock-muted hover:text-white hover:bg-white/5'
+                  }`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>{h.name}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${colorDot}`} />
+                  <span>{LANE_LABELS[l]}</span>
                 </button>
               );
             })}
-
-            {/* Quick Lane Selector */}
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-deadlock-border/80">
-              <span className="text-[10px] font-bold text-gray-400 px-1 uppercase tracking-wider">
-                Lane:
-              </span>
-              {(['yellow', 'blue', 'green'] as const).map((l) => {
-                const isSelected = assignedLane === l;
-                const colorDot = l === 'yellow' ? 'bg-yellow-400' : l === 'blue' ? 'bg-blue-400' : 'bg-emerald-400';
-                return (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => handleSetAssignedLane(l)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all ${
-                      isSelected
-                        ? 'bg-deadlock-accent text-black shadow-sm'
-                        : 'text-deadlock-muted hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${colorDot}`} />
-                    <span>{LANE_LABELS[l]}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAutoFillFromLog}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all"
-              title="Populate draft board slots with detected heroes from game log"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Auto-Fill Draft</span>
-            </button>
           </div>
         </div>
       )}
@@ -1003,6 +937,134 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
         onSelectHero={handleSelectHero}
         accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
       />
+
+      {/* 5. OCR JOURNAL & DIAGNOSTIC MODAL */}
+      {showOcrInspector && lastScanResult && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-deadlock-border bg-black/40">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>OCR Diagnostic Log</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                      {lastScanResult.allies.length} Allies / {lastScanResult.enemies.length} Enemies
+                    </span>
+                  </h3>
+                  <p className="text-xs text-deadlock-muted">
+                    Inspect the captured game panel and raw text extracted by the OCR engine
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowOcrInspector(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Event Logs */}
+              <div>
+                <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Execution Log</span>
+                </h4>
+                <div className="bg-black/60 border border-deadlock-border/80 rounded-lg p-3 font-mono text-xs text-gray-300 space-y-1">
+                  {lastScanResult.statusLog.map((log, idx) => (
+                    <div key={idx} className="leading-relaxed">
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Two Column Layout: Captured Image & Detected Text */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left: What the screen capture saw */}
+                <div>
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Captured Image (Preprocessed)</span>
+                  </h4>
+                  <div className="border border-deadlock-border/80 rounded-lg overflow-hidden bg-black/50 p-2 max-h-80 overflow-y-auto">
+                    {lastScanResult.capturedImage ? (
+                      <img
+                        src={lastScanResult.capturedImage}
+                        alt="Captured screen portion"
+                        className="w-full h-auto rounded border border-white/5 object-contain"
+                      />
+                    ) : (
+                      <div className="text-center py-10 text-xs text-gray-500">
+                        No image available
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-deadlock-muted mt-1.5 italic">
+                    If this image does not display the Deadlock Escape menu, ensure the game is visible on screen when clicking scan.
+                  </p>
+                </div>
+
+                {/* Right: Raw OCR lines and matched words */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                      Recognized Heroes
+                    </h4>
+                    <div className="bg-black/40 border border-deadlock-border/80 rounded-lg p-3">
+                      {lastScanResult.matchedWords.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {lastScanResult.matchedWords.map((m, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 rounded bg-emerald-950/60 border border-emerald-500/40 text-[11px] text-emerald-300 font-mono"
+                            >
+                              "{m.word}" &rarr; <strong>{m.matchedHero.name}</strong> (dist: {m.distance})
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-amber-400">
+                          ⚠️ No matching hero names found in raw text.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                      Raw Text Extracted by OCR ({lastScanResult.lines.length} lines)
+                    </h4>
+                    <div className="bg-black/60 border border-deadlock-border/80 rounded-lg p-3 font-mono text-[11px] text-gray-400 max-h-48 overflow-y-auto space-y-0.5 whitespace-pre-wrap">
+                      {lastScanResult.rawText || '(No text detected)'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-deadlock-border bg-black/40 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowOcrInspector(false)}
+                className="px-4 py-2 rounded-lg bg-deadlock-accent text-black font-bold text-xs hover:bg-yellow-400 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
