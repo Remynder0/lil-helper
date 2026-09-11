@@ -133,3 +133,11 @@ pub fn save_deadlock_debug_log(target_path: String, content: String) -> Result<b
     log_watcher::save_debug_log_to_file(&target_path, &content)?;
     Ok(true)
 }
+
+/// Captures the primary display (or the right portion containing the escape menu) as base64 PNG.
+#[tauri::command]
+pub fn capture_screen_image(right_half_only: Option<bool>) -> Result<String, String> {
+    let right_only = right_half_only.unwrap_or(true);
+    crate::screen_ocr::capture_screen_right_half(right_only)
+}
+

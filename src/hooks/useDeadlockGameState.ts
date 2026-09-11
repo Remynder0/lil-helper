@@ -21,6 +21,7 @@ export function useDeadlockGameState() {
     playerSlot: null,
     myHeroId: null,
     myHeroName: null,
+    assignedLane: null,
     detectedHeroIds: [],
     mapName: null,
     matchId: null,

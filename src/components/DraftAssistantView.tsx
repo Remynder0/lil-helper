@@ -20,8 +20,12 @@ import {
   Sparkles,
   Gamepad2,
   Zap,
+  Camera,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { ParsedGameContext } from '../services/logWatcher';
+import { scanEscapeMenuDraft } from '../services/screenOcr';
 
 interface DraftAssistantViewProps {
   matches: Match[];
@@ -51,21 +55,53 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
     green: { allies: [null, null], enemies: [null, null] },
   });
 
+  const handleSetAssignedLane = (newLane: LaneColor) => {
+    setAssignedLane(newLane);
+    if (myHeroId) {
+      setLanes((prev) => {
+        const next = {
+          yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
+          blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
+          green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
+        };
+
+        // Remove my hero from any current ally slot
+        (['yellow', 'blue', 'green'] as const).forEach((l) => {
+          if (next[l].allies[0] === myHeroId) next[l].allies[0] = null;
+          if (next[l].allies[1] === myHeroId) next[l].allies[1] = null;
+        });
+
+        // Place my hero into slot 0 of the new assigned lane
+        next[newLane].allies[0] = myHeroId;
+        return next;
+      });
+    }
+  };
+
+  // Auto-sync player's assigned lane from gameContext if detected
+  useEffect(() => {
+    if (gameContext?.assignedLane && gameContext.assignedLane !== assignedLane) {
+      handleSetAssignedLane(gameContext.assignedLane);
+    }
+  }, [gameContext?.assignedLane]);
+
   // Auto-sync player's hero from gameContext if detected
   useEffect(() => {
     if (gameContext?.myHeroId && gameContext.myHeroId !== myHeroId) {
       setMyHeroId(gameContext.myHeroId);
       setLanes((prev) => {
-        if (!prev[assignedLane].allies[0]) {
-          return {
-            ...prev,
-            [assignedLane]: {
-              ...prev[assignedLane],
-              allies: [gameContext.myHeroId, prev[assignedLane].allies[1]],
-            },
-          };
-        }
-        return prev;
+        const next = {
+          yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
+          blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
+          green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
+        };
+        // Remove from anywhere else
+        (['yellow', 'blue', 'green'] as const).forEach((l) => {
+          if (next[l].allies[0] === gameContext.myHeroId) next[l].allies[0] = null;
+          if (next[l].allies[1] === gameContext.myHeroId) next[l].allies[1] = null;
+        });
+        next[assignedLane].allies[0] = gameContext.myHeroId;
+        return next;
       });
     }
   }, [gameContext?.myHeroId, assignedLane, myHeroId]);
@@ -232,6 +268,68 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
     });
   };
 
+  // Screen OCR Scanning (reads Deadlock Escape Menu on demand)
+  const [isScanningScreen, setIsScanningScreen] = useState(false);
+  const [scanStatusMessage, setScanStatusMessage] = useState<string | null>(null);
+
+  const handleScanScreen = async () => {
+    try {
+      setIsScanningScreen(true);
+      setScanStatusMessage('Capturing game screen & running OCR...');
+
+      const result = await scanEscapeMenuDraft();
+      
+      let alliesPlaced = 0;
+      let enemiesPlaced = 0;
+
+      setLanes((prev) => {
+        const nextLanes = {
+          yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
+          blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
+          green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
+        };
+
+        // Deadlock lists heroes in exact lane order:
+        // Indices 0,1: Yellow lane | Indices 2,3: Blue lane | Indices 4,5: Green lane
+        const orderedLanes: LaneColor[] = ['yellow', 'blue', 'green'];
+
+        // Map Allies (Indices 0..5 -> Yellow[0,1], Blue[0,1], Green[0,1])
+        result.allies.forEach((ally, i) => {
+          if (i < 6) {
+            const laneIndex = Math.floor(i / 2);
+            const slotIndex = i % 2;
+            const targetLane = orderedLanes[laneIndex];
+            nextLanes[targetLane].allies[slotIndex] = ally.id;
+            alliesPlaced++;
+          }
+        });
+
+        // Map Enemies (Indices 0..5 -> Yellow[0,1], Blue[0,1], Green[0,1])
+        result.enemies.forEach((enemy, i) => {
+          if (i < 6) {
+            const laneIndex = Math.floor(i / 2);
+            const slotIndex = i % 2;
+            const targetLane = orderedLanes[laneIndex];
+            nextLanes[targetLane].enemies[slotIndex] = enemy.id;
+            enemiesPlaced++;
+          }
+        });
+
+        return nextLanes;
+      });
+
+      setScanStatusMessage(`Scan complete: placed ${alliesPlaced} allies & ${enemiesPlaced} enemies across Yellow, Blue, Green!`);
+      setTimeout(() => setScanStatusMessage(null), 4000);
+    } catch (err) {
+      console.error('Screen OCR scan failed:', err);
+      setScanStatusMessage(`Scan error: ${err}`);
+      setTimeout(() => setScanStatusMessage(null), 5000);
+    } finally {
+      setIsScanningScreen(false);
+    }
+  };
+
+
   return (
     <div className="flex flex-col gap-6">
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET */}
@@ -317,6 +415,21 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
 
           <button
             type="button"
+            onClick={handleScanScreen}
+            disabled={isScanningScreen}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60 text-xs font-bold text-purple-200 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            title="Press Escape in Deadlock then click here to auto-detect both teams with OCR"
+          >
+            {isScanningScreen ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+            ) : (
+              <Camera className="w-3.5 h-3.5 text-purple-400" />
+            )}
+            <span>{isScanningScreen ? 'Scanning...' : 'Scan Screen (Échap)'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleReset}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-dark hover:bg-deadlock-border text-xs font-semibold text-deadlock-muted hover:text-white transition-colors"
           >
@@ -325,6 +438,19 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
           </button>
         </div>
       </div>
+
+      {/* Screen OCR Status Alert */}
+      {scanStatusMessage && (
+        <div className="bg-purple-950/40 border border-purple-500/50 text-purple-200 px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md animate-fade-in">
+          {isScanningScreen ? (
+            <Loader2 className="w-4 h-4 animate-spin text-purple-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
+          )}
+          <span className="font-medium">{scanStatusMessage}</span>
+        </div>
+      )}
+
 
       {/* Live Game Sync Callout Banner */}
       {gameContext && (gameContext.state === 'in_game' || gameContext.myHeroId || gameContext.detectedHeroIds.length > 0) && (
@@ -383,6 +509,32 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
                 </button>
               );
             })}
+
+            {/* Quick Lane Selector */}
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-deadlock-border/80">
+              <span className="text-[10px] font-bold text-gray-400 px-1 uppercase tracking-wider">
+                Lane:
+              </span>
+              {(['yellow', 'blue', 'green'] as const).map((l) => {
+                const isSelected = assignedLane === l;
+                const colorDot = l === 'yellow' ? 'bg-yellow-400' : l === 'blue' ? 'bg-blue-400' : 'bg-emerald-400';
+                return (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => handleSetAssignedLane(l)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all ${
+                      isSelected
+                        ? 'bg-deadlock-accent text-black shadow-sm'
+                        : 'text-deadlock-muted hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${colorDot}`} />
+                    <span>{LANE_LABELS[l]}</span>
+                  </button>
+                );
+              })}
+            </div>
 
             <button
               type="button"
@@ -448,7 +600,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
 
                   <button
                     type="button"
-                    onClick={() => setAssignedLane(laneColor)}
+                    onClick={() => handleSetAssignedLane(laneColor)}
                     className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${
                       isMyLane
                         ? 'bg-deadlock-accent border-deadlock-accent text-white shadow-sm'

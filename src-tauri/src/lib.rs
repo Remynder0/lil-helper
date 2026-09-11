@@ -2,6 +2,7 @@ pub mod models;
 pub mod storage;
 pub mod commands;
 pub mod log_watcher;
+pub mod screen_ocr;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,7 +16,8 @@ pub fn run() {
             commands::import_matches,
             commands::detect_deadlock_log_path,
             commands::read_deadlock_log_events,
-            commands::save_deadlock_debug_log
+            commands::save_deadlock_debug_log,
+            commands::capture_screen_image
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

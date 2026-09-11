@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { findHeroBySource2Name } from '../data/heroes';
+import { findHeroBySource2Name, HEROES } from '../data/heroes';
 
 export interface LogEvent {
   timestamp: string;
@@ -16,6 +16,7 @@ export interface ParsedGameContext {
   playerSlot: number | null;
   myHeroId: number | null;
   myHeroName: string | null;
+  assignedLane: 'yellow' | 'blue' | 'green' | null;
   detectedHeroIds: number[];
   mapName: string | null;
   matchId: number | null;
@@ -101,6 +102,7 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
     playerSlot: null,
     myHeroId: null,
     myHeroName: null,
+    assignedLane: null,
     detectedHeroIds: [],
     mapName: null,
     matchId: null,
@@ -139,14 +141,30 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
       }
     }
 
-    // 3. Detect any Loaded Hero Model in the match (Allies/Enemies/Bots)
-    // e.g.: models/heroes_wip/viscous/viscous_tourist_shape.vmdl_c
-    // or models/heroes_staging/gigawatt_prisoner/
-    // or models/heroes_staging/hornet_v3/
-    if (line.includes('models/heroes') || line.includes('models/heroes_wip') || line.includes('models/heroes_staging')) {
-      const hero = findHeroBySource2Name(line);
-      if (hero) {
-        seenHeroIds.add(hero.id);
+    // Ignore internal Source 2 animation compile / skeleton warnings (causes false positives)
+    if (line.includes('Different skeleton') || line.includes('Creating Bone Masks') || line.includes('Bone Mask')) {
+      continue;
+    }
+
+    // 3. Detect any Loaded Hero Model or Spawning Hero in the match
+    if (
+      line.includes('models/heroes') ||
+      line.includes('hero_') ||
+      line.includes('citadel_player') ||
+      line.includes('selected hero')
+    ) {
+      for (const hero of HEROES) {
+        if (hero.className) {
+          const baseClass = hero.className.replace(/^hero_/, '');
+          const regex = new RegExp(`(?:^|[/_+.])${baseClass}(?:$|[/_+.\\s])`, 'i');
+          if (regex.test(line)) {
+            seenHeroIds.add(hero.id);
+          }
+        }
+        const keyRegex = new RegExp(`(?:^|[/_+.])${hero.key}(?:$|[/_+.\\s])`, 'i');
+        if (keyRegex.test(line)) {
+          seenHeroIds.add(hero.id);
+        }
       }
     }
 
@@ -161,7 +179,20 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
       result.mapName = mapAttrMatch[1];
     }
 
-    // 5. Detect Match ID
+    // 5. Detect Assigned Lane
+    const laneMatch = line.match(/(?:citadel_active_lane|assigned_lane|lane)[:=\s]+([a-zA-Z0-9_]+)/i);
+    if (laneMatch) {
+      const val = laneMatch[1].toLowerCase();
+      if (val === '1' || val === 'yellow' || val === 'orange') {
+        result.assignedLane = 'yellow';
+      } else if (val === '3' || val === 'green') {
+        result.assignedLane = 'green';
+      } else if (val === '4' || val === 'blue') {
+        result.assignedLane = 'blue';
+      }
+    }
+
+    // 6. Detect Match ID
     const matchIdMatch = line.match(/match[_\s]?id[:=\s]+(\d{6,10})/i);
     if (matchIdMatch) {
       result.matchId = parseInt(matchIdMatch[1], 10);
@@ -172,6 +203,9 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
     if (line.includes('OnGameStateChanged: GameInProgress')) {
       result.state = 'in_game';
       result.stateLabel = 'In Game';
+    } else if (line.includes('OnGameStateChanged: PreGameWait')) {
+      result.state = 'in_game';
+      result.stateLabel = 'Pre-Game Wait';
     } else if (line.includes('OnGameStateChanged: MatchIntro')) {
       result.state = 'in_game';
       result.stateLabel = 'Match Intro';
