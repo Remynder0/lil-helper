@@ -1,4 +1,4 @@
-import { Match, Side, LaneColor, LaneOutcome } from '../types/match';
+import { Match, Side, MatchResult, LaneColor, LaneOutcome } from '../types/match';
 
 const BASE_API_URL = 'https://api.deadlock-api.com/v1';
 
@@ -31,6 +31,15 @@ export interface RawPlayerMatchHistoryEntry {
   ranked_delta?: number | null;
 }
 
+export interface RawMatchPlayerTimelineStat {
+  time_stamp_s: number;
+  net_worth: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gold_boss?: number;
+}
+
 export interface RawMatchPlayerMetadata {
   account_id: number;
   hero_id: number;
@@ -39,6 +48,14 @@ export interface RawMatchPlayerMetadata {
   kills?: number;
   deaths?: number;
   assists?: number;
+  abandon_match_time_s?: number;
+  stats?: RawMatchPlayerTimelineStat[];
+}
+
+export interface RawMatchObjective {
+  team: number; // 0 or 1
+  team_objective_id: number; // 1 = Yellow, 4 = Blue, 3 = Green
+  destroyed_time_s: number;
 }
 
 export interface RawMatchMetadata {
@@ -50,6 +67,7 @@ export interface RawMatchMetadata {
     game_mode: number;
     match_mode: number;
     players: RawMatchPlayerMetadata[];
+    objectives?: RawMatchObjective[];
   };
 }
 
@@ -104,7 +122,12 @@ export async function fetchPlayerRankedMatches(
   accountId: number
 ): Promise<RawPlayerMatchHistoryEntry[]> {
   const url = `${BASE_API_URL}/players/${accountId}/match-history`;
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+    },
+  });
   if (!res.ok) {
     throw new Error(`Failed to fetch match history: HTTP ${res.status}`);
   }
@@ -147,6 +170,98 @@ function mapRawLaneToLaneColor(rawLane?: number): LaneColor {
 /**
  * Converts a raw ranked match and its metadata into our internal `Match` entity.
  */
+/**
+ * Maps Source 2 objective ID to assigned lane:
+ * 1 = Yellow, 4 = Blue, 3 = Green
+ */
+function mapObjectiveToRawLane(objectiveId: number): number | null {
+  if (objectiveId === 1) return 1;
+  if (objectiveId === 4) return 4;
+  if (objectiveId === 3) return 6;
+  return null;
+}
+
+/**
+ * Calculates lane outcome at 12 minutes (time_stamp_s === 720, or fallback to 540 if unavailable):
+ * - Soul difference >= 5000: sufficient on its own (won / lost)
+ * - Guardian destroyed >= 4 minutes (240s) before enemy/own: sufficient on its own (won / lost)
+ * - Soul difference >= 3000 AND >= 2 minutes (120s) guardian advance: won / lost
+ * - Otherwise: even
+ */
+export function calculateLaneOutcome(
+  players: RawMatchPlayerMetadata[],
+  objectives: RawMatchObjective[] | undefined,
+  myLane: number,
+  myTeam: number
+): LaneOutcome | undefined {
+  const enemyTeam = myTeam === 0 ? 1 : 0;
+
+  const myDuo = players.filter((p) => p.team === myTeam && p.assigned_lane === myLane);
+  const enemyDuo = players.filter((p) => p.team === enemyTeam && p.assigned_lane === myLane);
+
+  // Preferred timestamp: 12 minutes (720s). Fallback to 9 minutes (540s) for shorter games.
+  const targetTime = 720;
+  const fallbackTime = 540;
+
+  let myNW = myDuo.reduce(
+    (sum, p) => sum + (p.stats?.find((s) => s.time_stamp_s === targetTime)?.net_worth || 0),
+    0
+  );
+  let enemyNW = enemyDuo.reduce(
+    (sum, p) => sum + (p.stats?.find((s) => s.time_stamp_s === targetTime)?.net_worth || 0),
+    0
+  );
+
+  if (myNW === 0 && enemyNW === 0) {
+    myNW = myDuo.reduce(
+      (sum, p) => sum + (p.stats?.find((s) => s.time_stamp_s === fallbackTime)?.net_worth || 0),
+      0
+    );
+    enemyNW = enemyDuo.reduce(
+      (sum, p) => sum + (p.stats?.find((s) => s.time_stamp_s === fallbackTime)?.net_worth || 0),
+      0
+    );
+  }
+
+  // If neither 12-minute nor 9-minute stats are available, don't guess
+  if (myNW === 0 && enemyNW === 0) {
+    return undefined;
+  }
+
+  const soulDiff = myNW - enemyNW;
+
+  // Guardian timing comparison
+  const myGuardian = objectives?.find(
+    (o) => o.team === myTeam && mapObjectiveToRawLane(o.team_objective_id) === myLane && o.destroyed_time_s > 0
+  );
+  const enemyGuardian = objectives?.find(
+    (o) => o.team === enemyTeam && mapObjectiveToRawLane(o.team_objective_id) === myLane && o.destroyed_time_s > 0
+  );
+
+  const myGuardianDeathTime = myGuardian ? myGuardian.destroyed_time_s : 99999;
+  const enemyGuardianDeathTime = enemyGuardian ? enemyGuardian.destroyed_time_s : 99999;
+
+  // Positive if enemy guardian died before ours (we took down their guardian earlier)
+  const guardianTimeAdvantage = myGuardianDeathTime - enemyGuardianDeathTime;
+
+  // Rule 1: 5000 soul difference is sufficient on its own
+  if (soulDiff >= 5000) return 'won';
+  if (soulDiff <= -5000) return 'lost';
+
+  // Rule 2: >= 4 minutes (240s) guardian difference is notable on its own
+  if (guardianTimeAdvantage >= 240) return 'won';
+  if (guardianTimeAdvantage <= -240) return 'lost';
+
+  // Rule 3: >= 3000 soul difference AND >= 2 minutes (120s) guardian advantage
+  if (soulDiff >= 3000 && guardianTimeAdvantage >= 120) return 'won';
+  if (soulDiff <= -3000 && guardianTimeAdvantage <= -120) return 'lost';
+
+  return 'even';
+}
+
+/**
+ * Converts a raw ranked match and its metadata into our internal `Match` entity.
+ */
 export function convertToAppMatch(
   historyEntry: RawPlayerMatchHistoryEntry,
   metadata: RawMatchMetadata | null
@@ -154,10 +269,41 @@ export function convertToAppMatch(
   // Determine Side: team 0 = The Hidden King, team 1 = The Archmother
   const side: Side = historyEntry.player_team === 0 ? 'hidden_king' : 'archmother';
 
-  // Determine Result: outcome 1 = win, outcome 2 = loss, otherwise check match_result
-  const isWin = historyEntry.player_match_outcome === 1 || historyEntry.match_result === 1;
-  const isLoss = historyEntry.player_match_outcome === 2 || historyEntry.match_result === 2;
-  const result = isWin ? 'win' : isLoss ? 'loss' : 'cancel';
+  // Determine Result:
+  // Rules for player_match_outcome:
+  // - 1: standard victory -> 'win'
+  // - 2: standard defeat -> 'loss'
+  // - 5 (Safe to Leave / Abandon):
+  //     * ally leaver + game won -> 'win'
+  //     * ally leaver + game lost -> 'cancel'
+  //     * enemy leaver + game won -> 'win'
+  //     * enemy leaver + game lost -> 'loss'
+  let result: MatchResult = 'cancel';
+  const myTeam = historyEntry.player_team;
+  const isTeamWinner = metadata?.match_info?.winning_team !== undefined
+    ? metadata.match_info.winning_team === myTeam
+    : historyEntry.match_result === 1;
+
+  if (historyEntry.player_match_outcome === 1) {
+    result = 'win';
+  } else if (historyEntry.player_match_outcome === 2) {
+    result = 'loss';
+  } else if (historyEntry.player_match_outcome === 5) {
+    const players = metadata?.match_info?.players || [];
+    const hasAllyLeaver = players.some(
+      (p) => p.team === myTeam && (p.abandon_match_time_s || 0) > 0
+    );
+
+    if (isTeamWinner) {
+      result = 'win';
+    } else if (hasAllyLeaver) {
+      result = 'cancel';
+    } else {
+      result = 'loss';
+    }
+  } else if (metadata?.match_info?.winning_team !== undefined) {
+    result = isTeamWinner ? 'win' : 'loss';
+  }
 
   const myHeroId = historyEntry.hero_id;
   const durationSeconds = metadata?.match_info?.duration_s || historyEntry.match_duration_s;
@@ -195,7 +341,14 @@ export function convertToAppMatch(
       if (directEnemies.length > 0) {
         laneOpponents = directEnemies.map((p) => p.hero_id).slice(0, 2);
       }
-      laneOutcome = isWin ? 'won' : isLoss ? 'lost' : 'even';
+
+      // Accurate lane outcome using 9-minute stats & guardian objective timing
+      laneOutcome = calculateLaneOutcome(
+        players,
+        metadata.match_info.objectives,
+        myPlayerMeta.assigned_lane,
+        myTeam
+      );
     }
   }
 
@@ -228,19 +381,19 @@ export function convertToAppMatch(
 /**
  * Synchronizes ranked matches for a given account:
  * - Fetches ranked history
- * - Deduplicates against existing local matches
- * - Fetches metadata for new matches (capped batch to respect rate limits)
+ * - Updates or adds matches with full metadata
+ * - Fetches in parallel chunks to respect rate limits without dropping matches
  */
 export async function syncRankedMatchesForAccount(
   accountId: number,
   existingMatchIds: Set<string | number>,
-  maxToFetchMetadata = 15
+  forceUpdateExisting = false
 ): Promise<{ addedMatches: Match[]; totalRankedFound: number }> {
   const rankedHistory = await fetchPlayerRankedMatches(accountId);
   const totalRankedFound = rankedHistory.length;
 
-  // Filter only matches not already in local database
-  const newEntries = rankedHistory.filter((entry) => {
+  const entriesToProcess = rankedHistory.filter((entry) => {
+    if (forceUpdateExisting) return true;
     const stringId = `api_${entry.match_id}`;
     return (
       !existingMatchIds.has(stringId) &&
@@ -249,18 +402,22 @@ export async function syncRankedMatchesForAccount(
     );
   });
 
-  if (newEntries.length === 0) {
+  if (entriesToProcess.length === 0) {
     return { addedMatches: [], totalRankedFound };
   }
 
-  // Cap the metadata fetching to avoid hammering the API
-  const entriesToProcess = newEntries.slice(0, maxToFetchMetadata);
   const addedMatches: Match[] = [];
-
-  for (const entry of entriesToProcess) {
-    const metadata = await fetchMatchMetadata(entry.match_id);
-    const converted = convertToAppMatch(entry, metadata);
-    addedMatches.push(converted);
+  // Process in batches of 4 to avoid rate limit spikes while syncing all matches
+  const chunkSize = 4;
+  for (let i = 0; i < entriesToProcess.length; i += chunkSize) {
+    const chunk = entriesToProcess.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map(async (entry) => {
+        const metadata = await fetchMatchMetadata(entry.match_id);
+        return convertToAppMatch(entry, metadata);
+      })
+    );
+    addedMatches.push(...results);
   }
 
   return { addedMatches, totalRankedFound };

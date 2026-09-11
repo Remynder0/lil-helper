@@ -17,6 +17,9 @@ import {
   User,
   RefreshCw,
   Terminal,
+  ChevronDown,
+  LogOut,
+  FolderSync,
 } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
 import { GameLogMonitor } from './components/GameLogMonitor';
@@ -29,10 +32,11 @@ type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
 
 export const App: React.FC = () => {
   const { gameContext } = useDeadlockGameState();
-  const [activeTab, setActiveTab] = useState<AppTab>('log_match');
+  const [activeTab, setActiveTab] = useState<AppTab>('history');
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
 
   // Connected Steam profile state
   const [profile, setProfile] = useState<ConnectedProfile | null>(() => {
@@ -44,8 +48,35 @@ export const App: React.FC = () => {
     }
   });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
+
+  // 2-minute cooldown timer for API refresh
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(() => {
+    try {
+      const lastSync = localStorage.getItem('last_api_refresh_timestamp');
+      if (lastSync) {
+        const elapsedSec = Math.floor((Date.now() - parseInt(lastSync, 10)) / 1000);
+        return Math.max(0, 120 - elapsedSec);
+      }
+    } catch {}
+    return 0;
+  });
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownRemaining]);
 
   // Load matches from storage on mount (sorted newest to oldest)
   const loadMatches = async () => {
@@ -64,12 +95,30 @@ export const App: React.FC = () => {
     loadMatches();
   }, []);
 
-  // Sync ranked matches for connected profile
-  const handleSyncMatches = async (targetProfile = profile) => {
-    if (!targetProfile || isSyncing) return;
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
+
+  // Sync ranked matches for connected profile in incremental mode (only fetches new matches)
+  const handleSyncMatches = async (targetProfile = profile, forceUpdate = false) => {
+    if (!targetProfile || isSyncing || (cooldownRemaining > 0 && !forceUpdate)) return;
 
     setIsSyncing(true);
-    setSyncStatusText('Fetching ranked history...');
+    setSyncStatusText('Checking for new ranked matches...');
     try {
       const existingIds = new Set<string | number>();
       matches.forEach((m) => {
@@ -79,25 +128,39 @@ export const App: React.FC = () => {
 
       const { addedMatches, totalRankedFound } = await syncRankedMatchesForAccount(
         targetProfile.accountId,
-        existingIds
+        existingIds,
+        forceUpdate
       );
 
       if (addedMatches.length > 0) {
         await persistMatches(addedMatches);
-        setMatches((prev) =>
-          [...addedMatches, ...prev].sort(
+        setMatches((prev) => {
+          const map = new Map<string, Match>();
+          // Put updated matches first
+          addedMatches.forEach((m) => map.set(m.id, m));
+          // Put existing manual or non-overlapping matches
+          prev.forEach((m) => {
+            if (!map.has(m.id)) {
+              map.set(m.id, m);
+            }
+          });
+          return Array.from(map.values()).sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          )
-        );
+          );
+        });
         setSyncStatusText(`+${addedMatches.length} new ranked match${addedMatches.length > 1 ? 'es' : ''} imported!`);
       } else {
         setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
       }
 
-      // Update lastSyncedAt
+      // Update lastSyncedAt and trigger 2-minute cooldown (120s)
+      const now = Date.now();
+      localStorage.setItem('last_api_refresh_timestamp', String(now));
+      setCooldownRemaining(120);
+
       const updatedProfile: ConnectedProfile = {
         ...targetProfile,
-        lastSyncedAt: new Date().toISOString(),
+        lastSyncedAt: new Date(now).toISOString(),
       };
       setProfile(updatedProfile);
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile));
@@ -238,20 +301,6 @@ export const App: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setActiveTab('log_match');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                activeTab === 'log_match'
-                  ? 'bg-deadlock-border text-white shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
-              }`}
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>{editingMatch ? 'Edit Match' : 'Log Match'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
                 setEditingMatch(null);
                 setActiveTab('history');
               }}
@@ -294,52 +343,16 @@ export const App: React.FC = () => {
               <Brain className="w-3.5 h-3.5" />
               <span>Draft Assistant</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingMatch(null);
-                setActiveTab('logs');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                activeTab === 'logs'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Live Console</span>
-            </button>
           </div>
 
-          {/* Backup / Restore buttons */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleExport}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-dark hover:bg-deadlock-border/40 text-xs font-medium text-deadlock-muted hover:text-white transition-colors"
-              title="Download backup file of all matches"
-            >
-              <Download className="w-3.5 h-3.5 text-deadlock-hidden-king" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-dark hover:bg-deadlock-border/40 text-xs font-medium text-deadlock-muted hover:text-white transition-colors"
-              title="Import matches from a JSON backup file"
-            >
-              <Upload className="w-3.5 h-3.5 text-deadlock-archmother" />
-              <span className="hidden sm:inline">Import</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImport}
-              accept=".json"
-              className="hidden"
-            />
-          </div>
+          {/* Hidden file input for Import */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImport}
+            accept=".json"
+            className="hidden"
+          />
 
           {/* Live Player Status & Steam Profile Sync */}
           <div className="flex items-center gap-2.5 pl-2 border-l border-deadlock-border/60">
@@ -352,44 +365,160 @@ export const App: React.FC = () => {
             />
 
             {profile ? (
-              <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
-                {/* Profile Pill (Click to open modal/switch) */}
-                <button
-                  type="button"
-                  onClick={() => setIsProfileModalOpen(true)}
-                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-deadlock-panel transition-colors text-left"
-                  title="Click to view or switch Steam profile"
-                >
-                  {profile.avatarUrl ? (
-                    <img
-                      src={profile.avatarUrl}
-                      alt={profile.personaName}
-                      className="w-5 h-5 rounded-full object-cover border border-deadlock-border shrink-0"
-                    />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full bg-deadlock-panel border border-deadlock-border flex items-center justify-center text-deadlock-accent text-[10px] shrink-0 font-black">
-                      {profile.personaName.charAt(0).toUpperCase()}
+              <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border relative">
+                {/* Profile Pill Dropdown Trigger */}
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                    className="flex items-center gap-2 px-2 py-1 rounded hover:bg-deadlock-panel transition-colors text-left"
+                    title="Profile & Options Menu"
+                  >
+                    {profile.avatarUrl ? (
+                      <img
+                        src={profile.avatarUrl}
+                        alt={profile.personaName}
+                        className="w-5 h-5 rounded-full object-cover border border-deadlock-border shrink-0"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-deadlock-panel border border-deadlock-border flex items-center justify-center text-deadlock-accent text-[10px] shrink-0 font-black">
+                        {profile.personaName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-xs font-bold text-gray-200 max-w-[90px] truncate hidden sm:inline">
+                      {profile.personaName}
+                    </span>
+                    <ChevronDown className={`w-3 h-3 text-deadlock-muted transition-transform ${isProfileMenuOpen ? 'rotate-180 text-white' : ''}`} />
+                  </button>
+
+                  {/* Profile Dropdown Menu */}
+                  {isProfileMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel border border-deadlock-border shadow-2xl py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
+                      {/* Header in dropdown */}
+                      <div className="px-3 py-2 border-b border-deadlock-border/60 flex flex-col">
+                        <span className="text-[11px] font-bold text-white truncate">
+                          {profile.personaName}
+                        </span>
+                        <span className="text-[10px] text-deadlock-muted font-mono">
+                          ID: {profile.accountId}
+                        </span>
+                      </div>
+
+                      {/* Add Match Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMatch(null);
+                          setActiveTab('log_match');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <PlusCircle className="w-4 h-4 text-deadlock-accent shrink-0" />
+                        <span>Add Match (Manual)</span>
+                      </button>
+
+                      {/* Debug Console Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMatch(null);
+                          setActiveTab('logs');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Debug Console</span>
+                      </button>
+
+                      {/* Switch Account */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileModalOpen(true);
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <FolderSync className="w-4 h-4 text-blue-400 shrink-0" />
+                        <span>Switch Profile</span>
+                      </button>
+
+                      <div className="h-px bg-deadlock-border/60 my-1" />
+
+                      {/* Export Matches */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleExport();
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <Download className="w-4 h-4 text-deadlock-hidden-king shrink-0" />
+                        <span>Export Matches (JSON)</span>
+                      </button>
+
+                      {/* Import Matches */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <Upload className="w-4 h-4 text-deadlock-archmother shrink-0" />
+                        <span>Import Matches (JSON)</span>
+                      </button>
+
+                      <div className="h-px bg-deadlock-border/60 my-1" />
+
+                      {/* Disconnect Profile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Disconnect your profile? Existing saved matches will remain stored locally.')) {
+                            handleDisconnectProfile();
+                            setIsProfileMenuOpen(false);
+                          }
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors text-left"
+                      >
+                        <LogOut className="w-4 h-4 shrink-0" />
+                        <span>Disconnect</span>
+                      </button>
                     </div>
                   )}
-                  <span className="text-xs font-bold text-gray-200 max-w-[90px] truncate hidden sm:inline">
-                    {profile.personaName}
-                  </span>
-                </button>
+                </div>
 
-                {/* Manual Sync / Refresh Button */}
+                {/* Manual Sync / Refresh Button with 2-min cooldown */}
                 <button
                   type="button"
                   onClick={() => handleSyncMatches()}
-                  disabled={isSyncing}
+                  disabled={isSyncing || cooldownRemaining > 0}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all ${
                     isSyncing
                       ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
+                      : cooldownRemaining > 0
+                      ? 'bg-deadlock-border/40 text-deadlock-muted border border-deadlock-border/60 cursor-not-allowed'
                       : 'bg-deadlock-accent text-black hover:bg-yellow-400 shadow-sm'
                   }`}
-                  title="Refresh & sync new ranked matches from Deadlock API"
+                  title={
+                    cooldownRemaining > 0
+                      ? `Please wait ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s before refreshing again to prevent API rate limits.`
+                      : 'Refresh & sync new ranked matches from Deadlock API'
+                  }
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Refresh'}</span>
+                  <span className="hidden md:inline">
+                    {isSyncing
+                      ? 'Syncing...'
+                      : cooldownRemaining > 0
+                      ? `Refresh (${Math.floor(cooldownRemaining / 60)}:${String(cooldownRemaining % 60).padStart(2, '0')})`
+                      : 'Refresh'}
+                  </span>
                 </button>
               </div>
             ) : (
