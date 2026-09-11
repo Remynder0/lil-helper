@@ -12,6 +12,7 @@
 
 use crate::models::MatchRecord;
 use crate::storage;
+use crate::log_watcher::{self, LogEvent};
 
 /// Retrieves the complete list of matches.
 #[tauri::command]
@@ -111,4 +112,24 @@ pub fn import_matches(app: tauri::AppHandle, json_data: String) -> Result<usize,
             return Err(error);
         }
     }
+}
+
+/// Tries to automatically detect the Deadlock console.log file path.
+#[tauri::command]
+pub fn detect_deadlock_log_path() -> Option<String> {
+    log_watcher::detect_default_log_path().map(|p| p.to_string_lossy().to_string())
+}
+
+/// Reads the last N bytes of the specified Deadlock console.log.
+#[tauri::command]
+pub fn read_deadlock_log_events(path: String, max_bytes: Option<u64>) -> Result<Vec<LogEvent>, String> {
+    let bytes = max_bytes.unwrap_or(65536); // default to 64KB
+    log_watcher::read_recent_log_lines(&path, bytes)
+}
+
+/// Saves raw log contents or debug dump to a specified output file.
+#[tauri::command]
+pub fn save_deadlock_debug_log(target_path: String, content: String) -> Result<bool, String> {
+    log_watcher::save_debug_log_to_file(&target_path, &content)?;
+    Ok(true)
 }

@@ -1,0 +1,59 @@
+name: 'Release Deadlock Analyzer'
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri App & Publish GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Deadlock Analyzer v__VERSION__'
+          releaseBody: |
+            ## Deadlock Analyzer Pre-Release
+            
+            ### Included in this build:
+            - **Live Deadlock Console & Event Log Monitor**:
+              - Automatically scans drives for `console.log` (-condebug).
+              - Real-time display of game events, match IDs, hero picks, and lane assignments.
+              - Live filter, search, copy to clipboard, and one-click "Save to File" (`deadlock_debug_log.txt`).
+              - 100% VAC-Safe (reads standard Source 2 console logs, zero memory injection).
+            - **Draft Assistant & Match Log**:
+              - Complete 6v6 3-duo lane interactive board with bans, picks, lane matchup advice, and best actions suggestions.
+            - **Steam Profile Sync**:
+              - Connect Steam profile by vanity URL / Steam ID with ranked-only match import and duration tracking.
+              - Import / Export JSON backup.
+          releaseDraft: false
+          prerelease: false

@@ -16,12 +16,14 @@ import {
   Upload,
   User,
   RefreshCw,
+  Terminal,
 } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
+import { GameLogMonitor } from './components/GameLogMonitor';
 
 const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
-type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant';
+type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('log_match');
@@ -289,6 +291,21 @@ export const App: React.FC = () => {
               <Brain className="w-3.5 h-3.5" />
               <span>Draft Assistant</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMatch(null);
+                setActiveTab('logs');
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+                activeTab === 'logs'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-deadlock-muted hover:text-white'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Live Console</span>
+            </button>
           </div>
 
           {/* Backup / Restore buttons */}
@@ -417,6 +434,9 @@ export const App: React.FC = () => {
         )}
         {activeTab === 'assistant' && (
           <DraftAssistantView matches={matches} />
+        )}
+        {activeTab === 'logs' && (
+          <GameLogMonitor />
         )}
       </main>
 

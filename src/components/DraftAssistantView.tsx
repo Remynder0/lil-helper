@@ -593,7 +593,6 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col min-w-[80px]">
                               <span className="text-[10px] font-black uppercase tracking-wider text-deadlock-win flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-deadlock-win" />
                                 Option 1
                               </span>
                               <span className="text-[10px] text-deadlock-muted font-medium">
@@ -637,7 +636,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
                             )}
 
                             <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
-                              Lane {LANE_LABELS[bestOverall.lane]}
+                              {LANE_LABELS[bestOverall.lane]}
                             </span>
                           </div>
 
@@ -645,9 +644,6 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
                             <div className="text-2xl font-black text-deadlock-win">
                               {bestOverall.projectedWinRate}%
                             </div>
-                            <span className="text-[10px] text-deadlock-muted font-sans font-semibold">
-                              Max Projected WR
-                            </span>
                           </div>
                         </div>
 
@@ -679,7 +675,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
                             </div>
 
                             <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
-                              Lane {LANE_LABELS[bestSafe.lane]}
+                              {LANE_LABELS[bestSafe.lane]}
                             </span>
                           </div>
 
@@ -687,9 +683,6 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches 
                             <div className="text-2xl font-black text-blue-300">
                               {bestSafe.projectedWinRate}%
                             </div>
-                            <span className="text-[10px] text-deadlock-muted font-sans font-semibold">
-                              Safe Projected WR
-                            </span>
                           </div>
                         </div>
                       </div>
