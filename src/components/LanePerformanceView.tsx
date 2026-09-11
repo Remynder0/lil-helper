@@ -178,86 +178,72 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                       </span>
                     </div>
 
-                    {/* Game Winrate directly above the gauge */}
-                    <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-deadlock-dark/70 border border-deadlock-border/40 z-10 text-center">
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-deadlock-muted">
-                        Game Win Rate
-                      </span>
-                      <div className="text-3xl font-black text-white font-mono mt-0.5">
-                        {stat.wins + stat.losses > 0 ? `${stat.winRate}%` : 'N/A'}
-                      </div>
-                      <span className="text-[11px] text-deadlock-muted font-mono mt-0.5">
-                        {stat.wins}W - {stat.losses}L {stat.cancels > 0 ? `(${stat.cancels} C)` : ''}
-                      </span>
-                    </div>
+                    {/* Gauge & Win Rate Row */}
+                    <div className="flex items-center justify-around gap-4 z-10 py-2">
+                      {/* Vertical Segmented Gauge (Green / White / Red) */}
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-deadlock-muted">
+                          Lane Outcome
+                        </span>
+                        {/* Gauge Container (fixed height 160px for consistent alignment, inner bar height scaled) */}
+                        <div className="w-14 h-40 bg-deadlock-dark/90 rounded-xl p-1.5 border border-deadlock-border/70 flex flex-col justify-end relative shadow-inner">
+                          {stat.matches > 0 && totalOutcomes > 0 ? (
+                            <div
+                              style={{ height: `${gaugeHeightPercent}%` }}
+                              className="w-full rounded-lg overflow-hidden flex flex-col-reverse transition-all duration-500 shadow-md"
+                              title={`Lane Outcome: ${stat.laneWins} Won (Green), ${stat.laneEvens} Even (White), ${stat.laneLosses} Lost (Red)`}
+                            >
+                              {/* Lost - Red (bottom) */}
+                              {lossPct > 0 && (
+                                <div
+                                  style={{ height: `${lossPct}%` }}
+                                  className="w-full bg-red-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
+                                  title={`Lane Lost: ${stat.laneLosses} (${Math.round(lossPct)}%)`}
+                                >
+                                  {lossPct >= 18 ? `${stat.laneLosses}` : ''}
+                                </div>
+                              )}
 
-                    {/* Vertical Segmented Gauge (Green / White / Red) */}
-                    <div className="flex flex-col items-center gap-2 z-10 pt-1">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-deadlock-muted">
-                        Lane Outcome
-                      </span>
+                              {/* Even - White (middle) */}
+                              {evenPct > 0 && (
+                                <div
+                                  style={{ height: `${evenPct}%` }}
+                                  className="w-full bg-gray-100 hover:bg-white transition-all flex items-center justify-center text-[9px] font-black text-gray-900 border-y border-black/10"
+                                  title={`Lane Even: ${stat.laneEvens} (${Math.round(evenPct)}%)`}
+                                >
+                                  {evenPct >= 18 ? `${stat.laneEvens}` : ''}
+                                </div>
+                              )}
 
-                      {/* Gauge Container (fixed height 160px for consistent alignment, inner bar height scaled) */}
-                      <div className="w-16 h-40 bg-deadlock-dark/90 rounded-xl p-1.5 border border-deadlock-border/70 flex flex-col justify-end relative shadow-inner">
-                        {stat.matches > 0 && totalOutcomes > 0 ? (
-                          <div
-                            style={{ height: `${gaugeHeightPercent}%` }}
-                            className="w-full rounded-lg overflow-hidden flex flex-col-reverse transition-all duration-500 shadow-md"
-                            title={`Lane Outcome: ${stat.laneWins} Won (Green), ${stat.laneEvens} Even (White), ${stat.laneLosses} Lost (Red)`}
-                          >
-                            {/* Lost - Red (bottom) */}
-                            {lossPct > 0 && (
-                              <div
-                                style={{ height: `${lossPct}%` }}
-                                className="w-full bg-red-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
-                                title={`Lane Lost: ${stat.laneLosses} (${Math.round(lossPct)}%)`}
-                              >
-                                {lossPct >= 18 ? `${stat.laneLosses}` : ''}
-                              </div>
-                            )}
-
-                            {/* Even - White (middle) */}
-                            {evenPct > 0 && (
-                              <div
-                                style={{ height: `${evenPct}%` }}
-                                className="w-full bg-gray-100 hover:bg-white transition-all flex items-center justify-center text-[9px] font-black text-gray-900 border-y border-black/10"
-                                title={`Lane Even: ${stat.laneEvens} (${Math.round(evenPct)}%)`}
-                              >
-                                {evenPct >= 18 ? `${stat.laneEvens}` : ''}
-                              </div>
-                            )}
-
-                            {/* Won - Green (top) */}
-                            {winPct > 0 && (
-                              <div
-                                style={{ height: `${winPct}%` }}
-                                className="w-full bg-emerald-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
-                                title={`Lane Won: ${stat.laneWins} (${Math.round(winPct)}%)`}
-                              >
-                                {winPct >= 18 ? `${stat.laneWins}` : ''}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-deadlock-muted italic text-center px-1">
-                            No lane data
-                          </div>
-                        )}
+                              {/* Won - Green (top) */}
+                              {winPct > 0 && (
+                                <div
+                                  style={{ height: `${winPct}%` }}
+                                  className="w-full bg-emerald-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
+                                  title={`Lane Won: ${stat.laneWins} (${Math.round(winPct)}%)`}
+                                >
+                                  {winPct >= 18 ? `${stat.laneWins}` : ''}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-deadlock-muted italic text-center px-1">
+                              No lane data
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Legend & Exact Count Breakdown */}
-                      <div className="flex items-center justify-center gap-3 text-[11px] font-mono mt-1">
-                        <span className="flex items-center gap-1 font-bold text-emerald-400" title="Lane Won">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          {stat.laneWins}W
+                      {/* Game Winrate to the right of the gauge */}
+                      <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-deadlock-dark/70 border border-deadlock-border/40 text-center flex-1">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-deadlock-muted">
+                          Game Win Rate
                         </span>
-                        <span className="flex items-center gap-1 font-bold text-gray-200" title="Lane Even">
-                          <span className="w-2 h-2 rounded-full bg-gray-200" />
-                          {stat.laneEvens}E
-                        </span>
-                        <span className="flex items-center gap-1 font-bold text-red-400" title="Lane Lost">
-                          <span className="w-2 h-2 rounded-full bg-red-500" />
-                          {stat.laneLosses}L
+                        <div className="text-3xl font-black text-white font-mono mt-1">
+                          {stat.wins + stat.losses > 0 ? `${stat.winRate}%` : 'N/A'}
+                        </div>
+                        <span className="text-[11px] text-deadlock-muted font-mono mt-1">
+                          {stat.wins}W - {stat.losses}L {stat.cancels > 0 ? `(${stat.cancels} C)` : ''}
                         </span>
                       </div>
                     </div>
