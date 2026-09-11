@@ -149,12 +149,14 @@ export const MatchForm: React.FC<MatchFormProps> = ({
     try {
       const matchToSave: Match = {
         id: editingMatch ? editingMatch.id : (crypto.randomUUID ? crypto.randomUUID() : `match_${Date.now()}`),
+        matchId: editingMatch?.matchId,
         date: editingMatch ? editingMatch.date : new Date().toISOString(),
         side,
         myHeroId: myHeroId!,
         allies,
         enemies,
         result: result!,
+        durationSeconds: editingMatch?.durationSeconds,
         notes: notes.trim() || undefined,
         lane: lane || undefined,
         laneAllyId: laneAllyId || undefined,

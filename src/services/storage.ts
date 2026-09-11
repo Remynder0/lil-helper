@@ -49,6 +49,31 @@ export async function persistMatch(match: Match): Promise<Match> {
   return match;
 }
 
+export async function persistMatches(newMatches: Match[]): Promise<Match[]> {
+  if (newMatches.length === 0) return [];
+
+  if (isTauriEnvironment()) {
+    try {
+      await invoke<number>('import_matches', { jsonData: JSON.stringify(newMatches) });
+      return newMatches;
+    } catch (err) {
+      console.error('Tauri import_matches in persistMatches failed, falling back:', err);
+    }
+  }
+
+  const current = await fetchAllMatches();
+  for (const item of newMatches) {
+    const idx = current.findIndex((m) => m.id === item.id);
+    if (idx >= 0) {
+      current[idx] = item;
+    } else {
+      current.unshift(item);
+    }
+  }
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(current));
+  return newMatches;
+}
+
 export async function removeMatch(id: string): Promise<boolean> {
   if (isTauriEnvironment()) {
     try {

@@ -82,6 +82,7 @@ pub enum LaneOutcome {
 #[serde(rename_all = "camelCase")]
 pub struct MatchRecord {
     pub id: String,
+    pub match_id: Option<u64>,
     pub date: String,
     pub side: Side,
     pub my_hero_id: u32,
@@ -89,6 +90,9 @@ pub struct MatchRecord {
     pub enemies: Vec<u32>,
     pub result: MatchResult,
     pub notes: Option<String>,
+
+    // Duration tracking - Optional for backwards compatibility
+    pub duration_seconds: Option<u32>,
 
     // Lane matchup tracking - Optional for backwards compatibility
     pub lane: Option<LaneColor>,

@@ -14,7 +14,6 @@ import {
   Swords,
   Ban,
   ArrowRightLeft,
-  ShieldCheck,
   Crown,
   Compass,
   ArrowRight,

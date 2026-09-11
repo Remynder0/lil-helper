@@ -28,8 +28,17 @@ export const SIDE_LABELS: Record<Side, string> = {
   archmother: 'The Archmother',
 };
 
+export interface ConnectedProfile {
+  accountId: number;
+  personaName: string;
+  avatarUrl?: string;
+  profileUrl?: string;
+  lastSyncedAt?: string;
+}
+
 export interface Match {
   id: string;
+  matchId?: number; // External Deadlock match ID from API
   date: string; // ISO string
   side: Side;
   myHeroId: number;
@@ -37,6 +46,9 @@ export interface Match {
   enemies: number[]; // exactly 6 hero IDs
   result: MatchResult;
   notes?: string;
+
+  // Duration tracking
+  durationSeconds?: number;
 
   // Lane matchup tracking - Optional for backwards compatibility
   lane?: LaneColor;

@@ -3,10 +3,23 @@ import { MatchForm } from './components/MatchForm';
 import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
 import { DraftAssistantView } from './components/DraftAssistantView';
-import { fetchAllMatches, removeMatch } from './services/storage';
-import { Match } from './types/match';
-import { PlusCircle, History, BarChart2, Brain, Download, Upload } from 'lucide-react';
+import { ProfileConnectModal } from './components/ProfileConnectModal';
+import { fetchAllMatches, removeMatch, persistMatches } from './services/storage';
+import { Match, ConnectedProfile } from './types/match';
+import { syncRankedMatchesForAccount } from './services/deadlockApi';
+import {
+  PlusCircle,
+  History,
+  BarChart2,
+  Brain,
+  Download,
+  Upload,
+  User,
+  RefreshCw,
+} from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
+
+const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
 type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant';
 
@@ -16,11 +29,27 @@ export const App: React.FC = () => {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Load matches from storage on mount
+  // Connected Steam profile state
+  const [profile, setProfile] = useState<ConnectedProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
+
+  // Load matches from storage on mount (sorted newest to oldest)
   const loadMatches = async () => {
     try {
       const data = await fetchAllMatches();
-      setMatches(data);
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setMatches(sorted);
     } catch (err) {
       console.error('Failed to load matches:', err);
     }
@@ -30,15 +59,75 @@ export const App: React.FC = () => {
     loadMatches();
   }, []);
 
+  // Sync ranked matches for connected profile
+  const handleSyncMatches = async (targetProfile = profile) => {
+    if (!targetProfile || isSyncing) return;
+
+    setIsSyncing(true);
+    setSyncStatusText('Fetching ranked history...');
+    try {
+      const existingIds = new Set<string | number>();
+      matches.forEach((m) => {
+        existingIds.add(m.id);
+        if (m.matchId) existingIds.add(m.matchId);
+      });
+
+      const { addedMatches, totalRankedFound } = await syncRankedMatchesForAccount(
+        targetProfile.accountId,
+        existingIds
+      );
+
+      if (addedMatches.length > 0) {
+        await persistMatches(addedMatches);
+        setMatches((prev) =>
+          [...addedMatches, ...prev].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          )
+        );
+        setSyncStatusText(`+${addedMatches.length} new ranked match${addedMatches.length > 1 ? 'es' : ''} imported!`);
+      } else {
+        setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
+      }
+
+      // Update lastSyncedAt
+      const updatedProfile: ConnectedProfile = {
+        ...targetProfile,
+        lastSyncedAt: new Date().toISOString(),
+      };
+      setProfile(updatedProfile);
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile));
+    } catch (err) {
+      console.error('Sync failed:', err);
+      setSyncStatusText('Sync failed. Please try again.');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatusText(null), 5000);
+    }
+  };
+
+  const handleConnectProfile = (newProfile: ConnectedProfile) => {
+    setProfile(newProfile);
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
+    handleSyncMatches(newProfile);
+  };
+
+  const handleDisconnectProfile = () => {
+    setProfile(null);
+    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    setSyncStatusText(null);
+  };
+
   const handleMatchSaved = (savedMatch: Match) => {
     setMatches((prev) => {
       const existingIdx = prev.findIndex((m) => m.id === savedMatch.id);
+      let nextList: Match[];
       if (existingIdx >= 0) {
-        const updated = [...prev];
-        updated[existingIdx] = savedMatch;
-        return updated;
+        nextList = [...prev];
+        nextList[existingIdx] = savedMatch;
+      } else {
+        nextList = [savedMatch, ...prev];
       }
-      return [savedMatch, ...prev];
+      return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
 
     if (editingMatch) {
@@ -231,8 +320,80 @@ export const App: React.FC = () => {
               className="hidden"
             />
           </div>
+
+          {/* Steam Profile & Manual Refresh Sync */}
+          <div className="flex items-center gap-2 pl-2 border-l border-deadlock-border/60">
+            {profile ? (
+              <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
+                {/* Profile Pill (Click to open modal/switch) */}
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-deadlock-panel transition-colors text-left"
+                  title="Click to view or switch Steam profile"
+                >
+                  {profile.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt={profile.personaName}
+                      className="w-5 h-5 rounded-full object-cover border border-deadlock-border shrink-0"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-deadlock-panel border border-deadlock-border flex items-center justify-center text-deadlock-accent text-[10px] shrink-0 font-black">
+                      {profile.personaName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-gray-200 max-w-[90px] truncate hidden sm:inline">
+                    {profile.personaName}
+                  </span>
+                </button>
+
+                {/* Manual Sync / Refresh Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSyncMatches()}
+                  disabled={isSyncing}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                    isSyncing
+                      ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
+                      : 'bg-deadlock-accent text-black hover:bg-yellow-400 shadow-sm'
+                  }`}
+                  title="Refresh & sync new ranked matches from Deadlock API"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Refresh'}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-deadlock-dark border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-deadlock-accent hover:text-white transition-all shadow-sm"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Connect Profile</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* Sync Status Banner / Toast */}
+      {syncStatusText && (
+        <div className="bg-deadlock-panel/90 border-b border-deadlock-accent/40 px-6 py-2 text-xs flex items-center justify-between text-gray-200 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <RefreshCw className={`w-3.5 h-3.5 text-deadlock-accent ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{syncStatusText}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncStatusText(null)}
+            className="text-deadlock-muted hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col gap-6">
@@ -258,6 +419,15 @@ export const App: React.FC = () => {
           <DraftAssistantView matches={matches} />
         )}
       </main>
+
+      {/* Profile Connect Modal */}
+      <ProfileConnectModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentProfile={profile}
+        onConnect={handleConnectProfile}
+        onDisconnect={handleDisconnectProfile}
+      />
     </div>
   );
 };
