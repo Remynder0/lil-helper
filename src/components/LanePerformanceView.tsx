@@ -106,17 +106,12 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
             <span>Lane Performance & Outcome Gauges</span>
           </div>
           <span className="text-[11px] text-deadlock-muted font-normal lowercase">
-            gauge height scaled by games played (max: {Math.max(laneStats.lanes.yellow.matches, laneStats.lanes.blue.matches, laneStats.lanes.green.matches, 1)} games)
+            gauge height scaled by games played ({laneStats.totalLaneTrackedMatches} total games)
           </span>
         </h3>
 
         {(() => {
-          const maxLaneGames = Math.max(
-            laneStats.lanes.yellow.matches,
-            laneStats.lanes.blue.matches,
-            laneStats.lanes.green.matches,
-            1
-          );
+          const totalGames = Math.max(laneStats.totalLaneTrackedMatches, 1);
 
           const lanesConfig = [
             {
@@ -152,13 +147,16 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               {lanesConfig.map(({ key, label, colorClass, borderClass, dotClass, glowClass, stat }) => {
                 const totalOutcomes = stat.laneWins + stat.laneEvens + stat.laneLosses;
-                const winPct = totalOutcomes > 0 ? (stat.laneWins / totalOutcomes) * 100 : 0;
-                const evenPct = totalOutcomes > 0 ? (stat.laneEvens / totalOutcomes) * 100 : 0;
-                const lossPct = totalOutcomes > 0 ? (stat.laneLosses / totalOutcomes) * 100 : 0;
 
-                // Scale gauge height relative to maxLaneGames (min 20% so gauge remains visible even with few games)
-                const heightFraction = stat.matches / maxLaneGames;
-                const gaugeHeightPercent = Math.max(20, Math.round(heightFraction * 100));
+                // Scale gauge height relative to total games played across all lanes (min 15% so bar remains visible if played)
+                const heightFraction = stat.matches / totalGames;
+                const gaugeHeightPercent = stat.matches > 0 ? Math.max(15, Math.round(heightFraction * 100)) : 0;
+
+                const winPct = totalOutcomes > 0 ? Math.round((stat.laneWins / totalOutcomes) * 100) : 0;
+                const evenPct = totalOutcomes > 0 ? Math.round((stat.laneEvens / totalOutcomes) * 100) : 0;
+                const lossPct = totalOutcomes > 0 ? Math.round((stat.laneLosses / totalOutcomes) * 100) : 0;
+
+                const fullTooltip = `Lane Outcomes (${totalOutcomes} total):\n• Won: ${stat.laneWins} (${winPct}%)\n• Even: ${stat.laneEvens} (${evenPct}%)\n• Lost: ${stat.laneLosses} (${lossPct}%)`;
 
                 return (
                   <div
@@ -179,52 +177,49 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                     </div>
 
                     {/* Gauge & Win Rate Row */}
-                    <div className="flex items-center justify-around gap-4 z-10 py-2">
+                    <div className="flex items-center justify-center gap-5 z-10 py-1">
                       {/* Vertical Segmented Gauge (Green / White / Red) */}
                       <div className="flex flex-col items-center gap-1.5">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-deadlock-muted">
                           Lane Outcome
                         </span>
-                        {/* Gauge Container (fixed height 160px for consistent alignment, inner bar height scaled) */}
-                        <div className="w-14 h-40 bg-deadlock-dark/90 rounded-xl p-1.5 border border-deadlock-border/70 flex flex-col justify-end relative shadow-inner">
+                        {/* Gauge Container (fixed height 192px / h-48, width w-11, inner bar height scaled to total games) */}
+                        <div
+                          className="w-11 h-48 bg-deadlock-dark/90 rounded-xl p-1.5 border border-deadlock-border/70 flex flex-col justify-end relative shadow-inner cursor-pointer"
+                          title={fullTooltip}
+                        >
                           {stat.matches > 0 && totalOutcomes > 0 ? (
                             <div
                               style={{ height: `${gaugeHeightPercent}%` }}
-                              className="w-full rounded-lg overflow-hidden flex flex-col-reverse transition-all duration-500 shadow-md"
-                              title={`Lane Outcome: ${stat.laneWins} Won (Green), ${stat.laneEvens} Even (White), ${stat.laneLosses} Lost (Red)`}
+                              className="w-full rounded-lg overflow-hidden flex flex-col-reverse gap-0.5 transition-all duration-500 shadow-md p-0.5 bg-black/40"
+                              title={fullTooltip}
                             >
-                              {/* Lost - Red (bottom) */}
-                              {lossPct > 0 && (
+                              {/* Discrete segments for Lost (Red) */}
+                              {Array.from({ length: stat.laneLosses }).map((_, i) => (
                                 <div
-                                  style={{ height: `${lossPct}%` }}
-                                  className="w-full bg-red-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
-                                  title={`Lane Lost: ${stat.laneLosses} (${Math.round(lossPct)}%)`}
-                                >
-                                  {lossPct >= 18 ? `${stat.laneLosses}` : ''}
-                                </div>
-                              )}
+                                  key={`loss-${i}`}
+                                  className="w-full flex-1 min-h-[3px] rounded-[2px] bg-red-500 hover:brightness-125 transition-all"
+                                  title={`Lane Lost: ${stat.laneLosses} (${lossPct}%)\n${fullTooltip}`}
+                                />
+                              ))}
 
-                              {/* Even - White (middle) */}
-                              {evenPct > 0 && (
+                              {/* Discrete segments for Even (White) */}
+                              {Array.from({ length: stat.laneEvens }).map((_, i) => (
                                 <div
-                                  style={{ height: `${evenPct}%` }}
-                                  className="w-full bg-gray-100 hover:bg-white transition-all flex items-center justify-center text-[9px] font-black text-gray-900 border-y border-black/10"
-                                  title={`Lane Even: ${stat.laneEvens} (${Math.round(evenPct)}%)`}
-                                >
-                                  {evenPct >= 18 ? `${stat.laneEvens}` : ''}
-                                </div>
-                              )}
+                                  key={`even-${i}`}
+                                  className="w-full flex-1 min-h-[3px] rounded-[2px] bg-gray-100 hover:bg-white transition-all"
+                                  title={`Lane Even: ${stat.laneEvens} (${evenPct}%)\n${fullTooltip}`}
+                                />
+                              ))}
 
-                              {/* Won - Green (top) */}
-                              {winPct > 0 && (
+                              {/* Discrete segments for Won (Green) */}
+                              {Array.from({ length: stat.laneWins }).map((_, i) => (
                                 <div
-                                  style={{ height: `${winPct}%` }}
-                                  className="w-full bg-emerald-500 hover:brightness-110 transition-all flex items-center justify-center text-[9px] font-black text-white"
-                                  title={`Lane Won: ${stat.laneWins} (${Math.round(winPct)}%)`}
-                                >
-                                  {winPct >= 18 ? `${stat.laneWins}` : ''}
-                                </div>
-                              )}
+                                  key={`win-${i}`}
+                                  className="w-full flex-1 min-h-[3px] rounded-[2px] bg-emerald-500 hover:brightness-125 transition-all"
+                                  title={`Lane Won: ${stat.laneWins} (${winPct}%)\n${fullTooltip}`}
+                                />
+                              ))}
                             </div>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[10px] text-deadlock-muted italic text-center px-1">
@@ -234,15 +229,15 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                         </div>
                       </div>
 
-                      {/* Game Winrate to the right of the gauge */}
-                      <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-deadlock-dark/70 border border-deadlock-border/40 text-center flex-1">
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-deadlock-muted">
+                      {/* Game Winrate to the right of the gauge (compact width) */}
+                      <div className="flex flex-col items-center justify-center py-4 px-3 rounded-xl bg-deadlock-dark/70 border border-deadlock-border/40 text-center w-32 shrink-0">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-deadlock-muted whitespace-nowrap">
                           Game Win Rate
                         </span>
-                        <div className="text-3xl font-black text-white font-mono mt-1">
+                        <div className="text-2xl font-black text-white font-mono mt-1">
                           {stat.wins + stat.losses > 0 ? `${stat.winRate}%` : 'N/A'}
                         </div>
-                        <span className="text-[11px] text-deadlock-muted font-mono mt-1">
+                        <span className="text-[11px] text-deadlock-muted font-mono mt-1 whitespace-nowrap">
                           {stat.wins}W - {stat.losses}L {stat.cancels > 0 ? `(${stat.cancels} C)` : ''}
                         </span>
                       </div>
