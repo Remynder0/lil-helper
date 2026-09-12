@@ -1,96 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MatchForm } from './components/MatchForm';
 import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
 import { DraftAssistantView } from './components/DraftAssistantView';
 import { ProfileConnectModal } from './components/ProfileConnectModal';
+import { GameLogMonitor } from './components/GameLogMonitor';
+import { AppHeader, AppTab } from './components/AppHeader';
+import { ImportMatchByIdModal } from './components/ImportMatchByIdModal';
+import { useProfileSync } from './hooks/useProfileSync';
+import { useDeadlockGameState } from './hooks/useDeadlockGameState';
 import {
   fetchAllMatches,
   removeMatch,
-  persistMatches,
   saveTrackedPendingMatch,
-  getTrackedPendingMatches,
-  removeTrackedPendingMatch,
+  exportMatchesJson,
+  importMatchesJson,
 } from './services/storage';
-import { Match, ConnectedProfile } from './types/match';
-import { syncRankedMatchesForAccount, fetchSingleMatchById } from './services/deadlockApi';
-import {
-  PlusCircle,
-  History,
-  BarChart2,
-  Brain,
-  Download,
-  Upload,
-  User,
-  RefreshCw,
-  Terminal,
-  ChevronDown,
-  LogOut,
-  FolderSync,
-  Search,
-} from 'lucide-react';
-import { exportMatchesJson, importMatchesJson } from './services/storage';
-import { GameLogMonitor } from './components/GameLogMonitor';
-import { PlayerStateBadge } from './components/PlayerStateBadge';
-import { useDeadlockGameState } from './hooks/useDeadlockGameState';
-
-const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
-
-type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
+import { Match } from './types/match';
+import { RefreshCw } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { gameContext } = useDeadlockGameState();
   const [activeTab, setActiveTab] = useState<AppTab>('history');
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const profileMenuRef = React.useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Connected Steam profile state
-  const [profile, setProfile] = useState<ConnectedProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
-
-  // Import match by ID modal state
-  const [isImportByIdModalOpen, setIsImportByIdModalOpen] = useState(false);
-  const [importMatchIdInput, setImportMatchIdInput] = useState('');
-  const [isImportingById, setIsImportingById] = useState(false);
-  const [importByIdError, setImportByIdError] = useState<string | null>(null);
-
-  // 2-minute cooldown timer for API refresh
-  const [cooldownRemaining, setCooldownRemaining] = useState<number>(() => {
-    try {
-      const lastSync = localStorage.getItem('last_api_refresh_timestamp');
-      if (lastSync) {
-        const elapsedSec = Math.floor((Date.now() - parseInt(lastSync, 10)) / 1000);
-        return Math.max(0, 120 - elapsedSec);
-      }
-    } catch {}
-    return 0;
-  });
-
-  useEffect(() => {
-    if (cooldownRemaining <= 0) return;
-    const interval = setInterval(() => {
-      setCooldownRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldownRemaining]);
+  const {
+    profile,
+    isProfileModalOpen,
+    setIsProfileModalOpen,
+    isSyncing,
+    syncStatusText,
+    setSyncStatusText,
+    cooldownRemaining,
+    handleSyncMatches,
+    handleConnectProfile,
+    handleDisconnectProfile,
+    isImportByIdModalOpen,
+    setIsImportByIdModalOpen,
+    importMatchIdInput,
+    setImportMatchIdInput,
+    isImportingById,
+    importByIdError,
+    handleImportMatchById,
+  } = useProfileSync();
 
   // Load matches from storage on mount (sorted newest to oldest)
   const loadMatches = async () => {
@@ -109,185 +63,12 @@ export const App: React.FC = () => {
     loadMatches();
   }, []);
 
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsProfileMenuOpen(false);
-      }
-    };
-    if (isProfileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isProfileMenuOpen]);
-
   // Automatically record active matchId from live game logs into tracked pending list
   useEffect(() => {
     if (gameContext.matchId && gameContext.matchId > 100000) {
       saveTrackedPendingMatch(gameContext.matchId);
     }
   }, [gameContext.matchId]);
-
-  // Sync ranked matches for connected profile in incremental mode (only fetches new matches)
-  const handleSyncMatches = async (targetProfile = profile, forceUpdate = false) => {
-    if (!targetProfile || isSyncing || (cooldownRemaining > 0 && !forceUpdate)) return;
-
-    setIsSyncing(true);
-    setSyncStatusText('Checking for new ranked matches...');
-    try {
-      const existingIds = new Set<string | number>();
-      matches.forEach((m) => {
-        existingIds.add(m.id);
-        if (m.matchId) {
-          existingIds.add(m.matchId);
-          existingIds.add(String(m.matchId));
-        }
-      });
-
-      const { addedMatches, totalRankedFound } = await syncRankedMatchesForAccount(
-        targetProfile.accountId,
-        existingIds,
-        forceUpdate
-      );
-
-      // Check tracked pending matches from game logs:
-      // - If match now exists in history -> clean it from pending JSON list
-      // - If match does not exist in history and has been pending for > 2 hours -> fetch metadata directly & add it!
-      const pendingList = getTrackedPendingMatches();
-      const twoHoursMs = 2 * 60 * 60 * 1000;
-      const nowMs = Date.now();
-      const recoveredMatches: Match[] = [];
-
-      for (const item of pendingList) {
-        const isAlreadyImported =
-          existingIds.has(item.matchId) ||
-          existingIds.has(String(item.matchId)) ||
-          existingIds.has(`api_${item.matchId}`) ||
-          addedMatches.some((m) => m.matchId === item.matchId);
-
-        if (isAlreadyImported) {
-          removeTrackedPendingMatch(item.matchId);
-        } else if (nowMs - item.detectedAt >= twoHoursMs) {
-          try {
-            const directMatch = await fetchSingleMatchById(item.matchId, targetProfile.accountId);
-            if (directMatch) {
-              recoveredMatches.push(directMatch);
-              removeTrackedPendingMatch(item.matchId);
-            }
-          } catch (fetchErr) {
-            console.warn(`Could not recover pending match #${item.matchId}:`, fetchErr);
-          }
-        }
-      }
-
-      const allNewMatches = [...addedMatches, ...recoveredMatches];
-
-      if (allNewMatches.length > 0) {
-        await persistMatches(allNewMatches);
-        setMatches((prev) => {
-          const map = new Map<string, Match>();
-          // Put updated/new matches first
-          allNewMatches.forEach((m) => map.set(m.id, m));
-          // Put existing manual or non-overlapping matches
-          prev.forEach((m) => {
-            if (!map.has(m.id)) {
-              map.set(m.id, m);
-            }
-          });
-          return Array.from(map.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-        });
-
-        const recoveredMsg = recoveredMatches.length > 0
-          ? ` (${recoveredMatches.length} recovered from logs)`
-          : '';
-        setSyncStatusText(`+${allNewMatches.length} new ranked match${allNewMatches.length > 1 ? 'es' : ''} imported!${recoveredMsg}`);
-      } else {
-        setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
-      }
-
-      // Update lastSyncedAt and trigger 2-minute cooldown (120s)
-      const now = Date.now();
-      localStorage.setItem('last_api_refresh_timestamp', String(now));
-      setCooldownRemaining(120);
-
-      const updatedProfile: ConnectedProfile = {
-        ...targetProfile,
-        lastSyncedAt: new Date(now).toISOString(),
-      };
-      setProfile(updatedProfile);
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile));
-    } catch (err) {
-      console.error('Sync failed:', err);
-      setSyncStatusText('Sync failed. Please try again.');
-    } finally {
-      setIsSyncing(false);
-      setTimeout(() => setSyncStatusText(null), 5000);
-    }
-  };
-
-  const handleImportMatchById = async (targetIdStr: string) => {
-    const trimmed = targetIdStr.trim();
-    if (!trimmed || !profile) return;
-    const matchId = parseInt(trimmed, 10);
-    if (isNaN(matchId) || matchId <= 0) {
-      setImportByIdError('Please enter a valid numeric Match ID.');
-      return;
-    }
-
-    setIsImportingById(true);
-    setImportByIdError(null);
-    try {
-      const imported = await fetchSingleMatchById(matchId, profile.accountId);
-      if (!imported) {
-        setImportByIdError(`Match #${matchId} not found, not a Ranked match, or you were not in this match.`);
-        return;
-      }
-
-      await persistMatches([imported]);
-      setMatches((prev) => {
-        const existingIdx = prev.findIndex((m) => m.id === imported.id || m.matchId === imported.matchId);
-        let nextList: Match[];
-        if (existingIdx >= 0) {
-          nextList = [...prev];
-          nextList[existingIdx] = imported;
-        } else {
-          nextList = [imported, ...prev];
-        }
-        return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      });
-
-      removeTrackedPendingMatch(matchId);
-      setIsImportByIdModalOpen(false);
-      setImportMatchIdInput('');
-      setSyncStatusText(`Match #${matchId} imported successfully!`);
-    } catch (err) {
-      console.error('Failed to import match by ID:', err);
-      setImportByIdError(`Failed to fetch match: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setIsImportingById(false);
-    }
-  };
-
-
-  const handleConnectProfile = (newProfile: ConnectedProfile) => {
-    setProfile(newProfile);
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
-    handleSyncMatches(newProfile);
-  };
-
-  const handleDisconnectProfile = () => {
-    setProfile(null);
-    localStorage.removeItem(PROFILE_STORAGE_KEY);
-    setSyncStatusText(null);
-  };
 
   const handleMatchSaved = (savedMatch: Match) => {
     setMatches((prev) => {
@@ -363,297 +144,58 @@ export const App: React.FC = () => {
     }
   };
 
-  // Quick stats (cancelled matches are excluded from winrate calculation)
+  // Quick stats memoization (cancelled matches are excluded from winrate calculation)
   const totalMatches = matches.length;
-  const totalWins = matches.filter((m) => m.result === 'win').length;
-  const totalDecided = matches.filter((m) => m.result === 'win' || m.result === 'loss').length;
+  const totalWins = useMemo(() => matches.filter((m) => m.result === 'win').length, [matches]);
+  const totalDecided = useMemo(
+    () => matches.filter((m) => m.result === 'win' || m.result === 'loss').length,
+    [matches]
+  );
   const winRate = totalDecided > 0 ? Math.round((totalWins / totalDecided) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-deadlock-dark text-gray-100 flex flex-col">
       {/* Top Header */}
-      <header className="border-b border-deadlock-border/80 bg-deadlock-panel/90 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-deadlock-hidden-king to-deadlock-archmother flex items-center justify-center text-black font-extrabold text-sm shadow-md">
-            D
-          </div>
-          <div>
-            <h1 className="text-base font-bold tracking-wide">Deadlock Draft & Match Analyzer</h1>
-            <p className="text-xs text-deadlock-muted">Ranked Matchup & Synergy Companion</p>
-          </div>
-        </div>
+      <AppHeader
+        totalMatches={totalMatches}
+        winRate={winRate}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setEditingMatch(null);
+          setActiveTab(tab);
+        }}
+        gameContext={gameContext}
+        profile={profile}
+        isSyncing={isSyncing}
+        cooldownRemaining={cooldownRemaining}
+        onSync={() => handleSyncMatches(matches, setMatches)}
+        onOpenAddMatch={() => {
+          setEditingMatch(null);
+          setActiveTab('log_match');
+        }}
+        onOpenImportById={() => {
+          setImportMatchIdInput('');
+          setIsImportByIdModalOpen(true);
+        }}
+        onOpenDebugConsole={() => {
+          setEditingMatch(null);
+          setActiveTab('logs');
+        }}
+        onSwitchProfile={() => setIsProfileModalOpen(true)}
+        onExport={handleExport}
+        onTriggerImportFile={() => fileInputRef.current?.click()}
+        onDisconnect={handleDisconnectProfile}
+        onOpenConnectModal={() => setIsProfileModalOpen(true)}
+      />
 
-        {/* Global Quick Stats */}
-        <div className="flex items-center gap-4 text-xs">
-          <div className="bg-deadlock-dark px-3 py-1.5 rounded-lg border border-deadlock-border flex items-center gap-3">
-            <span className="text-deadlock-muted">
-              Matches: <strong className="text-white">{totalMatches}</strong>
-            </span>
-            <span className="h-3 w-px bg-deadlock-border" />
-            <span className="text-deadlock-muted">
-              Winrate:{' '}
-              <strong
-                className={winRate >= 50 ? 'text-deadlock-win' : totalMatches > 0 ? 'text-deadlock-loss' : 'text-white'}
-              >
-                {totalMatches > 0 ? `${winRate}%` : 'N/A'}
-              </strong>
-            </span>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex items-center bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
-            <button
-              type="button"
-              onClick={() => {
-                setEditingMatch(null);
-                setActiveTab('history');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                activeTab === 'history'
-                  ? 'bg-deadlock-border text-white shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>History ({totalMatches})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingMatch(null);
-                setActiveTab('analytics');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                activeTab === 'analytics'
-                  ? 'bg-deadlock-border text-white shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
-              }`}
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span>Analytics</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingMatch(null);
-                setActiveTab('assistant');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                activeTab === 'assistant'
-                  ? 'bg-deadlock-accent text-white shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span>Draft Assistant</span>
-            </button>
-          </div>
-
-          {/* Hidden file input for Import */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImport}
-            accept=".json"
-            className="hidden"
-          />
-
-          {/* Live Player Status & Steam Profile Sync */}
-          <div className="flex items-center gap-2.5 pl-2 border-l border-deadlock-border/60">
-            <PlayerStateBadge
-              state={gameContext.state}
-              stateLabel={gameContext.stateLabel}
-              playerName={gameContext.playerName}
-              heroName={gameContext.myHeroName}
-              heroId={gameContext.myHeroId}
-              mapName={gameContext.mapName}
-            />
-
-            {profile ? (
-              <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border relative">
-                {/* Profile Pill Dropdown Trigger */}
-                <div ref={profileMenuRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-2 px-2 py-1 rounded hover:bg-deadlock-panel transition-colors text-left"
-                    title="Profile & Options Menu"
-                  >
-                    {profile.avatarUrl ? (
-                      <img
-                        src={profile.avatarUrl}
-                        alt={profile.personaName}
-                        className="w-5 h-5 rounded-full object-cover border border-deadlock-border shrink-0"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-deadlock-panel border border-deadlock-border flex items-center justify-center text-deadlock-accent text-[10px] shrink-0 font-black">
-                        {profile.personaName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-xs font-bold text-gray-200 max-w-[90px] truncate hidden sm:inline">
-                      {profile.personaName}
-                    </span>
-                    <ChevronDown className={`w-3 h-3 text-deadlock-muted transition-transform ${isProfileMenuOpen ? 'rotate-180 text-white' : ''}`} />
-                  </button>
-
-                  {/* Profile Dropdown Menu */}
-                  {isProfileMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel border border-deadlock-border shadow-2xl py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
-                      {/* Header in dropdown */}
-                      <div className="px-3 py-2 border-b border-deadlock-border/60 flex flex-col">
-                        <span className="text-[11px] font-bold text-white truncate">
-                          {profile.personaName}
-                        </span>
-                        <span className="text-[10px] text-deadlock-muted font-mono">
-                          ID: {profile.accountId}
-                        </span>
-                      </div>
-
-                      {/* Add Match Option */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingMatch(null);
-                          setActiveTab('log_match');
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <PlusCircle className="w-4 h-4 text-deadlock-accent shrink-0" />
-                        <span>Add Match (Manual)</span>
-                      </button>
-
-                      {/* Import Match by ID */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImportMatchIdInput('');
-                          setImportByIdError(null);
-                          setIsImportByIdModalOpen(true);
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <Search className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Import Match by ID</span>
-                      </button>
-
-                      {/* Debug Console Option */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingMatch(null);
-                          setActiveTab('logs');
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>Debug Console</span>
-                      </button>
-
-                      {/* Switch Account */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileModalOpen(true);
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <FolderSync className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span>Switch Profile</span>
-                      </button>
-
-                      <div className="h-px bg-deadlock-border/60 my-1" />
-
-                      {/* Export Matches */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleExport();
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <Download className="w-4 h-4 text-deadlock-hidden-king shrink-0" />
-                        <span>Export Matches (JSON)</span>
-                      </button>
-
-                      {/* Import Matches */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          fileInputRef.current?.click();
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
-                      >
-                        <Upload className="w-4 h-4 text-deadlock-archmother shrink-0" />
-                        <span>Import Matches (JSON)</span>
-                      </button>
-
-                      <div className="h-px bg-deadlock-border/60 my-1" />
-
-                      {/* Disconnect Profile */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm('Disconnect your profile? Existing saved matches will remain stored locally.')) {
-                            handleDisconnectProfile();
-                            setIsProfileMenuOpen(false);
-                          }
-                        }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors text-left"
-                      >
-                        <LogOut className="w-4 h-4 shrink-0" />
-                        <span>Disconnect</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Manual Sync / Refresh Button with 2-min cooldown */}
-                <button
-                  type="button"
-                  onClick={() => handleSyncMatches()}
-                  disabled={isSyncing || cooldownRemaining > 0}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all ${
-                    isSyncing
-                      ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
-                      : cooldownRemaining > 0
-                      ? 'bg-deadlock-border/40 text-deadlock-muted border border-deadlock-border/60 cursor-not-allowed'
-                      : 'bg-deadlock-accent text-white hover:text-black hover:bg-yellow-400 shadow-sm'
-                  }`}
-                  title={
-                    cooldownRemaining > 0
-                      ? `Please wait ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s before refreshing again to prevent API rate limits.`
-                      : 'Refresh & sync new ranked matches from Deadlock API'
-                  }
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span className="hidden md:inline">
-                    {isSyncing
-                      ? 'Syncing...'
-                      : cooldownRemaining > 0
-                      ? `Refresh (${Math.floor(cooldownRemaining / 60)}:${String(cooldownRemaining % 60).padStart(2, '0')})`
-                      : 'Refresh'}
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-deadlock-dark border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-deadlock-accent hover:text-white transition-all shadow-sm"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Connect Profile</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Hidden file input for Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImport}
+        accept=".json"
+        className="hidden"
+      />
 
       {/* Sync Status Banner / Toast */}
       {syncStatusText && (
@@ -705,86 +247,23 @@ export const App: React.FC = () => {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         currentProfile={profile}
-        onConnect={handleConnectProfile}
+        onConnect={(newProfile) => handleConnectProfile(newProfile, matches, setMatches)}
         onDisconnect={handleDisconnectProfile}
       />
 
       {/* Import Match by ID Modal */}
-      {isImportByIdModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 relative">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-amber-400" />
-                <h3 className="text-base font-bold text-white">Import Match by ID</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsImportByIdModalOpen(false)}
-                className="text-deadlock-muted hover:text-white text-lg p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-deadlock-muted leading-relaxed">
-              If a match was not listed in Valve's match history, enter its <strong>Match ID</strong> (e.g. <code>105073144</code>) to fetch its full metadata directly from the Deadlock API.
-            </p>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleImportMatchById(importMatchIdInput);
-              }}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-300">Match ID</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 105073144"
-                  value={importMatchIdInput}
-                  onChange={(e) => setImportMatchIdInput(e.target.value)}
-                  className="bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-2 text-sm text-white font-mono placeholder:text-deadlock-muted focus:outline-none focus:border-deadlock-accent"
-                  autoFocus
-                />
-              </div>
-
-              {importByIdError && (
-                <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg">
-                  {importByIdError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsImportByIdModalOpen(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-deadlock-muted hover:text-white rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isImportingById || !importMatchIdInput.trim()}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-deadlock-accent hover:bg-deadlock-accent/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
-                >
-                  {isImportingById ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Fetching Match...</span>
-                    </>
-                  ) : (
-                    <span>Import Match</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ImportMatchByIdModal
+        isOpen={isImportByIdModalOpen}
+        onClose={() => setIsImportByIdModalOpen(false)}
+        matchIdInput={importMatchIdInput}
+        onMatchIdInputChange={setImportMatchIdInput}
+        isImporting={isImportingById}
+        error={importByIdError}
+        onSubmit={() => handleImportMatchById(importMatchIdInput, setMatches)}
+      />
     </div>
   );
 };
 
 export default App;
+
