@@ -133,3 +133,37 @@ export async function importMatchesJson(jsonString: string): Promise<number> {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(current));
   return parsed.length;
 }
+
+export interface TrackedPendingMatch {
+  matchId: number;
+  detectedAt: number; // Unix timestamp in ms
+}
+
+const PENDING_MATCHES_STORAGE_KEY = 'deadlock_tracked_pending_matches_v1';
+
+export function getTrackedPendingMatches(): TrackedPendingMatch[] {
+  try {
+    const raw = localStorage.getItem(PENDING_MATCHES_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as TrackedPendingMatch[];
+  } catch (err) {
+    console.error('Failed to parse tracked pending matches:', err);
+    return [];
+  }
+}
+
+export function saveTrackedPendingMatch(matchId: number, detectedAt = Date.now()): void {
+  const current = getTrackedPendingMatches();
+  if (current.some((item) => item.matchId === matchId)) {
+    return;
+  }
+  current.push({ matchId, detectedAt });
+  localStorage.setItem(PENDING_MATCHES_STORAGE_KEY, JSON.stringify(current));
+}
+
+export function removeTrackedPendingMatch(matchId: number): void {
+  const current = getTrackedPendingMatches();
+  const filtered = current.filter((item) => item.matchId !== matchId);
+  localStorage.setItem(PENDING_MATCHES_STORAGE_KEY, JSON.stringify(filtered));
+}
+

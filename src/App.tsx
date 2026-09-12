@@ -4,9 +4,16 @@ import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
 import { DraftAssistantView } from './components/DraftAssistantView';
 import { ProfileConnectModal } from './components/ProfileConnectModal';
-import { fetchAllMatches, removeMatch, persistMatches } from './services/storage';
+import {
+  fetchAllMatches,
+  removeMatch,
+  persistMatches,
+  saveTrackedPendingMatch,
+  getTrackedPendingMatches,
+  removeTrackedPendingMatch,
+} from './services/storage';
 import { Match, ConnectedProfile } from './types/match';
-import { syncRankedMatchesForAccount } from './services/deadlockApi';
+import { syncRankedMatchesForAccount, fetchSingleMatchById } from './services/deadlockApi';
 import {
   PlusCircle,
   History,
@@ -20,6 +27,7 @@ import {
   ChevronDown,
   LogOut,
   FolderSync,
+  Search,
 } from 'lucide-react';
 import { exportMatchesJson, importMatchesJson } from './services/storage';
 import { GameLogMonitor } from './components/GameLogMonitor';
@@ -51,6 +59,12 @@ export const App: React.FC = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
+
+  // Import match by ID modal state
+  const [isImportByIdModalOpen, setIsImportByIdModalOpen] = useState(false);
+  const [importMatchIdInput, setImportMatchIdInput] = useState('');
+  const [isImportingById, setIsImportingById] = useState(false);
+  const [importByIdError, setImportByIdError] = useState<string | null>(null);
 
   // 2-minute cooldown timer for API refresh
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(() => {
@@ -113,6 +127,13 @@ export const App: React.FC = () => {
     };
   }, [isProfileMenuOpen]);
 
+  // Automatically record active matchId from live game logs into tracked pending list
+  useEffect(() => {
+    if (gameContext.matchId && gameContext.matchId > 100000) {
+      saveTrackedPendingMatch(gameContext.matchId);
+    }
+  }, [gameContext.matchId]);
+
   // Sync ranked matches for connected profile in incremental mode (only fetches new matches)
   const handleSyncMatches = async (targetProfile = profile, forceUpdate = false) => {
     if (!targetProfile || isSyncing || (cooldownRemaining > 0 && !forceUpdate)) return;
@@ -123,7 +144,10 @@ export const App: React.FC = () => {
       const existingIds = new Set<string | number>();
       matches.forEach((m) => {
         existingIds.add(m.id);
-        if (m.matchId) existingIds.add(m.matchId);
+        if (m.matchId) {
+          existingIds.add(m.matchId);
+          existingIds.add(String(m.matchId));
+        }
       });
 
       const { addedMatches, totalRankedFound } = await syncRankedMatchesForAccount(
@@ -132,12 +156,44 @@ export const App: React.FC = () => {
         forceUpdate
       );
 
-      if (addedMatches.length > 0) {
-        await persistMatches(addedMatches);
+      // Check tracked pending matches from game logs:
+      // - If match now exists in history -> clean it from pending JSON list
+      // - If match does not exist in history and has been pending for > 2 hours -> fetch metadata directly & add it!
+      const pendingList = getTrackedPendingMatches();
+      const twoHoursMs = 2 * 60 * 60 * 1000;
+      const nowMs = Date.now();
+      const recoveredMatches: Match[] = [];
+
+      for (const item of pendingList) {
+        const isAlreadyImported =
+          existingIds.has(item.matchId) ||
+          existingIds.has(String(item.matchId)) ||
+          existingIds.has(`api_${item.matchId}`) ||
+          addedMatches.some((m) => m.matchId === item.matchId);
+
+        if (isAlreadyImported) {
+          removeTrackedPendingMatch(item.matchId);
+        } else if (nowMs - item.detectedAt >= twoHoursMs) {
+          try {
+            const directMatch = await fetchSingleMatchById(item.matchId, targetProfile.accountId);
+            if (directMatch) {
+              recoveredMatches.push(directMatch);
+              removeTrackedPendingMatch(item.matchId);
+            }
+          } catch (fetchErr) {
+            console.warn(`Could not recover pending match #${item.matchId}:`, fetchErr);
+          }
+        }
+      }
+
+      const allNewMatches = [...addedMatches, ...recoveredMatches];
+
+      if (allNewMatches.length > 0) {
+        await persistMatches(allNewMatches);
         setMatches((prev) => {
           const map = new Map<string, Match>();
-          // Put updated matches first
-          addedMatches.forEach((m) => map.set(m.id, m));
+          // Put updated/new matches first
+          allNewMatches.forEach((m) => map.set(m.id, m));
           // Put existing manual or non-overlapping matches
           prev.forEach((m) => {
             if (!map.has(m.id)) {
@@ -148,7 +204,11 @@ export const App: React.FC = () => {
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           );
         });
-        setSyncStatusText(`+${addedMatches.length} new ranked match${addedMatches.length > 1 ? 'es' : ''} imported!`);
+
+        const recoveredMsg = recoveredMatches.length > 0
+          ? ` (${recoveredMatches.length} recovered from logs)`
+          : '';
+        setSyncStatusText(`+${allNewMatches.length} new ranked match${allNewMatches.length > 1 ? 'es' : ''} imported!${recoveredMsg}`);
       } else {
         setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
       }
@@ -172,6 +232,50 @@ export const App: React.FC = () => {
       setTimeout(() => setSyncStatusText(null), 5000);
     }
   };
+
+  const handleImportMatchById = async (targetIdStr: string) => {
+    const trimmed = targetIdStr.trim();
+    if (!trimmed || !profile) return;
+    const matchId = parseInt(trimmed, 10);
+    if (isNaN(matchId) || matchId <= 0) {
+      setImportByIdError('Please enter a valid numeric Match ID.');
+      return;
+    }
+
+    setIsImportingById(true);
+    setImportByIdError(null);
+    try {
+      const imported = await fetchSingleMatchById(matchId, profile.accountId);
+      if (!imported) {
+        setImportByIdError(`Match #${matchId} not found, not a Ranked match, or you were not in this match.`);
+        return;
+      }
+
+      await persistMatches([imported]);
+      setMatches((prev) => {
+        const existingIdx = prev.findIndex((m) => m.id === imported.id || m.matchId === imported.matchId);
+        let nextList: Match[];
+        if (existingIdx >= 0) {
+          nextList = [...prev];
+          nextList[existingIdx] = imported;
+        } else {
+          nextList = [imported, ...prev];
+        }
+        return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      });
+
+      removeTrackedPendingMatch(matchId);
+      setIsImportByIdModalOpen(false);
+      setImportMatchIdInput('');
+      setSyncStatusText(`Match #${matchId} imported successfully!`);
+    } catch (err) {
+      console.error('Failed to import match by ID:', err);
+      setImportByIdError(`Failed to fetch match: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsImportingById(false);
+    }
+  };
+
 
   const handleConnectProfile = (newProfile: ConnectedProfile) => {
     setProfile(newProfile);
@@ -361,6 +465,7 @@ export const App: React.FC = () => {
               stateLabel={gameContext.stateLabel}
               playerName={gameContext.playerName}
               heroName={gameContext.myHeroName}
+              heroId={gameContext.myHeroId}
               mapName={gameContext.mapName}
             />
 
@@ -416,6 +521,21 @@ export const App: React.FC = () => {
                       >
                         <PlusCircle className="w-4 h-4 text-deadlock-accent shrink-0" />
                         <span>Add Match (Manual)</span>
+                      </button>
+
+                      {/* Import Match by ID */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImportMatchIdInput('');
+                          setImportByIdError(null);
+                          setIsImportByIdModalOpen(true);
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+                      >
+                        <Search className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Import Match by ID</span>
                       </button>
 
                       {/* Debug Console Option */}
@@ -503,7 +623,7 @@ export const App: React.FC = () => {
                       ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
                       : cooldownRemaining > 0
                       ? 'bg-deadlock-border/40 text-deadlock-muted border border-deadlock-border/60 cursor-not-allowed'
-                      : 'bg-deadlock-accent text-black hover:bg-yellow-400 shadow-sm'
+                      : 'bg-deadlock-accent text-white hover:text-black hover:bg-yellow-400 shadow-sm'
                   }`}
                   title={
                     cooldownRemaining > 0
@@ -588,6 +708,81 @@ export const App: React.FC = () => {
         onConnect={handleConnectProfile}
         onDisconnect={handleDisconnectProfile}
       />
+
+      {/* Import Match by ID Modal */}
+      {isImportByIdModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-bold text-white">Import Match by ID</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportByIdModalOpen(false)}
+                className="text-deadlock-muted hover:text-white text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-deadlock-muted leading-relaxed">
+              If a match was not listed in Valve's match history, enter its <strong>Match ID</strong> (e.g. <code>105073144</code>) to fetch its full metadata directly from the Deadlock API.
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleImportMatchById(importMatchIdInput);
+              }}
+              className="flex flex-col gap-3"
+            >
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-300">Match ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 105073144"
+                  value={importMatchIdInput}
+                  onChange={(e) => setImportMatchIdInput(e.target.value)}
+                  className="bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-2 text-sm text-white font-mono placeholder:text-deadlock-muted focus:outline-none focus:border-deadlock-accent"
+                  autoFocus
+                />
+              </div>
+
+              {importByIdError && (
+                <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg">
+                  {importByIdError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsImportByIdModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs font-semibold text-deadlock-muted hover:text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isImportingById || !importMatchIdInput.trim()}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-deadlock-accent hover:bg-deadlock-accent/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+                >
+                  {isImportingById ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Fetching Match...</span>
+                    </>
+                  ) : (
+                    <span>Import Match</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

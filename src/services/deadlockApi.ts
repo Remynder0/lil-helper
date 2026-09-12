@@ -48,6 +48,7 @@ export interface RawMatchPlayerMetadata {
   kills?: number;
   deaths?: number;
   assists?: number;
+  player_match_outcome?: number;
   abandon_match_time_s?: number;
   stats?: RawMatchPlayerTimelineStat[];
 }
@@ -422,3 +423,59 @@ export async function syncRankedMatchesForAccount(
 
   return { addedMatches, totalRankedFound };
 }
+
+/**
+ * Directly converts raw match metadata into our Match entity for a specific player.
+ * Useful when a match was omitted by Valve from player match-history.
+ */
+export function convertMetadataDirectlyToAppMatch(
+  metadata: RawMatchMetadata,
+  targetAccountId: number
+): Match | null {
+  const matchInfo = metadata.match_info;
+  if (!matchInfo || !matchInfo.players) return null;
+
+  // Strictly enforce Ranked matches only (match_mode === 4)
+  if (matchInfo.match_mode !== 4) {
+    return null;
+  }
+
+  const myPlayerMeta = matchInfo.players.find((p) => p.account_id === targetAccountId);
+  if (!myPlayerMeta) return null;
+
+  // Synthesize a RawPlayerMatchHistoryEntry
+  const historyEntry: RawPlayerMatchHistoryEntry = {
+    account_id: myPlayerMeta.account_id,
+    match_id: matchInfo.match_id,
+    hero_id: myPlayerMeta.hero_id,
+    hero_level: 1,
+    start_time: matchInfo.start_time,
+    game_mode: matchInfo.game_mode,
+    match_mode: matchInfo.match_mode,
+    player_team: myPlayerMeta.team,
+    player_kills: myPlayerMeta.kills || 0,
+    player_deaths: myPlayerMeta.deaths || 0,
+    player_assists: myPlayerMeta.assists || 0,
+    net_worth: 0,
+    last_hits: 0,
+    denies: 0,
+    match_duration_s: matchInfo.duration_s,
+    match_result: matchInfo.winning_team === myPlayerMeta.team ? 1 : 2,
+    player_match_outcome: myPlayerMeta.player_match_outcome || (matchInfo.winning_team === myPlayerMeta.team ? 1 : 2),
+  };
+
+  return convertToAppMatch(historyEntry, metadata);
+}
+
+/**
+ * Fetches match metadata directly by Match ID and converts it for a given account.
+ */
+export async function fetchSingleMatchById(
+  matchId: number,
+  targetAccountId: number
+): Promise<Match | null> {
+  const metadata = await fetchMatchMetadata(matchId);
+  if (!metadata) return null;
+  return convertMetadataDirectlyToAppMatch(metadata, targetAccountId);
+}
+

@@ -97,7 +97,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             }`}
           >
             <Swords className="w-3.5 h-3.5" />
-            <span>Enemy Matchups & Counters</span>
+            <span>How I perform against</span>
           </button>
           <button
             type="button"
@@ -109,7 +109,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Ally Synergies & Combos</span>
+            <span>How I perform with</span>
           </button>
           <button
             type="button"
