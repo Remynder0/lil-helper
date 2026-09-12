@@ -45,7 +45,8 @@ async function run() {
       iconUrl: `/heroes/${localImgName}`,
       tags: h.tags || [],
       gunTag: h.gun_tag || '',
-      complexity: h.complexity || 1
+      complexity: h.complexity || 1,
+      hideoutRichPresence: h.hideout_rich_presence || null
     });
   }
 
@@ -62,6 +63,7 @@ export interface Hero {
   tags: string[];
   gunTag: string;
   complexity: number;
+  hideoutRichPresence?: string | null;
 }
 
 export const HEROES: Hero[] = ${JSON.stringify(heroRecords, null, 2)};

@@ -141,3 +141,10 @@ pub fn capture_screen_image(right_half_only: Option<bool>) -> Result<String, Str
     crate::screen_ocr::capture_screen_right_half(right_only)
 }
 
+/// Checks if Deadlock game window is currently running and visible.
+#[tauri::command]
+pub fn is_deadlock_running() -> bool {
+    crate::screen_ocr::find_deadlock_window_bounds().is_some()
+}
+
+

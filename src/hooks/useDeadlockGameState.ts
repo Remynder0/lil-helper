@@ -4,6 +4,7 @@ import {
   detectDeadlockLogPath,
   readDeadlockLogEvents,
   parseDeadlockLogEvents,
+  isDeadlockGameRunning,
 } from '../services/logWatcher';
 
 const DEFAULT_LOG_PATH =
@@ -47,6 +48,19 @@ export function useDeadlockGameState() {
     if (!logPath.trim()) return;
 
     try {
+      // 1. Verify if Deadlock game window/process is currently running
+      const isRunning = await isDeadlockGameRunning();
+      if (!isRunning) {
+        setGameContext((prev) => ({
+          ...prev,
+          state: 'disconnected',
+          stateLabel: 'Offline',
+          lastUpdated: new Date().toLocaleTimeString(),
+        }));
+        return;
+      }
+
+      // 2. Read and parse recent log events
       const events = await readDeadlockLogEvents(logPath.trim(), 131072); // 128KB buffer
       consecutiveFailuresRef.current = 0;
       const parsed = parseDeadlockLogEvents(events);
@@ -59,6 +73,7 @@ export function useDeadlockGameState() {
           ...prev,
           state: 'disconnected',
           stateLabel: 'Offline',
+          lastUpdated: new Date().toLocaleTimeString(),
         }));
       }
     }

@@ -1,4 +1,4 @@
-﻿use screenshots::Screen;
+use screenshots::Screen;
 use std::io::Cursor;
 use base64::prelude::*;
 use windows::Win32::Foundation::{HWND, RECT};
@@ -6,7 +6,7 @@ use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, GetWindowRect, IsWind
 use windows::core::PCWSTR;
 use image::{imageops, DynamicImage};
 
-fn find_deadlock_window_bounds() -> Option<(i32, i32, u32, u32)> {
+pub(crate) fn find_deadlock_window_bounds() -> Option<(i32, i32, u32, u32)> {
     unsafe {
         let title_candidates = [
             "Deadlock\0",

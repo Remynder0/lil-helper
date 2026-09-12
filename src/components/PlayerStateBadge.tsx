@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerGameState } from '../services/logWatcher';
+import { getHeroById, findHeroByName } from '../data/heroes';
 import { Swords, Home, WifiOff } from 'lucide-react';
 
 interface PlayerStateBadgeProps {
@@ -7,6 +8,7 @@ interface PlayerStateBadgeProps {
   stateLabel: string;
   playerName?: string | null;
   heroName?: string | null;
+  heroId?: number | null;
   mapName?: string | null;
 }
 
@@ -15,6 +17,7 @@ export const PlayerStateBadge: React.FC<PlayerStateBadgeProps> = ({
   stateLabel,
   playerName,
   heroName,
+  heroId,
   mapName,
 }) => {
   if (state === 'in_game') {
@@ -45,20 +48,24 @@ export const PlayerStateBadge: React.FC<PlayerStateBadgeProps> = ({
   }
 
   if (state === 'hideout') {
+    // Resolve hero's unique hideout rich presence phrase
+    const activeHero = (heroId ? getHeroById(heroId) : null) || (heroName ? findHeroByName(heroName) : null);
+    const hideoutPhrase = activeHero?.hideoutRichPresence || 'In Hideout';
+
     return (
       <div
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-950/50 border border-sky-500/40 text-sky-300 shadow-sm transition-all"
-        title={`In Hideout / Lobby${playerName ? ` (${playerName})` : ''}`}
+        title={`${hideoutPhrase}${heroName ? ` (${heroName})` : ''}${playerName ? ` - ${playerName}` : ''}`}
       >
-        <span className="h-2 w-2 rounded-full bg-sky-400" />
-        <Home className="w-3.5 h-3.5 text-sky-400" />
-        <div className="flex flex-col text-left">
-          <span className="text-[11px] font-black uppercase tracking-wider leading-none">
-            IN HIDEOUT
+        <span className="h-2 w-2 rounded-full bg-sky-400 shrink-0" />
+        <Home className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+        <div className="flex flex-col text-left max-w-[220px]">
+          <span className="text-[11px] font-bold text-sky-200 truncate leading-tight">
+            {hideoutPhrase}
           </span>
-          {playerName && (
-            <span className="text-[9px] text-sky-400/80 font-medium font-mono leading-none mt-0.5">
-              {playerName}
+          {(heroName || playerName) && (
+            <span className="text-[9px] text-sky-400/80 font-medium font-mono leading-none mt-0.5 truncate">
+              {heroName ? `${heroName}` : ''}{heroName && playerName ? ' • ' : ''}{playerName ? `${playerName}` : ''}
             </span>
           )}
         </div>

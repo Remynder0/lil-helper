@@ -17,7 +17,8 @@ pub fn run() {
             commands::detect_deadlock_log_path,
             commands::read_deadlock_log_events,
             commands::save_deadlock_debug_log,
-            commands::capture_screen_image
+            commands::capture_screen_image,
+            commands::is_deadlock_running
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

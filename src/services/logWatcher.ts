@@ -39,6 +39,17 @@ export async function detectDeadlockLogPath(): Promise<string | null> {
   return null;
 }
 
+export async function isDeadlockGameRunning(): Promise<boolean> {
+  if (isTauriEnvironment()) {
+    try {
+      return await invoke<boolean>('is_deadlock_running');
+    } catch (err) {
+      console.error('Failed to check if Deadlock is running:', err);
+    }
+  }
+  return true; // Browser preview default
+}
+
 export async function readDeadlockLogEvents(
   path: string,
   maxBytes?: number
@@ -142,8 +153,9 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
     }
 
     // 3. Detect Map Name
-    // e.g.: [Client] Created physics for dl_midtown
-    const mapPhysicsMatch = line.match(/Created physics for\s+([a-zA-Z0-9_-]+)/i);
+    // e.g.: [Client] Created physics for dl_hideout / dl_midtown
+    // or: [HostStateManager] Host activate: Loading (dl_hideout)
+    const mapPhysicsMatch = line.match(/(?:Created physics for|Host activate: Loading \()([a-zA-Z0-9_-]+)/i);
     if (mapPhysicsMatch) {
       result.mapName = mapPhysicsMatch[1];
     }
@@ -171,31 +183,52 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
       result.matchId = parseInt(matchIdMatch[1], 10);
     }
 
-    // 6. Game State Transitions
-    // e.g.: OnGameStateChanged: GameInProgress (7)
+    // 7. Game State Transitions
+    // Note: dl_hideout also simulates internal states (MatchIntro, GameInProgress) when spawning local test bots!
+    // So we only mark 'in_game' if we are NOT in dl_hideout (or if map is midtown / match_id is present)
+    const isCurrentMapHideout = result.mapName && result.mapName.toLowerCase().includes('hideout');
+
     if (line.includes('OnGameStateChanged: GameInProgress')) {
-      result.state = 'in_game';
-      result.stateLabel = 'In Game';
+      if (isCurrentMapHideout) {
+        result.state = 'hideout';
+        result.stateLabel = 'In Hideout';
+      } else {
+        result.state = 'in_game';
+        result.stateLabel = 'In Game';
+      }
     } else if (line.includes('OnGameStateChanged: PreGameWait')) {
-      result.state = 'in_game';
-      result.stateLabel = 'Pre-Game Wait';
+      if (!isCurrentMapHideout) {
+        result.state = 'in_game';
+        result.stateLabel = 'Pre-Game Wait';
+      }
     } else if (line.includes('OnGameStateChanged: MatchIntro')) {
-      result.state = 'in_game';
-      result.stateLabel = 'Match Intro';
+      if (!isCurrentMapHideout) {
+        result.state = 'in_game';
+        result.stateLabel = 'Match Intro';
+      }
     } else if (line.includes('OnGameStateChanged: WaitForMapToLoad')) {
-      result.state = 'in_game';
-      result.stateLabel = 'Loading Game';
-    } else if (line.includes('OnGameStateChanged: GameOver') || line.includes('Disconnecting from server')) {
+      if (!isCurrentMapHideout) {
+        result.state = 'in_game';
+        result.stateLabel = 'Loading Game';
+      }
+    } else if (
+      line.includes('OnGameStateChanged: GameOver') ||
+      line.includes('Disconnecting from server') ||
+      line.includes('CLoopModeRemoteConnect::OnClientFrameSimulate switching to "levelload"') && line.includes('dl_hideout')
+    ) {
       result.state = 'hideout';
       result.stateLabel = 'In Hideout';
-    } else if (line.includes('Hideout Lobby Connection State') && result.state !== 'in_game') {
+    } else if (line.includes('Hideout Lobby Connection State') || line.includes('Created physics for dl_hideout')) {
       result.state = 'hideout';
       result.stateLabel = 'In Hideout';
     }
   }
 
-  // If connected to a game server or physics created for midtown, mark in_game
-  if (result.mapName && result.mapName.includes('midtown') && result.state === 'hideout') {
+  // Final check: If map is explicitly dl_hideout, player is in Hideout, NOT in_game
+  if (result.mapName && result.mapName.toLowerCase().includes('hideout')) {
+    result.state = 'hideout';
+    result.stateLabel = 'In Hideout';
+  } else if (result.mapName && result.mapName.toLowerCase().includes('midtown')) {
     result.state = 'in_game';
     result.stateLabel = 'In Game';
   }

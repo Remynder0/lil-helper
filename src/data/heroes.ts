@@ -10,6 +10,7 @@ export interface Hero {
   tags: string[];
   gunTag: string;
   complexity: number;
+  hideoutRichPresence?: string | null;
 }
 
 export const HEROES: Hero[] = [
@@ -27,7 +28,8 @@ export const HEROES: Hero[] = [
       "Bull-Headed"
     ],
     "gunTag": "Shotgun",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Investigating the Hideout"
   },
   {
     "id": 77,
@@ -43,7 +45,8 @@ export const HEROES: Hero[] = [
       "A Cut Above"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Striving Towards Perfection in the Hideout"
   },
   {
     "id": 15,
@@ -59,7 +62,8 @@ export const HEROES: Hero[] = [
       "Punch"
     ],
     "gunTag": "Beam Weapon",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Ignoring Lash in the Hideout"
   },
   {
     "id": 72,
@@ -75,7 +79,8 @@ export const HEROES: Hero[] = [
       "G.O.A.T."
     ],
     "gunTag": "Close Range",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Ranting in the Hideout"
   },
   {
     "id": 16,
@@ -91,7 +96,8 @@ export const HEROES: Hero[] = [
       "Burst Damage"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Playing With Ava in the Hideout"
   },
   {
     "id": 81,
@@ -107,7 +113,8 @@ export const HEROES: Hero[] = [
       "Dazzling"
     ],
     "gunTag": "Burst Fire",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Cleaning Up Glitter in the Hideout"
   },
   {
     "id": 64,
@@ -123,7 +130,8 @@ export const HEROES: Hero[] = [
       "Cruel"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Prowling in the Hideout"
   },
   {
     "id": 11,
@@ -139,7 +147,8 @@ export const HEROES: Hero[] = [
       "Clutch"
     ],
     "gunTag": "Pistol",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Pontificating in the Hideout"
   },
   {
     "id": 76,
@@ -155,7 +164,8 @@ export const HEROES: Hero[] = [
       "Necromancer"
     ],
     "gunTag": "Pistol",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Playing With The Dead in the Hideout"
   },
   {
     "id": 17,
@@ -171,7 +181,8 @@ export const HEROES: Hero[] = [
       "Area Denial"
     ],
     "gunTag": "Bow",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Mourning in the Hideout"
   },
   {
     "id": 13,
@@ -187,7 +198,8 @@ export const HEROES: Hero[] = [
       "Lethal"
     ],
     "gunTag": "Rapid Fire",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Sleep Walking in the Hideout"
   },
   {
     "id": 14,
@@ -203,7 +215,8 @@ export const HEROES: Hero[] = [
       "Apprehender"
     ],
     "gunTag": "Pistol",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Solving Mysteries in the Hideout"
   },
   {
     "id": 1,
@@ -219,7 +232,8 @@ export const HEROES: Hero[] = [
       "Burn Rubber"
     ],
     "gunTag": "Rapid Fire",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Mixing Drinks in the Hideout"
   },
   {
     "id": 20,
@@ -235,7 +249,8 @@ export const HEROES: Hero[] = [
       "Rock Solid"
     ],
     "gunTag": "Rapid Fire",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Wishing the Arroyos were in the Hideout"
   },
   {
     "id": 12,
@@ -251,7 +266,8 @@ export const HEROES: Hero[] = [
       "Ice Cold"
     ],
     "gunTag": "Heavy Hitter",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Chilling in the Hideout"
   },
   {
     "id": 4,
@@ -267,7 +283,8 @@ export const HEROES: Hero[] = [
       "Fatale"
     ],
     "gunTag": "Pistol",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Being Fabulous in the Hideout"
   },
   {
     "id": 31,
@@ -283,7 +300,8 @@ export const HEROES: Hero[] = [
       "Arrogant"
     ],
     "gunTag": "Burst Fire",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Thinking About Lash in the Hideout"
   },
   {
     "id": 8,
@@ -299,7 +317,8 @@ export const HEROES: Hero[] = [
       "Disruption"
     ],
     "gunTag": "Heavy Artillery",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Tinkering in the Hideout"
   },
   {
     "id": 63,
@@ -315,7 +334,8 @@ export const HEROES: Hero[] = [
       "Vexing"
     ],
     "gunTag": "Pistol",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Grabbing a bite in the Hideout"
   },
   {
     "id": 52,
@@ -331,7 +351,8 @@ export const HEROES: Hero[] = [
       "Focused"
     ],
     "gunTag": "Pistol",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Dreaming of Wyoming in the Hideout"
   },
   {
     "id": 18,
@@ -347,7 +368,8 @@ export const HEROES: Hero[] = [
       "Burrower"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": null
   },
   {
     "id": 67,
@@ -363,7 +385,8 @@ export const HEROES: Hero[] = [
       "Booksmart"
     ],
     "gunTag": "Projectile",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Reading in the Hideout"
   },
   {
     "id": 10,
@@ -379,7 +402,8 @@ export const HEROES: Hero[] = [
       "Tactician"
     ],
     "gunTag": "Burst Fire",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Scheming in the Hideout"
   },
   {
     "id": 50,
@@ -395,7 +419,8 @@ export const HEROES: Hero[] = [
       "Frogs"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Sulking in the Hideout"
   },
   {
     "id": 79,
@@ -411,7 +436,8 @@ export const HEROES: Hero[] = [
       "zZzzZ"
     ],
     "gunTag": "",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Having Sweet Dreams in the Hideout"
   },
   {
     "id": 2,
@@ -427,7 +453,8 @@ export const HEROES: Hero[] = [
       "Area Denial"
     ],
     "gunTag": "Burst Fire",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Plotting in the Hideout"
   },
   {
     "id": 19,
@@ -443,7 +470,8 @@ export const HEROES: Hero[] = [
       "Repeat"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Playing With Knives in the Hideout"
   },
   {
     "id": 80,
@@ -459,7 +487,8 @@ export const HEROES: Hero[] = [
       "Transformation"
     ],
     "gunTag": "Long Range",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Figuring Out What Happened Last Night in the Hideout"
   },
   {
     "id": 60,
@@ -475,7 +504,8 @@ export const HEROES: Hero[] = [
       "Versatile"
     ],
     "gunTag": "Burst Fire",
-    "complexity": 4
+    "complexity": 4,
+    "hideoutRichPresence": "Working Magic in the Hideout"
   },
   {
     "id": 69,
@@ -491,7 +521,8 @@ export const HEROES: Hero[] = [
       "Mind Games"
     ],
     "gunTag": "Pistol",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "At Your Service in the Hideout"
   },
   {
     "id": 65,
@@ -507,7 +538,8 @@ export const HEROES: Hero[] = [
       "Tactical"
     ],
     "gunTag": "Crossbow",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Blessing Ammunition in the Hideout"
   },
   {
     "id": 66,
@@ -523,7 +555,8 @@ export const HEROES: Hero[] = [
       "Kill Me"
     ],
     "gunTag": "Pistol",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Brooding in the Hideout"
   },
   {
     "id": 3,
@@ -539,7 +572,8 @@ export const HEROES: Hero[] = [
       "One Shot Kill"
     ],
     "gunTag": "Long Range",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Brooding in the Hideout"
   },
   {
     "id": 35,
@@ -555,7 +589,8 @@ export const HEROES: Hero[] = [
       "Gooey"
     ],
     "gunTag": "Projectile",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Wishing the Hideout was The Cube"
   },
   {
     "id": 58,
@@ -571,7 +606,8 @@ export const HEROES: Hero[] = [
       "Rat-a-Tat"
     ],
     "gunTag": "Rapid Fire",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Making Pruno in the Hideout"
   },
   {
     "id": 25,
@@ -587,7 +623,8 @@ export const HEROES: Hero[] = [
       "One Man Army"
     ],
     "gunTag": "Heavy Hitter",
-    "complexity": 2
+    "complexity": 2,
+    "hideoutRichPresence": "Training in the Hideout"
   },
   {
     "id": 7,
@@ -603,7 +640,8 @@ export const HEROES: Hero[] = [
       "Telekinetic"
     ],
     "gunTag": "Rapid Fire",
-    "complexity": 1
+    "complexity": 1,
+    "hideoutRichPresence": "Gambling in the Hideout"
   },
   {
     "id": 27,
@@ -619,7 +657,8 @@ export const HEROES: Hero[] = [
       "Pursuer"
     ],
     "gunTag": "Spreadshot",
-    "complexity": 3
+    "complexity": 3,
+    "hideoutRichPresence": "Reminiscing in the Hideout"
   }
 ];
 
