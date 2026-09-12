@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import { EnemyMatchupsView } from './EnemyMatchupsView';
@@ -37,17 +37,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const globalStats = calculateGlobalStats(matches);
-  const patronStats = calculatePatronStats(matches);
-  const heroPerformances = calculateHeroPerformance(matches);
+  const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
+  const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
+  const heroPerformances = useMemo(() => calculateHeroPerformance(matches), [matches]);
 
-  const sortedHeroes = [...heroPerformances].sort((a, b) => {
-    let diff = 0;
-    if (sortField === 'matches') diff = b.matches - a.matches;
-    else if (sortField === 'winRate') diff = b.winRate - a.winRate;
-    else if (sortField === 'wins') diff = b.wins - a.wins;
-    return sortAsc ? -diff : diff;
-  });
+  const sortedHeroes = useMemo(() => {
+    return [...heroPerformances].sort((a, b) => {
+      let diff = 0;
+      if (sortField === 'matches') diff = b.matches - a.matches;
+      else if (sortField === 'winRate') diff = b.winRate - a.winRate;
+      else if (sortField === 'wins') diff = b.wins - a.wins;
+      return sortAsc ? -diff : diff;
+    });
+  }, [heroPerformances, sortField, sortAsc]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

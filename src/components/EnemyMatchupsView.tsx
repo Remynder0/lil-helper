@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import {
@@ -27,33 +27,47 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   // Find all distinct heroes piloted by the player
-  const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
-  const playedHeroes = playedHeroIds
-    .map((id) => getHeroById(id))
-    .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  const playedHeroes = useMemo(() => {
+    const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
+    return playedHeroIds
+      .map((id) => getHeroById(id))
+      .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  }, [matches]);
 
   // Calculate matchups based on the selected hero or overall
-  const matchups = calculateEnemyMatchups(matches, selectedPlayerHeroId);
+  const matchups = useMemo(() => {
+    return calculateEnemyMatchups(matches, selectedPlayerHeroId);
+  }, [matches, selectedPlayerHeroId]);
 
   // Sort matchups
-  const sortedMatchups = [...matchups].sort((a, b) => {
-    let diff = 0;
-    if (sortField === 'matches') diff = b.matchesAgainst - a.matchesAgainst;
-    else if (sortField === 'winRate') diff = b.winRate - a.winRate;
-    else if (sortField === 'wins') diff = b.wins - a.wins;
-    return sortAsc ? -diff : diff;
-  });
+  const sortedMatchups = useMemo(() => {
+    return [...matchups].sort((a, b) => {
+      let diff = 0;
+      if (sortField === 'matches') diff = b.matchesAgainst - a.matchesAgainst;
+      else if (sortField === 'winRate') diff = b.winRate - a.winRate;
+      else if (sortField === 'wins') diff = b.wins - a.wins;
+      return sortAsc ? -diff : diff;
+    });
+  }, [matchups, sortField, sortAsc]);
+
+  // Calculate Highlights (at least 1 match played against)
+  const qualifiedForHighlights = useMemo(() => {
+    return matchups.filter((m) => m.wins + m.losses >= 1);
+  }, [matchups]);
 
   // Calculate Nemeses (lowest winrate with at least 2 matches against, or at least 1)
-  const qualifiedForHighlights = matchups.filter((m) => m.wins + m.losses >= 1);
-  const nemeses = [...qualifiedForHighlights]
-    .sort((a, b) => a.winRate - b.winRate || b.matchesAgainst - a.matchesAgainst)
-    .slice(0, 3);
+  const nemeses = useMemo(() => {
+    return [...qualifiedForHighlights]
+      .sort((a, b) => a.winRate - b.winRate || b.matchesAgainst - a.matchesAgainst)
+      .slice(0, 3);
+  }, [qualifiedForHighlights]);
 
   // Favorable matchups (highest winrate)
-  const favorable = [...qualifiedForHighlights]
-    .sort((a, b) => b.winRate - a.winRate || b.matchesAgainst - a.matchesAgainst)
-    .slice(0, 3);
+  const favorable = useMemo(() => {
+    return [...qualifiedForHighlights]
+      .sort((a, b) => b.winRate - a.winRate || b.matchesAgainst - a.matchesAgainst)
+      .slice(0, 3);
+  }, [qualifiedForHighlights]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

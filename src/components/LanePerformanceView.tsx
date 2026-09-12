@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import {
@@ -21,12 +21,17 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
   const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
 
   // Distinct heroes piloted by player
-  const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
-  const playedHeroes = playedHeroIds
-    .map((id) => getHeroById(id))
-    .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  const playedHeroes = useMemo(() => {
+    const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
+    return playedHeroIds
+      .map((id) => getHeroById(id))
+      .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  }, [matches]);
 
-  const laneStats: LaneAnalyticsSummary = calculateLaneAnalytics(matches, selectedPlayerHeroId);
+  const laneStats: LaneAnalyticsSummary = useMemo(
+    () => calculateLaneAnalytics(matches, selectedPlayerHeroId),
+    [matches, selectedPlayerHeroId]
+  );
 
   const selectedHeroObj = selectedPlayerHeroId ? getHeroById(selectedPlayerHeroId) : null;
 

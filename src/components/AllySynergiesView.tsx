@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import {
@@ -27,35 +27,46 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   // Find all distinct heroes piloted by the player
-  const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
-  const playedHeroes = playedHeroIds
-    .map((id) => getHeroById(id))
-    .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  const playedHeroes = useMemo(() => {
+    const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
+    return playedHeroIds
+      .map((id) => getHeroById(id))
+      .filter((h): h is NonNullable<typeof h> => h !== undefined);
+  }, [matches]);
 
   // Calculate synergies based on the selected hero or overall
-  const synergies = calculateAllySynergies(matches, selectedPlayerHeroId);
+  const synergies = useMemo(() => {
+    return calculateAllySynergies(matches, selectedPlayerHeroId);
+  }, [matches, selectedPlayerHeroId]);
 
   // Sort synergies
-  const sortedSynergies = [...synergies].sort((a, b) => {
-    let diff = 0;
-    if (sortField === 'matches') diff = b.matchesWith - a.matchesWith;
-    else if (sortField === 'winRate') diff = b.winRate - a.winRate;
-    else if (sortField === 'wins') diff = b.wins - a.wins;
-    return sortAsc ? -diff : diff;
-  });
+  const sortedSynergies = useMemo(() => {
+    return [...synergies].sort((a, b) => {
+      let diff = 0;
+      if (sortField === 'matches') diff = b.matchesWith - a.matchesWith;
+      else if (sortField === 'winRate') diff = b.winRate - a.winRate;
+      else if (sortField === 'wins') diff = b.wins - a.wins;
+      return sortAsc ? -diff : diff;
+    });
+  }, [synergies, sortField, sortAsc]);
 
   // Calculate Highlights (at least 1 match played together)
-  const qualifiedForHighlights = synergies.filter((s) => s.wins + s.losses >= 1);
+  const qualifiedForHighlights = useMemo(() => {
+    return synergies.filter((s) => s.wins + s.losses >= 1);
+  }, [synergies]);
 
-  // Best Synergies (highest winrate)
-  const bestSynergies = [...qualifiedForHighlights]
-    .sort((a, b) => b.winRate - a.winRate || b.matchesWith - a.matchesWith)
-    .slice(0, 3);
+  const bestSynergies = useMemo(() => {
+    return [...qualifiedForHighlights]
+      .sort((a, b) => b.winRate - a.winRate || b.matchesWith - a.matchesWith)
+      .slice(0, 3);
+  }, [qualifiedForHighlights]);
 
-  // Anti-Synergies (lowest winrate)
-  const antiSynergies = [...qualifiedForHighlights]
-    .sort((a, b) => a.winRate - b.winRate || b.matchesWith - a.matchesWith)
-    .slice(0, 3);
+  // Calculate Anti-Synergies (worst teammates)
+  const antiSynergies = useMemo(() => {
+    return [...qualifiedForHighlights]
+      .sort((a, b) => a.winRate - b.winRate || b.matchesWith - a.matchesWith)
+      .slice(0, 3);
+  }, [qualifiedForHighlights]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
