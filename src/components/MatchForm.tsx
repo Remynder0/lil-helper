@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { HeroAvatar } from './HeroAvatar';
 import { HeroPicker } from './HeroPicker';
 import { getHeroById } from '../data/heroes';
+import artDecoBadge from '../assets/art-deco/badge.svg';
+import victorianDivider from '../assets/victorian-metal/divider.svg';
 import {
   Match,
   MatchDraftInput,
@@ -213,7 +215,12 @@ export const MatchForm: React.FC<MatchFormProps> = ({
       )}
 
       {/* Top Banner: Faction Selector & Outcome Selection */}
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="steam-glass steam-panel rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 border border-deadlock-border/80 shadow-lg relative overflow-hidden">
+        {/* Subtle decorative gear in corner */}
+        <div className="absolute right-3 -top-3 pointer-events-none opacity-20">
+          <img src={artDecoBadge} alt="" aria-hidden="true" className="w-16 h-16 animate-[spin_20s_linear_infinite] opacity-60" />
+        </div>
+
         {/* Faction Choice */}
         <div className="flex flex-col items-start gap-1.5 w-full md:w-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-deadlock-muted">
@@ -226,7 +233,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all ${
                 side === 'hidden_king'
                   ? 'bg-deadlock-hidden-king text-black shadow-md shadow-deadlock-hidden-king/25 ring-1 ring-deadlock-hidden-king-light'
-                  : 'text-deadlock-muted hover:text-white'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               <Shield className="w-4 h-4" />
@@ -238,7 +245,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all ${
                 side === 'archmother'
                   ? 'bg-deadlock-archmother text-black shadow-md shadow-deadlock-archmother/25 ring-1 ring-deadlock-archmother-light'
-                  : 'text-deadlock-muted hover:text-white'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -270,7 +277,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               onClick={() => setResult('loss')}
               className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all ${
                 result === 'loss'
-                  ? 'bg-deadlock-loss text-white shadow-md shadow-deadlock-loss/30 ring-1 ring-red-400'
+                  ? 'bg-deadlock-loss text-deadlock-steam shadow-md shadow-deadlock-loss/30 ring-1 ring-red-400'
                   : 'text-deadlock-muted hover:text-red-400'
               }`}
             >
@@ -297,9 +304,9 @@ export const MatchForm: React.FC<MatchFormProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Your Team (My Hero + 5 Allies) */}
         <div
-          className={`bg-deadlock-panel border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
+          className={`steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 transition-colors ${
             activeSection === 'my_hero' || activeSection === 'allies'
-              ? 'border-deadlock-border ring-1 ring-white/20'
+              ? 'border-deadlock-brass/70 ring-1 ring-deadlock-brass/30 shadow-[0_0_15px_rgba(184,115,51,0.2)]'
               : 'border-deadlock-border/70'
           }`}
         >
@@ -310,7 +317,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                   side === 'hidden_king' ? 'bg-deadlock-hidden-king' : 'bg-deadlock-archmother'
                 }`}
               />
-              <h3 className="text-sm font-bold text-gray-100">
+              <h3 className="text-sm font-bold text-deadlock-steam">
                 YOUR TEAM ({side === 'hidden_king' ? 'The Hidden King' : 'The Archmother'})
               </h3>
             </div>
@@ -326,7 +333,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               className={`cursor-pointer rounded-xl p-2 flex flex-col items-center gap-1 border-2 transition-all ${
                 activeSection === 'my_hero'
                   ? 'border-white bg-white/5 ring-2 ring-white/20'
-                  : 'border-deadlock-border/80 hover:border-gray-400'
+                  : 'border-deadlock-border hover:border-deadlock-brass'
               }`}
             >
               <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-hidden-king">
@@ -349,7 +356,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               className={`flex-1 cursor-pointer rounded-xl p-2 flex flex-col gap-1 border-2 transition-all ${
                 activeSection === 'allies'
                   ? 'border-white bg-white/5 ring-2 ring-white/20'
-                  : 'border-deadlock-border/80 hover:border-gray-400'
+                  : 'border-deadlock-border hover:border-deadlock-brass'
               }`}
             >
               <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-muted">
@@ -378,10 +385,10 @@ export const MatchForm: React.FC<MatchFormProps> = ({
         {/* Enemy Team (6 Enemies) */}
         <div
           onClick={() => setActiveSection('enemies')}
-          className={`cursor-pointer bg-deadlock-panel border rounded-xl p-4 flex flex-col gap-3 transition-colors ${
+          className={`cursor-pointer steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 transition-colors ${
             activeSection === 'enemies'
-              ? 'border-white bg-white/5 ring-1 ring-white/20'
-              : 'border-deadlock-border/70 hover:border-gray-400'
+              ? 'border-deadlock-brass/70 ring-1 ring-deadlock-brass/30 shadow-[0_0_15px_rgba(184,115,51,0.2)]'
+              : 'border-deadlock-border/70 hover:border-deadlock-brass/40'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-deadlock-border/60">
@@ -391,7 +398,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                   enemySide === 'hidden_king' ? 'bg-deadlock-hidden-king' : 'bg-deadlock-archmother'
                 }`}
               />
-              <h3 className="text-sm font-bold text-gray-100">
+              <h3 className="text-sm font-bold text-deadlock-steam">
                 ENEMY TEAM ({enemySide === 'hidden_king' ? 'The Hidden King' : 'The Archmother'})
               </h3>
             </div>
@@ -441,12 +448,14 @@ export const MatchForm: React.FC<MatchFormProps> = ({
         accentColor={activeSection === 'enemies' ? enemySide : side}
       />
 
+      <img src={victorianDivider} alt="" aria-hidden="true" className="w-full h-4 object-cover my-4 opacity-80" />
+
       {/* Lane Assignment & Matchup */}
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col gap-4">
+      <div className="steam-glass steam-panel rounded-xl p-5 flex flex-col gap-4 border border-deadlock-border/80">
         <div className="flex items-center justify-between pb-2 border-b border-deadlock-border/60">
           <div className="flex items-center gap-2">
             <Compass className="w-4 h-4 text-deadlock-accent" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-200">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
               Lane Assignment & Matchup (Optional)
             </h3>
           </div>
@@ -459,7 +468,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                 setLaneOpponents([]);
                 setLaneOutcome(null);
               }}
-              className="text-[11px] text-deadlock-muted hover:text-white transition-colors"
+              className="text-[11px] text-deadlock-muted hover:text-deadlock-steam transition-colors"
             >
               Clear Lane Data
             </button>
@@ -540,8 +549,8 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                         onClick={() => setLaneAllyId(isSelected ? null : allyId)}
                         className={`flex items-center gap-1.5 p-1.5 pr-2.5 rounded-lg border text-xs transition-all ${
                           isSelected
-                            ? 'bg-deadlock-archmother/20 border-deadlock-archmother text-white ring-1 ring-deadlock-archmother/50'
-                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                            ? 'bg-deadlock-archmother/20 border-deadlock-archmother text-deadlock-steam ring-1 ring-deadlock-archmother/50'
+                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam'
                         }`}
                       >
                         <HeroAvatar heroId={allyId} size="xs" />
@@ -580,8 +589,8 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                         }}
                         className={`flex items-center gap-1.5 p-1.5 pr-2.5 rounded-lg border text-xs transition-all ${
                           isSelected
-                            ? 'bg-deadlock-hidden-king/20 border-deadlock-hidden-king text-white ring-1 ring-deadlock-hidden-king/50'
-                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                            ? 'bg-deadlock-hidden-king/20 border-deadlock-hidden-king text-deadlock-steam ring-1 ring-deadlock-hidden-king/50'
+                            : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam'
                         }`}
                       >
                         <HeroAvatar heroId={enemyId} size="xs" />
@@ -614,7 +623,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
                         : outcome === 'lost'
                         ? 'bg-deadlock-loss/20 border-deadlock-loss text-deadlock-loss shadow-sm'
                         : 'bg-yellow-500/20 border-yellow-500 text-yellow-300 shadow-sm'
-                      : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                      : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam'
                   }`}
                 >
                   {LANE_OUTCOME_LABELS[outcome]}
@@ -626,7 +635,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
       </div>
 
       {/* Notes & Actions */}
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-5 flex flex-col gap-3 border border-deadlock-border/80">
         <label className="text-xs font-semibold uppercase tracking-wider text-deadlock-muted">
           Match Notes (Optional)
         </label>
@@ -635,7 +644,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
           onChange={(e) => setNotes(e.target.value)}
           placeholder="e.g. Tough lane matchup against Vindicta, won team fights in mid-game..."
           rows={2}
-          className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg p-3 text-xs text-gray-200 placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-muted resize-none transition-colors"
+          className="w-full bg-deadlock-card border border-deadlock-border rounded-lg p-3 text-xs text-deadlock-steam placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent resize-none transition-colors"
         />
 
         {/* Validation Errors */}
@@ -653,7 +662,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
           </div>
         )}
 
-        {/* Success Alert */}
+        {/* Success Feedback */}
         {successMessage && (
           <div className="bg-green-950/40 border border-green-800/80 rounded-lg p-3 flex items-center gap-2 text-xs text-green-200">
             <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
@@ -667,7 +676,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
             <button
               type="button"
               onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-deadlock-muted hover:text-white hover:bg-deadlock-border/40 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-border/40 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Draft</span>
@@ -676,7 +685,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-3 py-2 rounded-lg text-xs font-medium text-deadlock-muted hover:text-white transition-colors"
+                className="px-3 py-2 rounded-lg text-xs font-medium text-deadlock-muted hover:text-deadlock-steam transition-colors"
               >
                 Cancel
               </button>
@@ -690,7 +699,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-gray-200 shadow-lg shadow-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-steampunk-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               <span>{isSubmitting ? 'Saving...' : editingMatch ? 'Update Match' : 'Save Match'}</span>

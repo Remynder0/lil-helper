@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import artDecoCorner from '../assets/art-deco/corner.svg';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import { EnemyMatchupsView } from './EnemyMatchupsView';
@@ -62,9 +63,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
 
   if (matches.length === 0) {
     return (
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
         <Gamepad2 className="w-12 h-12 text-deadlock-muted opacity-40" />
-        <h2 className="text-lg font-bold text-gray-200">No match data available yet</h2>
+        <h2 className="text-lg font-bold text-deadlock-steam">No match data available yet</h2>
         <p className="text-sm text-deadlock-muted max-w-md">
           Start recording your matches in the <strong>Log Match</strong> tab to unlock comprehensive stats, patron win rates, and hero performance tracking.
         </p>
@@ -73,17 +74,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
   }
 
   return (
+    <div className="relative">
+      {/* Art Déco corner ornaments */}
+      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50" />
+      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute top-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100" />
+      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute bottom-0 left-0 w-14 h-14 pointer-events-none opacity-50 -scale-y-100" />
+      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute bottom-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 -scale-y-100" />
+
     <div className="flex flex-col gap-6">
       {/* Subtab Navigation */}
       <div className="flex items-center justify-between border-b border-deadlock-border pb-3">
-        <div className="flex items-center gap-2 bg-deadlock-panel p-1 rounded-lg border border-deadlock-border flex-wrap">
+        <div className="flex items-center gap-2 bg-deadlock-panel/80 backdrop-blur-sm steam-card p-1 rounded-lg border border-deadlock-border flex-wrap">
           <button
             type="button"
             onClick={() => setSubTab('overview')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
               subTab === 'overview'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
+                : 'text-deadlock-muted hover:text-deadlock-steam'
             }`}
           >
             <BarChart2 className="w-3.5 h-3.5" />
@@ -94,8 +102,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             onClick={() => setSubTab('matchups')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
               subTab === 'matchups'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
+                : 'text-deadlock-muted hover:text-deadlock-steam'
             }`}
           >
             <Swords className="w-3.5 h-3.5" />
@@ -106,8 +114,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             onClick={() => setSubTab('synergies')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
               subTab === 'synergies'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
+                : 'text-deadlock-muted hover:text-deadlock-steam'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -118,8 +126,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             onClick={() => setSubTab('lanes')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
               subTab === 'lanes'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
+                : 'text-deadlock-muted hover:text-deadlock-steam'
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
@@ -141,19 +149,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
       {/* SECTION 1: GLOBAL STATS CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {/* Total Matches */}
-        <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col justify-between">
+        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
             <span>Total Matches</span>
             <Gamepad2 className="w-4 h-4 text-deadlock-muted" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-white">{globalStats.totalMatches}</span>
+            <span className="text-2xl font-black text-deadlock-steam">{globalStats.totalMatches}</span>
             <span className="text-xs text-deadlock-muted">recorded</span>
           </div>
         </div>
 
         {/* Global Winrate */}
-        <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col justify-between">
+        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
             <span>Win Rate</span>
             <TrendingUp className="w-4 h-4 text-deadlock-win" />
@@ -165,7 +173,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
                   ? 'text-deadlock-win'
                   : globalStats.totalMatches > 0
                   ? 'text-deadlock-loss'
-                  : 'text-white'
+                  : 'text-deadlock-steam'
               }`}
             >
               {globalStats.totalWins + globalStats.totalLosses > 0 ? `${globalStats.winRate}%` : 'N/A'}
@@ -177,7 +185,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
         </div>
 
         {/* Victories */}
-        <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col justify-between">
+        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
             <span>Victories</span>
             <Trophy className="w-4 h-4 text-deadlock-win" />
@@ -193,7 +201,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
         </div>
 
         {/* Defeats & Cancels */}
-        <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col justify-between">
+        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
             <span>Losses & Cancels</span>
             <div className="flex items-center gap-1">
@@ -204,24 +212,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-deadlock-loss">{globalStats.totalLosses}</span>
             <span className="text-xs text-deadlock-muted">
-              loss{globalStats.totalLosses !== 1 ? 'es' : ''} / <strong className="text-gray-300">{globalStats.totalCancels}</strong> cancelled
+              loss{globalStats.totalLosses !== 1 ? 'es' : ''} / <strong className="text-deadlock-steam">{globalStats.totalCancels}</strong> cancelled
             </span>
           </div>
         </div>
       </div>
 
       {/* SECTION 2: PATRON PERFORMANCE COMPARISON */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-5">
+      <div className="steam-glass steam-panel rounded-xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <Crown className="w-5 h-5 text-deadlock-hidden-king" />
-          <h2 className="text-sm font-bold tracking-wide uppercase text-gray-200">
+          <h2 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
             Patron Faction Performance
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* The Hidden King */}
-          <div className="bg-deadlock-dark/70 border border-deadlock-hidden-king/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="bg-deadlock-card/80 border border-deadlock-hidden-king/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-28 h-28 bg-deadlock-hidden-king/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -235,7 +243,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
 
             <div className="flex items-center justify-between mt-1">
               <div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-3xl font-black text-deadlock-steam">
                   {patronStats.hiddenKing.wins + patronStats.hiddenKing.losses > 0
                     ? `${patronStats.hiddenKing.winRate}%`
                     : 'N/A'}
@@ -262,7 +270,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
           </div>
 
           {/* The Archmother */}
-          <div className="bg-deadlock-dark/70 border border-deadlock-archmother/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="bg-deadlock-card/80 border border-deadlock-archmother/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-28 h-28 bg-deadlock-archmother/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -276,7 +284,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
 
             <div className="flex items-center justify-between mt-1">
               <div>
-                <div className="text-3xl font-black text-white">
+                <div className="text-3xl font-black text-deadlock-steam">
                   {patronStats.archmother.wins + patronStats.archmother.losses > 0
                     ? `${patronStats.archmother.winRate}%`
                     : 'N/A'}
@@ -305,10 +313,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
       </div>
 
       {/* SECTION 3: HERO PERFORMANCE BREAKDOWN TABLE */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold tracking-wide uppercase text-gray-200">
+            <h2 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
               Hero Performance Breakdown
             </h2>
             <p className="text-xs text-deadlock-muted mt-0.5">
@@ -324,12 +332,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-deadlock-dark/60 text-deadlock-muted border-b border-deadlock-border/60">
+            <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
               <tr>
                 <th className="py-3 px-4 font-semibold">Hero</th>
                 <th
                   onClick={() => handleSort('matches')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     <span>Matches</span>
@@ -340,7 +348,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
                 </th>
                 <th
                   onClick={() => handleSort('wins')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors"
+                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     <span>Record (W / L / C)</span>
@@ -351,7 +359,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
                 </th>
                 <th
                   onClick={() => handleSort('winRate')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors text-right"
+                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors text-right"
                 >
                   <div className="flex items-center justify-end gap-1">
                     <span>Win Rate</span>
@@ -368,14 +376,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
                 return (
                   <tr
                     key={hp.heroId}
-                    className="hover:bg-deadlock-dark/30 transition-colors"
+                    className="hover:bg-deadlock-card/40 transition-colors"
                   >
                     {/* Hero Info */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <HeroAvatar heroId={hp.heroId} size="xs" />
                         <div>
-                          <div className="font-bold text-gray-200 text-sm">
+                          <div className="font-bold text-deadlock-steam text-sm">
                             {hp.hero?.name || `Hero #${hp.heroId}`}
                           </div>
                           <div className="text-[11px] text-deadlock-muted capitalize">
@@ -386,7 +394,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
                     </td>
 
                     {/* Total Matches */}
-                    <td className="py-3 px-4 font-mono font-medium text-gray-300">
+                    <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
                       {hp.matches}
                     </td>
 
@@ -437,6 +445,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
       </div>
         </>
       )}
+    </div>
     </div>
   );
 };

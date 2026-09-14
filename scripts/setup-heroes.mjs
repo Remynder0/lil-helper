@@ -18,6 +18,9 @@ async function run() {
 
   const heroRecords = [];
 
+  const bgDir = path.resolve('public/heroes/backgrounds');
+  fs.mkdirSync(bgDir, { recursive: true });
+
   for (const h of activeHeroes) {
     const slug = h.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const imgUrl = h.images?.icon_image_small_webp || h.images?.icon_hero_card_webp;
@@ -35,6 +38,28 @@ async function run() {
       }
     }
 
+    // Download hero background image for the dynamic app wallpaper feature
+    const bgUrl = h.images?.background_image_webp;
+    const bgLocalName = `${slug}_bg.webp`;
+    const bgLocalPath = path.join(bgDir, bgLocalName);
+    let hasBackground = false;
+
+    if (bgUrl && !fs.existsSync(bgLocalPath)) {
+      try {
+        const bgRes = await fetch(bgUrl);
+        if (bgRes.ok) {
+          const buffer = await bgRes.arrayBuffer();
+          fs.writeFileSync(bgLocalPath, Buffer.from(buffer));
+          console.log(`✓ Downloaded ${h.name} background (${buffer.byteLength} bytes)`);
+          hasBackground = true;
+        }
+      } catch (err) {
+        console.warn(`Could not download background for ${h.name}:`, err.message);
+      }
+    } else if (fs.existsSync(bgLocalPath)) {
+      hasBackground = true;
+    }
+
     heroRecords.push({
       id: h.id,
       key: slug,
@@ -43,6 +68,7 @@ async function run() {
       role: h.description?.role || h.hero_type || 'Unknown',
       heroType: h.hero_type || 'brawler',
       iconUrl: `/heroes/${localImgName}`,
+      backgroundUrl: hasBackground ? `/heroes/backgrounds/${bgLocalName}` : null,
       tags: h.tags || [],
       gunTag: h.gun_tag || '',
       complexity: h.complexity || 1,
@@ -60,6 +86,7 @@ export interface Hero {
   role: string;
   heroType: 'brawler' | 'marksman' | 'mystic' | 'assassin' | string;
   iconUrl: string;
+  backgroundUrl?: string | null;
   tags: string[];
   gunTag: string;
   complexity: number;

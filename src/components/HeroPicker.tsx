@@ -68,7 +68,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
     if (accentColor === 'archmother') {
       return 'border-deadlock-archmother ring-2 ring-deadlock-archmother/50 shadow-lg shadow-deadlock-archmother/25 scale-105';
     }
-    return 'border-white ring-2 ring-white/50 scale-105';
+    return 'border-deadlock-accent ring-2 ring-deadlock-accent/50 scale-105';
   };
 
   const getBadgeColor = () => {
@@ -78,7 +78,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
   };
 
   return (
-    <div className={`bg-deadlock-panel/80 backdrop-blur border border-deadlock-border rounded-xl p-4 flex flex-col gap-3 ${className}`}>
+    <div className={`steam-card bg-deadlock-panel/80 backdrop-blur border border-deadlock-border rounded-xl p-4 flex flex-col gap-3 ${className}`}>
       {/* Header with Title & Search Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-deadlock-border/60">
         <div>
@@ -94,13 +94,13 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search hero..."
-            className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg pl-8 pr-7 py-1.5 text-xs text-gray-200 placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-muted transition-colors"
+            className="w-full bg-deadlock-card border border-deadlock-border rounded-lg pl-8 pr-7 py-1.5 text-xs text-deadlock-steam placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent transition-colors"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-deadlock-muted hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-deadlock-muted hover:text-deadlock-steam"
               title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -120,7 +120,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-deadlock-border text-white shadow-sm'
+                  ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm'
                   : 'text-deadlock-muted hover:text-gray-300 hover:bg-deadlock-border/40'
               }`}
             >
@@ -152,7 +152,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
                   ? 'opacity-25 grayscale cursor-not-allowed border-transparent'
                   : isSelected
                   ? `${getSelectedStyles()} bg-deadlock-dark/80 z-10`
-                  : 'border-deadlock-border/40 hover:border-gray-400 bg-deadlock-dark/40 hover:bg-deadlock-dark/90 hover:scale-105'
+                  : 'border-deadlock-border/40 hover:border-deadlock-brass bg-deadlock-dark/40 hover:bg-deadlock-dark/90 hover:scale-105'
               }`}
             >
               {/* Hero Portrait */}
@@ -180,7 +180,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
               {/* Hero Name */}
               <span
                 className={`mt-1 text-[11px] font-medium truncate max-w-full text-center ${
-                  isSelected ? 'text-white font-bold' : 'text-gray-300 group-hover:text-white'
+                  isSelected ? 'text-deadlock-steam font-bold' : 'text-gray-300 group-hover:text-deadlock-steam'
                 }`}
               >
                 {hero.name}

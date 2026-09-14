@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Terminal, Eye, X } from 'lucide-react';
 import { ScreenScanResult } from '../../services/screenOcr';
 
@@ -17,7 +17,7 @@ export const OcrInspectorModal: React.FC<OcrInspectorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-deadlock-border bg-black/40">
           <div className="flex items-center gap-3">
@@ -25,7 +25,7 @@ export const OcrInspectorModal: React.FC<OcrInspectorModalProps> = ({
               <Terminal className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <h3 className="text-sm font-bold text-deadlock-steam uppercase tracking-wider flex items-center gap-2">
                 <span>OCR Diagnostic Log</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
                   {lastScanResult.allies.length} Allies / {lastScanResult.enemies.length} Enemies
@@ -40,7 +40,7 @@ export const OcrInspectorModal: React.FC<OcrInspectorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-deadlock-steam hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -132,7 +132,7 @@ export const OcrInspectorModal: React.FC<OcrInspectorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-deadlock-accent text-black font-bold text-xs hover:bg-yellow-400 transition-colors"
+            className="px-4 py-2 rounded-lg bg-deadlock-accent text-deadlock-dark font-bold text-xs hover:bg-deadlock-brass transition-colors"
           >
             Close
           </button>

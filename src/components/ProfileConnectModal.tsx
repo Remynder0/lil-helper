@@ -59,7 +59,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Modal Header */}
         <div className="px-5 py-4 border-b border-deadlock-border/80 flex items-center justify-between bg-deadlock-dark/60">
           <div className="flex items-center gap-2.5">
@@ -78,7 +78,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-deadlock-muted hover:text-white hover:bg-deadlock-dark transition-colors"
+            className="p-1.5 rounded-lg text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-dark transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -102,7 +102,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-white">
+                    <span className="font-black text-sm text-deadlock-steam">
                       {currentProfile.personaName}
                     </span>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-deadlock-win/20 text-deadlock-win border border-deadlock-win/40">
@@ -126,7 +126,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                     href={currentProfile.profileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[10px] text-deadlock-muted hover:text-white flex items-center gap-1"
+                    className="text-[10px] text-deadlock-muted hover:text-deadlock-steam flex items-center gap-1"
                   >
                     <span>Steam</span>
                     <ExternalLink className="w-2.5 h-2.5" />
@@ -160,13 +160,13 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="e.g. Mika or 202670018..."
-                  className="w-full bg-deadlock-dark border border-deadlock-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-deadlock-muted focus:outline-none focus:border-deadlock-accent transition-colors"
+                  className="w-full bg-deadlock-card border border-deadlock-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-deadlock-steam placeholder-deadlock-muted focus:outline-none focus:border-deadlock-accent transition-colors"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSearching || !searchQuery.trim()}
-                className="px-4 py-2.5 rounded-xl bg-deadlock-accent text-black font-bold text-xs hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-md shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-deadlock-accent text-deadlock-dark hover:bg-deadlock-brass font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-md shrink-0"
               >
                 {isSearching ? (
                   <>
@@ -223,7 +223,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                             </div>
                           )}
                           <div className="min-w-0">
-                            <div className="text-xs font-bold text-white truncate">
+                            <div className="text-xs font-bold text-deadlock-steam truncate">
                               {result.personaname}
                             </div>
                             <div className="text-[10px] text-deadlock-muted font-mono">

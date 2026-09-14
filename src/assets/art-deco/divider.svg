@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40" fill="none">
+  <defs>
+    <linearGradient id="add-g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b87333" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#b87333"/>
+      <stop offset="50%" stop-color="#e8c06a"/>
+      <stop offset="70%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#b87333" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Main horizontal lines -->
+  <line x1="20" y1="20" x2="380" y2="20" stroke="url(#add-g)" stroke-width="1.5"/>
+  <line x1="40" y1="17" x2="360" y2="17" stroke="#c4956a" stroke-width="0.6" opacity="0.5"/>
+  <line x1="40" y1="23" x2="360" y2="23" stroke="#c4956a" stroke-width="0.6" opacity="0.5"/>
+  <!-- Central diamond motif -->
+  <polygon points="200,8 212,20 200,32 188,20" fill="none" stroke="#e8c06a" stroke-width="1.5"/>
+  <polygon points="200,12 208,20 200,28 192,20" fill="#b87333" opacity="0.6"/>
+  <circle cx="200" cy="20" r="2.5" fill="#e8c06a"/>
+  <!-- Stepped ziggurat flanks — left -->
+  <rect x="155" y="16" width="20" height="8" fill="none" stroke="#b87333" stroke-width="0.8"/>
+  <rect x="160" y="14" width="10" height="12" fill="none" stroke="#c4956a" stroke-width="0.6" opacity="0.6"/>
+  <!-- Stepped ziggurat flanks — right -->
+  <rect x="225" y="16" width="20" height="8" fill="none" stroke="#b87333" stroke-width="0.8"/>
+  <rect x="230" y="14" width="10" height="12" fill="none" stroke="#c4956a" stroke-width="0.6" opacity="0.6"/>
+  <!-- Zigzag accent left -->
+  <polyline points="80,18 90,22 100,18 110,22 120,18 130,22 140,18" stroke="#e8c06a" stroke-width="0.7" fill="none" opacity="0.5"/>
+  <!-- Zigzag accent right -->
+  <polyline points="260,18 270,22 280,18 290,22 300,18 310,22 320,18" stroke="#e8c06a" stroke-width="0.7" fill="none" opacity="0.5"/>
+  <!-- Terminal diamonds -->
+  <polygon points="50,20 55,17 60,20 55,23" fill="#b87333" opacity="0.6"/>
+  <polygon points="340,20 345,17 350,20 345,23" fill="#b87333" opacity="0.6"/>
+  <!-- Endpoint dots -->
+  <circle cx="30" cy="20" r="2" fill="#c4956a" opacity="0.4"/>
+  <circle cx="370" cy="20" r="2" fill="#c4956a" opacity="0.4"/>
+</svg>

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { LANE_LABELS } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
 import { HeroAvatar } from '../HeroAvatar';
@@ -15,7 +15,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
   myHeroId,
 }) => {
   return (
-    <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
+    <div className="bg-deadlock-panel steam-panel steam-card arcane-glow border border-deadlock-border rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
       <div className="flex items-center justify-between pb-3 border-b border-deadlock-border/60">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-deadlock-accent" />
@@ -26,7 +26,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
         {bestActionsAdvisor && myHeroId && (
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-deadlock-muted">Current projected WR:</span>
-            <span className="font-black px-2 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-200">
+            <span className="font-black px-2 py-0.5 rounded bg-deadlock-card border border-deadlock-border text-gray-200">
               {bestActionsAdvisor.currentProjectedWinRate}% WR
             </span>
           </div>
@@ -53,7 +53,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
             <div className="w-full overflow-x-auto py-2">
               <div className="min-w-[700px] flex items-center">
                 {/* ROOT NODE: Current Hero + Current Lane + Current Projected WR */}
-                <div className="flex flex-col items-center p-3 rounded-xl bg-deadlock-dark border-2 border-deadlock-border shrink-0 w-[140px] shadow-md z-10">
+                <div className="flex flex-col items-center p-3 rounded-xl bg-deadlock-card border-2 border-deadlock-border shrink-0 w-[140px] shadow-md z-10">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-deadlock-muted mb-1.5 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-deadlock-accent animate-pulse" />
                     Current
@@ -89,12 +89,12 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                     </div>
 
                     {/* TARGET NODE */}
-                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-dark to-deadlock-dark border-2 border-deadlock-win/50 flex-1 shadow-md">
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-card to-deadlock-card border-2 border-deadlock-win/50 flex-1 shadow-md">
                       <div className="flex items-center gap-3">
                         <HeroAvatar heroId={bestOverall.heroId} size="md" isHighlighted />
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-black text-white">
+                            <span className="text-sm font-black text-deadlock-steam">
                               {bestOverall.hero?.name}
                             </span>
                             <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
@@ -160,7 +160,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                       </div>
 
                       {/* +XX% Badge on Bottom Branch (Without Swap) */}
-                      <div className="absolute bottom-[18px] left-[45px] px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-black font-mono shadow-md whitespace-nowrap">
+                      <div className="absolute bottom-[18px] left-[45px] px-2 py-0.5 rounded-full bg-blue-500 text-deadlock-steam text-[10px] font-black font-mono shadow-md whitespace-nowrap">
                         {bestSafe.deltaVsCurrent >= 0
                           ? `+${bestSafe.deltaVsCurrent}%`
                           : `${bestSafe.deltaVsCurrent}%`}
@@ -170,7 +170,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                     {/* BRANCH CARDS */}
                     <div className="flex flex-col gap-3.5 flex-1">
                       {/* BRANCH 1: OPTION 1 (MAX WR WITH LANE SWAP) */}
-                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-dark to-deadlock-dark border-2 border-deadlock-win/50 shadow-md">
+                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-card to-deadlock-card border-2 border-deadlock-win/50 shadow-md">
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col min-w-[80px]">
                             <span className="text-[10px] font-black uppercase tracking-wider text-deadlock-win flex items-center gap-1">
@@ -229,7 +229,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                       </div>
 
                       {/* BRANCH 2: OPTION 2 (WITHOUT SWAP / IF REFUSED) */}
-                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-blue-500/15 via-deadlock-dark to-deadlock-dark border-2 border-blue-500/40 shadow-md">
+                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-blue-500/15 via-deadlock-card to-deadlock-card border-2 border-blue-500/40 shadow-md">
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col min-w-[80px]">
                             <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">

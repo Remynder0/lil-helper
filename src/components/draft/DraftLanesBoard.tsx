@@ -1,4 +1,5 @@
-﻿import React from 'react';
+import React from 'react';
+import occultDivider from '../../assets/occult/divider.svg';
 import { LaneColor, LANE_LABELS } from '../../types/match';
 import { HeroAvatar } from '../HeroAvatar';
 import { Compass, Users, Swords } from 'lucide-react';
@@ -43,17 +44,12 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
         {(['yellow', 'blue', 'green'] as const).map((laneColor) => {
           const laneData = lanes[laneColor];
           const isMyLane = assignedLane === laneColor;
-          const borderColor =
-            laneColor === 'yellow'
-              ? 'border-yellow-500/40'
-              : laneColor === 'blue'
-              ? 'border-blue-500/40'
-              : 'border-emerald-500/40';
+          const borderColor = 'border-deadlock-brass/40';
 
           return (
             <div
               key={laneColor}
-              className={`bg-deadlock-panel border rounded-xl p-4 flex flex-col gap-3 transition-all ${borderColor} ${
+              className={`bg-deadlock-panel steam-card border rounded-xl p-4 flex flex-col gap-3 transition-all ${borderColor} ${
                 isMyLane ? 'ring-2 ring-deadlock-accent/60 shadow-lg shadow-deadlock-accent/10' : ''
               }`}
             >
@@ -79,8 +75,8 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                   onClick={() => onSetAssignedLane(laneColor)}
                   className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${
                     isMyLane
-                      ? 'bg-deadlock-accent border-deadlock-accent text-white shadow-sm'
-                      : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white'
+                      ? 'bg-deadlock-accent border-deadlock-accent text-deadlock-steam shadow-sm'
+                      : 'bg-deadlock-card border-deadlock-border text-deadlock-muted hover:text-deadlock-steam'
                   }`}
                 >
                   {isMyLane ? '★ Your Lane' : 'Set as My Lane'}
@@ -88,7 +84,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
               </div>
 
               {/* Allies on this lane (2 slots) */}
-              <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-deadlock-dark/60 border border-deadlock-border/60">
+              <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-deadlock-card/60 border border-deadlock-border/60">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-archmother flex items-center gap-1">
                   <Users className="w-3 h-3" /> Allied Duo
                 </span>
@@ -141,8 +137,11 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                 </div>
               </div>
 
+              {/* Occult divider between sides */}
+              <img src={occultDivider} alt="" aria-hidden="true" className="w-full h-3 object-cover opacity-60" />
+
               {/* Enemies on this lane (2 slots) */}
-              <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-deadlock-dark/60 border border-deadlock-border/60">
+              <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-deadlock-card/60 border border-deadlock-border/60">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-hidden-king flex items-center gap-1">
                   <Swords className="w-3 h-3" /> Enemy Duo
                 </span>

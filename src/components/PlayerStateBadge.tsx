@@ -23,7 +23,7 @@ export const PlayerStateBadge: React.FC<PlayerStateBadgeProps> = ({
   if (state === 'in_game') {
     return (
       <div
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 shadow-sm transition-all"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-deadlock-win/15 border border-deadlock-win/40 text-deadlock-win shadow-sm transition-all"
         title={`Playing ${heroName || 'Match'} on ${mapName || 'Midtown'}${
           playerName ? ` (${playerName})` : ''
         }`}
@@ -76,7 +76,7 @@ export const PlayerStateBadge: React.FC<PlayerStateBadgeProps> = ({
   // Disconnected / Offline
   return (
     <div
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-deadlock-border text-deadlock-muted transition-all"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-deadlock-card border border-deadlock-border text-deadlock-muted transition-all"
       title="Deadlock is offline or -condebug log file is not detected"
     >
       <span className="h-2 w-2 rounded-full bg-neutral-600" />

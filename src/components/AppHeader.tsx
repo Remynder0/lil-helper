@@ -1,9 +1,11 @@
-﻿import React from 'react';
-import { History, BarChart2, Brain, User } from 'lucide-react';
+import React from 'react';
+import { History, BarChart2, Brain, User, Gauge } from 'lucide-react';
 import { ConnectedProfile } from '../types/match';
 import { PlayerStateBadge } from './PlayerStateBadge';
 import { ProfileDropdownMenu } from './ProfileDropdownMenu';
 import { ParsedGameContext } from '../services/logWatcher';
+import victorianBadge from '../assets/victorian-metal/badge.svg';
+import artDecoDivider from '../assets/art-deco/divider.svg';
 
 export type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
 
@@ -47,43 +49,64 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenConnectModal,
 }) => {
   return (
-    <header className="border-b border-deadlock-border/80 bg-deadlock-panel/90 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded bg-gradient-to-br from-deadlock-hidden-king to-deadlock-archmother flex items-center justify-center text-black font-extrabold text-sm shadow-md">
-          D
+    <header className="border-b-2 border-deadlock-brass/40 bg-deadlock-panel/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40 steam-panel shadow-[0_4px_20px_rgba(0,0,0,0.7)] relative">
+      {/* Decorative background brass conduit line */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-deadlock-accent/60 to-transparent" />
+
+      {/* Brand & Steampunk Apparatus Emblem */}
+      <div className="flex items-center gap-3 relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-b from-[#d4a373] via-[#b87333] to-[#5a3818] flex items-center justify-center text-deadlock-dark font-black text-base shadow-lg shadow-deadlock-accent/30 ring-1 ring-deadlock-steam/40 border border-[#e8c06a] shrink-0">
+            D
+          </div>
+          {/* Prominent mechanical turning gears */}
+          <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
         </div>
-        <div>
-          <h1 className="text-base font-bold tracking-wide">Deadlock Draft & Match Analyzer</h1>
-          <p className="text-xs text-deadlock-muted">Ranked Matchup & Synergy Companion</p>
+
+        <div className="flex flex-col">
+          <h1 className="text-base font-bold tracking-wide text-deadlock-steam drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            Deadlock Draft & Match Analyzer
+          </h1>
+          <p className="text-xs text-deadlock-muted">
+            Ranked Matchup & Synergy Companion
+          </p>
         </div>
       </div>
 
-      {/* Global Quick Stats */}
-      <div className="flex items-center gap-4 text-xs">
-        <div className="bg-deadlock-dark px-3 py-1.5 rounded-lg border border-deadlock-border flex items-center gap-3">
-          <span className="text-deadlock-muted">
-            Matches: <strong className="text-white">{totalMatches}</strong>
-          </span>
-          <span className="h-3 w-px bg-deadlock-border" />
-          <span className="text-deadlock-muted">
-            Winrate:{' '}
+      {/* Global Quick Stats & Navigation */}
+      <div className="flex items-center gap-4 text-xs relative z-10">
+        {/* Victorian Gauge Stats Plaque */}
+        <div className="brass-plate px-3 py-1.5 rounded-lg flex items-center gap-3 border border-deadlock-border/80">
+          <div className="flex items-center gap-1.5 text-deadlock-muted">
+            <Gauge className="w-3.5 h-3.5 text-deadlock-accent" />
+            <span>Matches: <strong className="text-deadlock-steam font-mono font-bold">{totalMatches}</strong></span>
+          </div>
+          <span className="h-3.5 w-px bg-deadlock-border/80" />
+          <div className="flex items-center gap-1.5 text-deadlock-muted">
+            <span>Winrate:</span>
             <strong
-              className={winRate >= 50 ? 'text-deadlock-win' : totalMatches > 0 ? 'text-deadlock-loss' : 'text-white'}
+              className={`font-mono font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                winRate >= 50
+                  ? 'bg-deadlock-win/20 text-deadlock-win border border-deadlock-win/40 shadow-[0_0_8px_rgba(95,143,122,0.3)]'
+                  : totalMatches > 0
+                  ? 'bg-deadlock-loss/20 text-deadlock-loss border border-deadlock-loss/40 shadow-[0_0_8px_rgba(169,68,66,0.3)]'
+                  : 'text-deadlock-steam'
+              }`}
             >
               {totalMatches > 0 ? `${winRate}%` : 'N/A'}
             </strong>
-          </span>
+          </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
+        {/* Tactile Navigation Tabs */}
+        <div className="flex items-center bg-deadlock-dark/90 p-1 rounded-lg border border-deadlock-brass/40 shadow-inner">
           <button
             type="button"
             onClick={() => onTabChange('history')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
               activeTab === 'history'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'btn-steampunk-primary text-black shadow-md'
+                : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -92,10 +115,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={() => onTabChange('analytics')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
               activeTab === 'analytics'
-                ? 'bg-deadlock-border text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'btn-steampunk-primary text-black shadow-md'
+                : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
             <BarChart2 className="w-3.5 h-3.5" />
@@ -104,10 +127,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={() => onTabChange('assistant')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
               activeTab === 'assistant'
-                ? 'bg-deadlock-accent text-white shadow-sm'
-                : 'text-deadlock-muted hover:text-white'
+                ? 'bg-gradient-to-b from-[#8b5da8] via-[#6b4c8a] to-[#45285c] text-white border border-[#b388eb] shadow-md shadow-purple-900/50'
+                : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
             <Brain className="w-3.5 h-3.5" />
@@ -144,13 +167,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenConnectModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-deadlock-dark border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-deadlock-accent hover:text-white transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-deadlock-dark/80 border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-deadlock-accent hover:text-deadlock-steam transition-all shadow-sm steam-card"
             >
               <User className="w-3.5 h-3.5" />
               <span>Connect Profile</span>
             </button>
           )}
         </div>
+      </div>
+
+      {/* Heavy Steampunk Steam Pipe along bottom edge of header */}
+      <div className="absolute -bottom-1.5 left-0 right-0 pointer-events-none z-30">
+        <img src={artDecoDivider} alt="" aria-hidden="true" className="w-full h-3 object-cover opacity-70" />
       </div>
     </header>
   );

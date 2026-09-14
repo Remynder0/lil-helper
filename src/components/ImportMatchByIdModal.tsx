@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 
 interface ImportMatchByIdModalProps {
@@ -24,16 +24,16 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 relative">
+      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Search className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-white">Import Match by ID</h3>
+            <h3 className="text-base font-bold text-deadlock-steam">Import Match by ID</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-deadlock-muted hover:text-white text-lg p-1"
+            className="text-deadlock-muted hover:text-deadlock-steam text-lg p-1"
           >
             ✕
           </button>
@@ -57,7 +57,7 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
               placeholder="e.g. 105073144"
               value={matchIdInput}
               onChange={(e) => onMatchIdInputChange(e.target.value)}
-              className="bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-2 text-sm text-white font-mono placeholder:text-deadlock-muted focus:outline-none focus:border-deadlock-accent"
+              className="bg-deadlock-card border border-deadlock-border rounded-lg px-3 py-2 text-sm text-deadlock-steam font-mono placeholder:text-deadlock-muted focus:outline-none focus:border-deadlock-accent"
               autoFocus
             />
           </div>
@@ -72,14 +72,14 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs font-semibold text-deadlock-muted hover:text-white rounded-lg transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold text-deadlock-muted hover:text-deadlock-steam rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isImporting || !matchIdInput.trim()}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-deadlock-accent hover:bg-deadlock-accent/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-deadlock-dark bg-deadlock-accent hover:bg-deadlock-brass disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
             >
               {isImporting ? (
                 <>

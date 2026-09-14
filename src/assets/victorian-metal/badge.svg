@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <radialGradient id="vmb-metal" cx="40%" cy="40%">
+      <stop offset="0%" stop-color="#8a7e6b"/>
+      <stop offset="50%" stop-color="#5a4e3c"/>
+      <stop offset="100%" stop-color="#3d3428"/>
+    </radialGradient>
+    <radialGradient id="vmb-brass" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#5a3818"/>
+    </radialGradient>
+    <radialGradient id="vmb-rivet" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="45%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#3d3428"/>
+    </radialGradient>
+  </defs>
+  <!-- Outer gear ring -->
+  <circle cx="50" cy="50" r="44" stroke="#5a4e3c" stroke-width="3" fill="none"/>
+  <circle cx="50" cy="50" r="41" stroke="#3d3428" stroke-width="1" fill="none"/>
+  <!-- Gear teeth (12 teeth) -->
+  <g fill="url(#vmb-metal)">
+    <rect x="46" y="2" width="8" height="8" rx="1"/>
+    <rect x="46" y="90" width="8" height="8" rx="1"/>
+    <rect x="2" y="46" width="8" height="8" rx="1"/>
+    <rect x="90" y="46" width="8" height="8" rx="1"/>
+    <rect x="74" y="9" width="8" height="8" rx="1" transform="rotate(30 78 13)"/>
+    <rect x="86" y="27" width="8" height="8" rx="1" transform="rotate(60 90 31)"/>
+    <rect x="86" y="65" width="8" height="8" rx="1" transform="rotate(-60 90 69)"/>
+    <rect x="74" y="83" width="8" height="8" rx="1" transform="rotate(-30 78 87)"/>
+    <rect x="18" y="83" width="8" height="8" rx="1" transform="rotate(30 22 87)"/>
+    <rect x="6" y="65" width="8" height="8" rx="1" transform="rotate(60 10 69)"/>
+    <rect x="6" y="27" width="8" height="8" rx="1" transform="rotate(-60 10 31)"/>
+    <rect x="18" y="9" width="8" height="8" rx="1" transform="rotate(-30 22 13)"/>
+  </g>
+  <!-- Rivets on outer ring (8) -->
+  <circle cx="50" cy="10" r="2" fill="url(#vmb-rivet)"/>
+  <circle cx="50" cy="90" r="2" fill="url(#vmb-rivet)"/>
+  <circle cx="10" cy="50" r="2" fill="url(#vmb-rivet)"/>
+  <circle cx="90" cy="50" r="2" fill="url(#vmb-rivet)"/>
+  <circle cx="22" cy="22" r="1.8" fill="url(#vmb-rivet)"/>
+  <circle cx="78" cy="22" r="1.8" fill="url(#vmb-rivet)"/>
+  <circle cx="22" cy="78" r="1.8" fill="url(#vmb-rivet)"/>
+  <circle cx="78" cy="78" r="1.8" fill="url(#vmb-rivet)"/>
+  <!-- Mid ring -->
+  <circle cx="50" cy="50" r="30" stroke="#5a4e3c" stroke-width="2" fill="none"/>
+  <circle cx="50" cy="50" r="28" stroke="#8a7e6b" stroke-width="0.5" fill="none" opacity="0.4"/>
+  <!-- Spokes (4 main) -->
+  <g stroke="#5a4e3c" stroke-width="2.5">
+    <line x1="50" y1="20" x2="50" y2="38"/>
+    <line x1="50" y1="62" x2="50" y2="80"/>
+    <line x1="20" y1="50" x2="38" y2="50"/>
+    <line x1="62" y1="50" x2="80" y2="50"/>
+  </g>
+  <!-- Diagonal spokes (4 thin) -->
+  <g stroke="#3d3428" stroke-width="1.5">
+    <line x1="29" y1="29" x2="40" y2="40"/>
+    <line x1="71" y1="29" x2="60" y2="40"/>
+    <line x1="29" y1="71" x2="40" y2="60"/>
+    <line x1="71" y1="71" x2="60" y2="60"/>
+  </g>
+  <!-- Center hub -->
+  <circle cx="50" cy="50" r="12" fill="url(#vmb-metal)"/>
+  <circle cx="50" cy="50" r="10" stroke="#b87333" stroke-width="1.5" fill="none"/>
+  <circle cx="50" cy="50" r="5" fill="url(#vmb-brass)"/>
+  <circle cx="50" cy="50" r="2" fill="#15120f"/>
+  <!-- Hub rivets (4 small) -->
+  <circle cx="50" cy="40" r="1.2" fill="url(#vmb-rivet)"/>
+  <circle cx="50" cy="60" r="1.2" fill="url(#vmb-rivet)"/>
+  <circle cx="40" cy="50" r="1.2" fill="url(#vmb-rivet)"/>
+  <circle cx="60" cy="50" r="1.2" fill="url(#vmb-rivet)"/>
+</svg>

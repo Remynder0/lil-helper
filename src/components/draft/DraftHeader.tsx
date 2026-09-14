@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Side, LaneColor, LANE_LABELS, SIDE_LABELS } from '../../types/match';
 import { HeroAvatar } from '../HeroAvatar';
 import {
@@ -53,7 +53,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
   return (
     <>
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         {/* Left: Title & Patron Side Selection */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div>
@@ -66,14 +66,14 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border">
+          <div className="flex items-center gap-1.5 bg-deadlock-card p-1 rounded-lg border border-deadlock-border">
             <button
               type="button"
               onClick={() => onSideChange('hidden_king')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
                 side === 'hidden_king'
                   ? 'bg-deadlock-hidden-king/25 border border-deadlock-hidden-king text-yellow-300 shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               <Crown className="w-3.5 h-3.5 text-deadlock-hidden-king" />
@@ -85,7 +85,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
                 side === 'archmother'
                   ? 'bg-deadlock-archmother/25 border border-deadlock-archmother text-amber-300 shadow-sm'
-                  : 'text-deadlock-muted hover:text-white'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               <Crown className="w-3.5 h-3.5 text-deadlock-archmother" />
@@ -111,7 +111,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
                     className={`cursor-pointer p-1 rounded-lg border transition-all ${
                       isActive
                         ? 'border-red-500 bg-red-950/40 ring-1 ring-red-500'
-                        : 'border-deadlock-border/80 bg-deadlock-dark hover:border-gray-500'
+                        : 'border-deadlock-border/80 bg-deadlock-card hover:border-gray-500'
                     }`}
                   >
                     <HeroAvatar
@@ -155,7 +155,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-dark hover:bg-deadlock-border text-xs font-semibold text-deadlock-muted hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-card hover:bg-deadlock-border text-xs font-semibold text-deadlock-muted hover:text-deadlock-steam transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset</span>
@@ -184,7 +184,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                <span className="text-xs font-bold text-deadlock-steam uppercase tracking-wider">
                   Live Game Sync
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
@@ -219,7 +219,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
                   className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all ${
                     isSelected
                       ? 'bg-deadlock-accent text-black shadow-sm'
-                      : 'text-deadlock-muted hover:text-white hover:bg-white/5'
+                      : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-white/5'
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${colorDot}`} />

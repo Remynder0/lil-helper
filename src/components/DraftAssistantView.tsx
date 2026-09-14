@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import occultCorner from '../assets/occult/corner.svg';
 import { Match, Side, LaneColor, LANE_LABELS } from '../types/match';
 import { HeroPicker } from './HeroPicker';
 import { calculateBestDraftActions } from '../services/analytics';
@@ -282,6 +283,13 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
   };
 
   return (
+    <div className="relative">
+      {/* Occult corner ornaments */}
+      <img src={occultCorner} alt="" aria-hidden="true" className="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50 z-10" />
+      <img src={occultCorner} alt="" aria-hidden="true" className="absolute top-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 z-10" />
+      <img src={occultCorner} alt="" aria-hidden="true" className="absolute bottom-0 left-0 w-14 h-14 pointer-events-none opacity-50 -scale-y-100 z-10" />
+      <img src={occultCorner} alt="" aria-hidden="true" className="absolute bottom-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 -scale-y-100 z-10" />
+
     <div className="flex flex-col gap-6">
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET + LIVE SYNC */}
       <DraftHeader
@@ -354,6 +362,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
         onClose={() => setShowOcrInspector(false)}
         lastScanResult={lastScanResult}
       />
+    </div>
     </div>
   );
 };

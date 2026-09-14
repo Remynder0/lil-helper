@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 30" fill="none">
+  <defs>
+    <linearGradient id="vmd-pipe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8a7e6b"/>
+      <stop offset="30%" stop-color="#5a4e3c"/>
+      <stop offset="70%" stop-color="#3d3428"/>
+      <stop offset="100%" stop-color="#15120f"/>
+    </linearGradient>
+    <linearGradient id="vmd-collar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#5a3818"/>
+    </linearGradient>
+    <radialGradient id="vmd-rivet" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#3d3428"/>
+    </radialGradient>
+  </defs>
+  <!-- Main iron beam -->
+  <rect x="10" y="9" width="380" height="12" rx="1" fill="url(#vmd-pipe)"/>
+  <!-- Top highlight -->
+  <line x1="10" y1="9" x2="390" y2="9" stroke="#8a7e6b" stroke-width="0.8" opacity="0.5"/>
+  <!-- Bottom shadow -->
+  <line x1="10" y1="21" x2="390" y2="21" stroke="#15120f" stroke-width="0.8" opacity="0.7"/>
+  <!-- Brass collar joints -->
+  <rect x="55" y="7" width="10" height="16" rx="1" fill="url(#vmd-collar)"/>
+  <rect x="130" y="7" width="10" height="16" rx="1" fill="url(#vmd-collar)"/>
+  <rect x="195" y="7" width="10" height="16" rx="1" fill="url(#vmd-collar)"/>
+  <rect x="260" y="7" width="10" height="16" rx="1" fill="url(#vmd-collar)"/>
+  <rect x="335" y="7" width="10" height="16" rx="1" fill="url(#vmd-collar)"/>
+  <!-- Rivets on collars -->
+  <circle cx="60" cy="11" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="60" cy="19" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="135" cy="11" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="135" cy="19" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="200" cy="11" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="200" cy="19" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="265" cy="11" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="265" cy="19" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="340" cy="11" r="1.5" fill="url(#vmd-rivet)"/>
+  <circle cx="340" cy="19" r="1.5" fill="url(#vmd-rivet)"/>
+  <!-- End caps -->
+  <rect x="8" y="7" width="6" height="16" rx="2" fill="url(#vmd-collar)"/>
+  <rect x="386" y="7" width="6" height="16" rx="2" fill="url(#vmd-collar)"/>
+  <circle cx="11" cy="15" r="1.8" fill="url(#vmd-rivet)"/>
+  <circle cx="389" cy="15" r="1.8" fill="url(#vmd-rivet)"/>
+</svg>

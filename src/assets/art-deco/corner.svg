@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="adc-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="100%" stop-color="#b87333"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer stepped frame -->
+  <path d="M0 0 H50 V3 H3 V50 H0 Z" fill="url(#adc-g)" opacity="0.9"/>
+  <path d="M0 0 H70 V1.5 H1.5 V70 H0 Z" fill="#c4956a" opacity="0.4"/>
+  <!-- Stepped chevron brackets -->
+  <polyline points="22,0 22,8 0,8" stroke="#e8c06a" stroke-width="1.5" fill="none"/>
+  <polyline points="36,0 36,16 0,16" stroke="#b87333" stroke-width="1.2" fill="none"/>
+  <polyline points="48,0 48,24 0,24" stroke="#c4956a" stroke-width="1" fill="none" opacity="0.7"/>
+  <polyline points="58,0 58,32 0,32" stroke="#c4956a" stroke-width="0.7" fill="none" opacity="0.4"/>
+  <!-- Diagonal fan rays -->
+  <line x1="0" y1="0" x2="90" y2="15" stroke="#e8c06a" stroke-width="0.6" opacity="0.35"/>
+  <line x1="0" y1="0" x2="78" y2="32" stroke="#e8c06a" stroke-width="0.7" opacity="0.4"/>
+  <line x1="0" y1="0" x2="58" y2="58" stroke="#b87333" stroke-width="0.9" opacity="0.5"/>
+  <line x1="0" y1="0" x2="32" y2="78" stroke="#e8c06a" stroke-width="0.7" opacity="0.4"/>
+  <line x1="0" y1="0" x2="15" y2="90" stroke="#e8c06a" stroke-width="0.6" opacity="0.35"/>
+  <!-- Diamond accent -->
+  <polygon points="12,12 16,8 20,12 16,16" fill="#e8c06a"/>
+  <polygon points="12,12 16,8 20,12 16,16" fill="none" stroke="#b87333" stroke-width="0.5"/>
+  <!-- Small dot accents along diagonal -->
+  <circle cx="30" cy="30" r="1.5" fill="#e8c06a" opacity="0.6"/>
+  <circle cx="42" cy="42" r="1" fill="#c4956a" opacity="0.4"/>
+</svg>

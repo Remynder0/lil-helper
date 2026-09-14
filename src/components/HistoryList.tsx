@@ -1,7 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { HeroAvatar } from './HeroAvatar';
-import { getHeroById } from '../data/heroes';
+import { HEROES, getHeroById } from '../data/heroes';
 import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS, LANE_LABELS, LANE_OUTCOME_LABELS } from '../types/match';
+import occultBadge from '../assets/occult/badge.svg';
+import victorianBadge from '../assets/victorian-metal/badge.svg';
+import victorianDivider from '../assets/victorian-metal/divider.svg';
+import artDecoBadge from '../assets/art-deco/badge.svg';
 import {
   Trophy,
   Skull,
@@ -15,12 +19,14 @@ import {
   ChevronUp,
   RotateCcw,
   Swords,
+  Sparkles,
 } from 'lucide-react';
 
 interface HistoryListProps {
   matches: Match[];
   onEditMatch: (match: Match) => void;
   onDeleteMatch: (id: string) => void;
+  onHeroFilterChange?: (heroId: number | null) => void;
   className?: string;
 }
 
@@ -28,6 +34,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   matches,
   onEditMatch,
   onDeleteMatch,
+  onHeroFilterChange,
   className = '',
 }) => {
   // Filter states
@@ -83,6 +90,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     setHeroFilter('all');
     setOutcomeFilter('all');
     setSideFilter('all');
+    onHeroFilterChange?.(null);
   };
 
   const hasActiveFilters =
@@ -92,29 +100,97 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     setExpandedMatchId((prev) => (prev === id ? null : id));
   };
 
+  // Active hero currently focused in wallpaper & filters
+  const activeHero = useMemo(() => {
+    if (heroFilter !== 'all') {
+      return getHeroById(heroFilter);
+    }
+    if (playedHeroIds.length > 0) {
+      return getHeroById(playedHeroIds[0]);
+    }
+    return getHeroById(81); // Celeste
+  }, [heroFilter, playedHeroIds]);
+
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
+      {/* Active Hero Dossier & Wallpaper Spotlight */}
+      {activeHero && (
+        <div className="steam-glass steam-panel rounded-xl p-4 border border-deadlock-brass/40 flex items-center justify-between gap-4 relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+          {/* Rotating celestial sigil in corner — clearly visible */}
+          <div className="absolute -right-4 -top-6 pointer-events-none opacity-80">
+            <img src={occultBadge} alt="" aria-hidden="true" className="w-[170px] h-[170px] animate-[spin_20s_linear_infinite]" />
+          </div>
+
+          <div className="flex items-center gap-4 relative z-10">
+            {/* Hero portrait with brass beveled frame */}
+            <div className="relative shrink-0">
+              <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-deadlock-brass/80 shadow-lg shadow-deadlock-accent/30 bg-deadlock-dark">
+                <img src={activeHero.iconUrl} alt={activeHero.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-deadlock-dark border border-deadlock-brass flex items-center justify-center text-[10px] text-deadlock-accent shadow-sm">
+                ★
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono tracking-widest text-deadlock-accent uppercase font-bold">
+                  HERO DOSSIER &bull; #{activeHero.id}
+                </span>
+                {activeHero.heroType && (
+                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-deadlock-card/90 border border-deadlock-border text-deadlock-muted">
+                    {activeHero.heroType}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl font-bold text-deadlock-steam tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                {activeHero.name}
+              </h2>
+              <p className="text-xs text-deadlock-muted italic">
+                {activeHero.role || activeHero.hideoutRichPresence || 'Champion of the Ritual'}
+              </p>
+            </div>
+          </div>
+
+          {/* Active Wallpaper Indicator with turning gear */}
+          <div className="hidden sm:flex items-center gap-3 relative z-10 text-right pr-3">
+            <img src={victorianBadge} alt="" aria-hidden="true" className="w-7 h-7 shrink-0 animate-[spin_12s_linear_infinite]" />
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-deadlock-muted">Background Art</span>
+              <span className="text-xs font-bold text-deadlock-accent flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-deadlock-accent" />
+                {activeHero.name} Artwork Active
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Steampunk Conduit Connecting Dossier and Toolbar */}
+      <img src={victorianDivider} alt="" aria-hidden="true" className="w-full h-4 object-cover my-4 opacity-80" />
+
       {/* Filter Toolbar */}
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-4 flex flex-col gap-4">
+      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 relative border border-deadlock-border/80">
         {/* Top Header of Filter Toolbar: Title & Filtered Winrate badge */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-deadlock-border/60">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-deadlock-muted" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-200">
+            <img src={victorianBadge} alt="" aria-hidden="true" className="w-[18px] h-[18px] shrink-0 animate-[spin_20s_linear_infinite] opacity-70" />
+            <Filter className="w-4 h-4 text-deadlock-accent" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
               Filter Matches ({filteredMatches.length} of {matches.length})
             </h3>
           </div>
 
           {/* Dynamic Filtered Winrate Badge */}
-          <div className="flex items-center gap-3 bg-deadlock-dark px-3 py-1.5 rounded-lg border border-deadlock-border">
+          <div className="brass-plate px-3 py-1.5 rounded-lg flex items-center gap-3 border border-deadlock-border/80">
             <span className="text-xs text-deadlock-muted">Filtered Winrate:</span>
             <span
-              className={`text-xs font-extrabold ${
+              className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${
                 filteredWinRate >= 50
-                  ? 'text-deadlock-win'
+                  ? 'bg-deadlock-win/20 text-deadlock-win border border-deadlock-win/40 shadow-sm'
                   : filteredDecided > 0
-                  ? 'text-deadlock-loss'
-                  : 'text-white'
+                  ? 'bg-deadlock-loss/20 text-deadlock-loss border border-deadlock-loss/40 shadow-sm'
+                  : 'text-deadlock-steam'
               }`}
             >
               {filteredDecided > 0 ? `${filteredWinRate}%` : 'N/A'}
@@ -128,7 +204,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="flex items-center gap-1 text-[11px] text-deadlock-muted hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-deadlock-accent hover:text-white transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Reset</span>
@@ -137,6 +213,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             )}
           </div>
         </div>
+
+        <img src={victorianDivider} alt="" aria-hidden="true" className="w-full h-3 object-cover my-3 opacity-60" />
 
         {/* Hero Icons Filter Bar */}
         <div className="flex flex-col gap-1.5">
@@ -147,11 +225,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             {/* All Heroes Button */}
             <button
               type="button"
-              onClick={() => setHeroFilter('all')}
+              onClick={() => {
+                setHeroFilter('all');
+                onHeroFilterChange?.(null);
+              }}
               className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                 heroFilter === 'all'
-                  ? 'bg-white text-black shadow-md shadow-white/10 ring-2 ring-white/30'
-                  : 'bg-deadlock-dark text-deadlock-muted hover:text-white border border-deadlock-border hover:border-gray-400'
+                  ? 'bg-deadlock-steam text-black shadow-md shadow-deadlock-steam/10 ring-2 ring-deadlock-steam/30'
+                  : 'bg-deadlock-dark text-deadlock-muted hover:text-deadlock-steam border border-deadlock-border hover:border-deadlock-brass'
               }`}
             >
               All Heroes ({matches.length})
@@ -167,12 +248,16 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setHeroFilter(isSelected ? 'all' : id)}
+                  onClick={() => {
+                    const next = isSelected ? 'all' : id;
+                    setHeroFilter(next);
+                    onHeroFilterChange?.(next === 'all' ? null : next);
+                  }}
                   title={`${hero?.name || `Hero #${id}`} (${matchesCount} match${matchesCount > 1 ? 'es' : ''})`}
                   className={`relative group rounded-lg p-1 border transition-all duration-150 flex items-center gap-1.5 ${
                     isSelected
-                      ? 'bg-deadlock-dark border-white ring-2 ring-white/40 scale-105 shadow-md'
-                      : 'bg-deadlock-dark/60 border-deadlock-border/70 hover:border-gray-400 hover:bg-deadlock-dark'
+                      ? 'bg-deadlock-dark border-deadlock-steam ring-2 ring-deadlock-steam/40 scale-105 shadow-md'
+                      : 'bg-deadlock-dark/60 border-deadlock-border/70 hover:border-deadlock-brass hover:bg-deadlock-card/40'
                   }`}
                 >
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-deadlock-panel">
@@ -184,7 +269,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   </div>
                   <span
                     className={`text-xs font-medium pr-1 ${
-                      isSelected ? 'text-white font-bold' : 'text-gray-300'
+                      isSelected ? 'text-deadlock-steam font-bold' : 'text-gray-300'
                     }`}
                   >
                     {hero?.name}
@@ -195,6 +280,27 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </button>
               );
             })}
+
+            {/* Any Hero Selector (allows selecting Celeste or any other hero) */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-[11px] text-deadlock-muted font-medium">Hero:</span>
+              <select
+                value={heroFilter === 'all' ? '' : heroFilter}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? 'all' : Number(e.target.value);
+                  setHeroFilter(val);
+                  onHeroFilterChange?.(val === 'all' ? null : val);
+                }}
+                className="bg-deadlock-card border border-deadlock-border rounded-lg px-2.5 py-1.5 text-xs text-deadlock-steam focus:outline-none focus:border-deadlock-accent transition-colors cursor-pointer"
+              >
+                <option value="">Choose any hero...</option>
+                {HEROES.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} {h.id === 81 ? '★ (Celeste)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -233,20 +339,25 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
       {/* Match Cards List */}
       {matches.length === 0 ? (
-        <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-12 flex flex-col items-center justify-center gap-3 text-center">
-          <Swords className="w-10 h-10 text-deadlock-muted/50" />
-          <h3 className="text-sm font-semibold text-gray-200">No matches recorded yet</h3>
+        <div className="steam-glass steam-panel rounded-xl p-12 flex flex-col items-center justify-center gap-3 text-center border border-deadlock-border/80">
+          <div className="relative">
+            <Swords className="w-12 h-12 text-deadlock-accent/60" />
+            <div className="absolute -top-3 -left-3 pointer-events-none opacity-20">
+              <img src={artDecoBadge} alt="" aria-hidden="true" className="w-16 h-16 animate-[spin_20s_linear_infinite]" />
+            </div>
+          </div>
+          <h3 className="text-sm font-bold tracking-wide text-deadlock-steam uppercase">No matches recorded in the occult archives</h3>
           <p className="text-xs text-deadlock-muted max-w-sm">
             Record a 6v6 draft in the &quot;Log Match&quot; tab to build your personal analytics.
           </p>
         </div>
       ) : filteredMatches.length === 0 ? (
-        <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-10 flex flex-col items-center justify-center gap-2 text-center text-deadlock-muted text-xs">
+        <div className="steam-glass steam-card rounded-xl p-10 flex flex-col items-center justify-center gap-2 text-center text-deadlock-muted text-xs border border-deadlock-border/80">
           <span>No matches match the selected filters.</span>
           <button
             type="button"
             onClick={resetFilters}
-            className="text-white underline hover:no-underline font-medium"
+            className="text-deadlock-accent underline hover:no-underline font-bold"
           >
             Clear all filters
           </button>
@@ -272,27 +383,27 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             return (
               <div
                 key={m.id}
-                className="bg-deadlock-panel border border-deadlock-border hover:border-gray-500 rounded-xl transition-all overflow-hidden flex flex-col"
+                className="steam-glass hover:border-deadlock-brass/70 rounded-xl transition-all overflow-hidden flex flex-col hover:shadow-[0_4px_24px_rgba(184,115,51,0.25)] relative group border border-deadlock-border/70"
               >
                 {/* Main Card Row */}
                 <div className="p-3.5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                  {/* Left: Result Badge + Date + Played Hero Summary */}
-                  <div className="flex items-center gap-3 min-w-[220px]">
+                  {/* Left: Result Talisman Seal + Date + Played Hero Summary */}
+                  <div className="flex items-center gap-3.5 min-w-[230px]">
                     <div
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg shadow-md shrink-0 ${
+                      className={`flex items-center justify-center w-11 h-11 rounded-full shadow-lg shrink-0 border-2 transition-transform group-hover:scale-105 ${
                         m.result === 'win'
-                          ? 'bg-deadlock-win/20 border border-deadlock-win/60 text-deadlock-win'
+                          ? 'bg-gradient-to-b from-[#78a590] via-[#5f8f7a] to-[#2d4d3e] border-[#a2cfba] text-[#110f0c] shadow-[0_0_12px_rgba(95,143,122,0.4)]'
                           : m.result === 'loss'
-                          ? 'bg-deadlock-loss/20 border border-deadlock-loss/60 text-deadlock-loss'
-                          : 'bg-amber-500/20 border border-amber-500/60 text-amber-400'
+                          ? 'bg-gradient-to-b from-[#bd5654] via-[#a94442] to-[#5a2120] border-[#e07d7b] text-white shadow-[0_0_12px_rgba(169,68,66,0.4)]'
+                          : 'bg-gradient-to-b from-[#d4a373] via-[#b87333] to-[#5a3818] border-[#e8c06a] text-black shadow-[0_0_12px_rgba(196,149,106,0.3)]'
                       }`}
                     >
                       {m.result === 'win' ? (
-                        <Trophy className="w-5 h-5" />
+                        <Trophy className="w-5 h-5 drop-shadow" />
                       ) : m.result === 'loss' ? (
-                        <Skull className="w-5 h-5" />
+                        <Skull className="w-5 h-5 drop-shadow" />
                       ) : (
-                        <Ban className="w-5 h-5" />
+                        <Ban className="w-5 h-5 drop-shadow" />
                       )}
                     </div>
 
@@ -334,7 +445,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       </div>
 
                       <span className="text-xs font-semibold text-gray-200 mt-0.5">
-                        Played: <strong className="text-white">{myHero?.name || 'Unknown'}</strong>
+                        Played: <strong className="text-deadlock-steam">{myHero?.name || 'Unknown'}</strong>
                       </span>
 
                       {/* Lane Badge (if tracked) */}
@@ -415,7 +526,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleExpand(m.id)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-deadlock-muted hover:text-white hover:bg-deadlock-border/40 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-border/40 transition-colors"
                       title={isExpanded ? 'Collapse details' : 'View match notes and composition'}
                     >
                       <span>{isExpanded ? 'Less' : 'Details'}</span>
@@ -430,7 +541,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     <button
                       type="button"
                       onClick={() => onEditMatch(m)}
-                      className="p-2 text-deadlock-muted hover:text-deadlock-hidden-king hover:bg-deadlock-hidden-king/10 rounded-lg transition-colors"
+                      className="p-2 text-deadlock-muted hover:text-deadlock-accent hover:bg-deadlock-accent/10 rounded-lg transition-colors"
                       title="Edit Match"
                     >
                       <Pencil className="w-4 h-4" />
@@ -444,7 +555,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                           onDeleteMatch(m.id);
                         }
                       }}
-                      className="p-2 text-deadlock-muted hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
+                      className="p-2 text-deadlock-muted hover:text-deadlock-loss hover:bg-deadlock-loss/10 rounded-lg transition-colors"
                       title="Delete Match"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -454,7 +565,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
                 {/* Expanded Details Drawer */}
                 {isExpanded && (
-                  <div className="bg-deadlock-dark/80 border-t border-deadlock-border/60 p-4 flex flex-col gap-3 text-xs">
+                  <div className="bg-deadlock-card/80 border-t border-deadlock-border/60 p-4 flex flex-col gap-3 text-xs">
                     {/* Notes */}
                     {m.notes ? (
                       <div className="flex flex-col gap-1">
@@ -496,7 +607,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                             <div className="flex items-center gap-1.5">
                               <span className="text-deadlock-muted">Partner:</span>
                               <HeroAvatar heroId={m.laneAllyId} size="xs" />
-                              <span className="font-semibold text-white">{getHeroById(m.laneAllyId)?.name}</span>
+                              <span className="font-semibold text-deadlock-steam">{getHeroById(m.laneAllyId)?.name}</span>
                             </div>
                           )}
 
@@ -507,7 +618,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                                 {m.laneOpponents.map((oppId) => (
                                   <div key={oppId} className="flex items-center gap-1">
                                     <HeroAvatar heroId={oppId} size="xs" />
-                                    <span className="font-semibold text-white">{getHeroById(oppId)?.name}</span>
+                                    <span className="font-semibold text-deadlock-steam">{getHeroById(oppId)?.name}</span>
                                   </div>
                                 ))}
                               </div>
@@ -525,7 +636,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                           Your Team: {SIDE_LABELS[m.side]}
                         </span>
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-white font-medium">
+                          <div className="flex items-center gap-2 text-deadlock-steam font-medium">
                             <span className="text-deadlock-hidden-king font-bold">★ (You)</span>
                             <span>{myHero?.name}</span>
                             <span className="text-deadlock-muted capitalize">({myHero?.heroType})</span>

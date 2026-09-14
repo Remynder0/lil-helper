@@ -39,7 +39,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
 }) => {
   const hero: Hero | undefined = heroId ? getHeroById(heroId) : undefined;
 
-  let borderColor = 'border-deadlock-border';
+  let borderColor = 'border-deadlock-brass/40';
   if (accentColor === 'hidden_king') {
     borderColor = isHighlighted
       ? 'border-deadlock-hidden-king ring-2 ring-deadlock-hidden-king/40 shadow-lg shadow-deadlock-hidden-king/20'
@@ -49,7 +49,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
       ? 'border-deadlock-archmother ring-2 ring-deadlock-archmother/40 shadow-lg shadow-deadlock-archmother/20'
       : 'border-deadlock-archmother/50';
   } else if (isHighlighted) {
-    borderColor = 'border-white ring-2 ring-white/30';
+    borderColor = 'border-deadlock-accent ring-2 ring-deadlock-accent/30';
   }
 
   return (
@@ -57,7 +57,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
       <div className={`relative group ${SIZE_MAP[size]}`}>
         {hero ? (
           <div
-            className={`relative overflow-hidden rounded-lg border-2 ${borderColor} bg-deadlock-panel transition-all duration-150 group-hover:border-white/80`}
+            className={`relative overflow-hidden rounded-lg border-2 ${borderColor} bg-deadlock-panel transition-all duration-150 group-hover:border-deadlock-brass`}
           >
             <img
               src={hero.iconUrl}
@@ -76,7 +76,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
                   e.stopPropagation();
                   onRemove();
                 }}
-                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-red-400"
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-deadlock-steam hover:text-red-400"
                 title={`Remove ${hero.name}`}
               >
                 <X className="w-4 h-4" />
@@ -85,7 +85,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
           </div>
         ) : (
           <div
-            className={`w-full h-full rounded-lg border-2 border-dashed border-deadlock-border/70 bg-deadlock-panel/40 flex items-center justify-center text-deadlock-muted/60 transition-colors group-hover:border-deadlock-muted`}
+            className={`w-full h-full rounded-lg border-2 border-dashed border-deadlock-border/70 bg-deadlock-panel/40 flex items-center justify-center text-deadlock-rivet transition-colors group-hover:border-deadlock-muted`}
           >
             <span className="text-xs font-mono font-bold">?</span>
           </div>
@@ -93,7 +93,7 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({
       </div>
 
       {showName && hero && (
-        <span className="text-xs font-medium text-gray-200 truncate max-w-[80px] text-center">
+        <span className="text-xs font-medium text-deadlock-steam truncate max-w-[80px] text-center">
           {hero.name}
         </span>
       )}

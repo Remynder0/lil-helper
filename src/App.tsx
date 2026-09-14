@@ -17,6 +17,9 @@ import {
   importMatchesJson,
 } from './services/storage';
 import { Match } from './types/match';
+import { calculateHeroPerformance } from './services/analytics';
+import { getHeroById } from './data/heroes';
+import occultBadge from './assets/occult/badge.svg';
 import { RefreshCw } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -24,6 +27,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('history');
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [previewHeroId, setPreviewHeroId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -153,8 +157,68 @@ export const App: React.FC = () => {
   );
   const winRate = totalDecided > 0 ? Math.round((totalWins / totalDecided) * 100) : 0;
 
+  // Dynamic hero background artwork
+  // Priority: 1) filtered/previewed hero, 2) live in-game hero, 3) most-played hero, 4) fallback: Celeste
+  const activeHeroBgUrl = useMemo(() => {
+    // 1. Manually filtered / previewed hero
+    if (previewHeroId) {
+      const hero = getHeroById(previewHeroId);
+      if (hero?.backgroundUrl) return hero.backgroundUrl;
+      if (hero) return `/heroes/backgrounds/${hero.key}_bg.webp`;
+    }
+
+    // 2. Live in-game hero
+    if (gameContext.myHeroId) {
+      const liveHero = getHeroById(gameContext.myHeroId);
+      if (liveHero?.backgroundUrl) return liveHero.backgroundUrl;
+      if (liveHero) return `/heroes/backgrounds/${liveHero.key}_bg.webp`;
+    }
+
+    // 3. Most-played hero from match history
+    if (matches.length > 0) {
+      const performances = calculateHeroPerformance(matches);
+      if (performances.length > 0) {
+        const topHero = performances[0];
+        const hero = getHeroById(topHero.heroId);
+        if (hero?.backgroundUrl) return hero.backgroundUrl;
+        if (hero) return `/heroes/backgrounds/${hero.key}_bg.webp`;
+      }
+    }
+
+    // 4. Default showcase: Celeste
+    return '/heroes/backgrounds/celeste_bg.webp';
+  }, [previewHeroId, gameContext.myHeroId, matches]);
+
   return (
-    <div className="min-h-screen bg-deadlock-dark text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative overflow-x-hidden">
+      {/* Dynamic hero background — Full-size theatrical hero wallpaper */}
+      {activeHeroBgUrl && (
+        <div
+          className="fixed inset-0 z-0 pointer-events-none overflow-hidden transition-all duration-700 select-none"
+          aria-hidden="true"
+        >
+          {/* Rotating celestial sigil in background — clearly visible behind hero */}
+          <div className="absolute top-16 right-16 opacity-65 pointer-events-none">
+            <img src={occultBadge} alt="" aria-hidden="true" className="w-[420px] h-[420px] animate-[spin_20s_linear_infinite] opacity-60" />
+          </div>
+
+          {/* Full-bleed un-shrunk hero artwork: covers full screen height at the right */}
+          <div
+            className="absolute inset-0 bg-cover bg-right bg-no-repeat transition-all duration-700 opacity-80"
+            style={{ backgroundImage: `url(${activeHeroBgUrl})` }}
+          />
+
+          {/* Left-to-right fade: dark on left for card legibility, transparent on right for full hero visibility */}
+          <div className="absolute inset-0 bg-gradient-to-r from-deadlock-dark via-deadlock-dark/60 to-transparent via-40%" />
+
+          {/* Subtle top and bottom atmospheric vignette */}
+          <div className="absolute inset-0 bg-gradient-to-b from-deadlock-dark/50 via-transparent to-deadlock-dark/80" />
+
+          {/* Warm brass occult ambient glow behind hero */}
+          <div className="absolute top-1/4 right-20 w-[450px] h-[450px] bg-deadlock-accent/5 rounded-full blur-3xl pointer-events-none" />
+        </div>
+      )}
+
       {/* Top Header */}
       <AppHeader
         totalMatches={totalMatches}
@@ -215,7 +279,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col gap-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col gap-6 relative z-10">
         {activeTab === 'log_match' && (
           <MatchForm
             key={editingMatch ? editingMatch.id : 'new_match'}
@@ -229,6 +293,7 @@ export const App: React.FC = () => {
             matches={matches}
             onEditMatch={handleEditMatch}
             onDeleteMatch={handleDeleteMatch}
+            onHeroFilterChange={setPreviewHeroId}
           />
         )}
         {activeTab === 'analytics' && (

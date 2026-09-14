@@ -1,1 +1,68 @@
-/* Custom application specific styles (Tailwind is used for primary utility classes) */
+/* Steampunk-Occult Animation Utilities */
+
+/* Mechanical steam reveal — subtle vibration entry for panels */
+@keyframes steamReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+    filter: blur(2px);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translateY(-1px) scale(1.001);
+    filter: blur(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Brass glow pulse — subtle warm luminescence for accent elements */
+@keyframes brassGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(196, 149, 106, 0.1), inset 0 1px 0 rgba(196, 149, 106, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(196, 149, 106, 0.2), inset 0 1px 0 rgba(196, 149, 106, 0.1);
+  }
+}
+
+/* Occult energy pulse — arcane border shimmer */
+@keyframes arcanePulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(107, 76, 138, 0.1), 0 0 20px rgba(107, 76, 138, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(107, 76, 138, 0.2), 0 0 30px rgba(107, 76, 138, 0.08);
+  }
+}
+
+/* Hero background fade transition */
+@keyframes heroBgFade {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+}
+
+.animate-steamReveal {
+  animation: steamReveal 400ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.animate-brassGlow {
+  animation: brassGlow 4s ease-in-out infinite;
+}
+
+.animate-arcanePulse {
+  animation: arcanePulse 3s ease-in-out infinite;
+}
+
+.animate-heroBgFade {
+  animation: heroBgFade 1.2s ease-out forwards;
+}

@@ -82,11 +82,11 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
   return (
     <div className="flex flex-col gap-6">
       {/* FILTER HEADER: Choose "All My Heroes" or a specific hero piloted */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-deadlock-accent" />
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
               Filter by Your Hero:
             </span>
           </div>
@@ -104,8 +104,8 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
             onClick={() => setSelectedPlayerHeroId(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               selectedPlayerHeroId === null
-                ? 'bg-deadlock-accent/20 border-deadlock-accent text-white shadow-sm'
-                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white hover:border-white/30'
+                ? 'bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm'
+                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
             }`}
           >
             All Heroes ({matches.length} matches)
@@ -121,8 +121,8 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                 onClick={() => setSelectedPlayerHeroId(hero.id)}
                 className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border transition-all ${
                   isSelected
-                    ? 'bg-deadlock-border border-white text-white shadow-md ring-1 ring-white/40'
-                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white hover:border-white/30'
+                    ? 'bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40'
+                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
                 }`}
               >
                 <HeroAvatar heroId={hero.id} size="xs" />
@@ -138,7 +138,7 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
       {qualifiedForHighlights.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Best Synergies Card */}
-          <div className="bg-deadlock-panel border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-win/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -154,10 +154,10 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
               {bestSynergies.map((syn) => (
                 <div
                   key={syn.allyHeroId}
-                  className="bg-deadlock-dark/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
+                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
                 >
                   <HeroAvatar heroId={syn.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-gray-200 truncate max-w-full">
+                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
                     {syn.allyHero?.name}
                   </span>
                   <div className="text-[11px] font-mono font-bold text-deadlock-win">
@@ -172,7 +172,7 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
           </div>
 
           {/* Anti-Synergies Card */}
-          <div className="bg-deadlock-panel border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -188,10 +188,10 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
               {antiSynergies.map((anti) => (
                 <div
                   key={anti.allyHeroId}
-                  className="bg-deadlock-dark/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
+                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
                 >
                   <HeroAvatar heroId={anti.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-gray-200 truncate max-w-full">
+                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
                     {anti.allyHero?.name}
                   </span>
                   <div className="text-[11px] font-mono font-bold text-amber-400">
@@ -208,11 +208,11 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
       )}
 
       {/* FULL ALLY SYNERGY TABLE */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-deadlock-muted" />
-            <h3 className="text-sm font-bold tracking-wide uppercase text-gray-200">
+            <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
               Ally Synergy Matrix ({sortedSynergies.length} Allies Played With)
             </h3>
           </div>
@@ -228,12 +228,12 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-deadlock-dark/60 text-deadlock-muted border-b border-deadlock-border/60">
+              <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
                 <tr>
                   <th className="py-3 px-4 font-semibold">Ally Hero</th>
                   <th
                     onClick={() => handleSort('matches')}
-                    className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors"
+                    className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                   >
                     <div className="flex items-center gap-1">
                       <span>Matches Together</span>
@@ -244,7 +244,7 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                   </th>
                   <th
                     onClick={() => handleSort('wins')}
-                    className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors"
+                    className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                   >
                     <div className="flex items-center gap-1">
                       <span>Record Together (W / L / C)</span>
@@ -255,7 +255,7 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                   </th>
                   <th
                     onClick={() => handleSort('winRate')}
-                    className="py-3 px-4 font-semibold cursor-pointer hover:text-white transition-colors text-right"
+                    className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors text-right"
                   >
                     <div className="flex items-center justify-end gap-1">
                       <span>Win Rate Together</span>
@@ -272,14 +272,14 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                   return (
                     <tr
                       key={s.allyHeroId}
-                      className="hover:bg-deadlock-dark/30 transition-colors"
+                      className="hover:bg-deadlock-card/40 transition-colors"
                     >
                       {/* Ally Hero info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <HeroAvatar heroId={s.allyHeroId} size="xs" />
                           <div>
-                            <div className="font-bold text-gray-200 text-sm">
+                            <div className="font-bold text-deadlock-steam text-sm">
                               {s.allyHero?.name || `Hero #${s.allyHeroId}`}
                             </div>
                             <div className="text-[11px] text-deadlock-muted capitalize">
@@ -290,7 +290,7 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                       </td>
 
                       {/* Matches Together */}
-                      <td className="py-3 px-4 font-mono font-medium text-gray-300">
+                      <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
                         {s.matchesWith}
                       </td>
 

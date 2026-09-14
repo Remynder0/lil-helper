@@ -7,6 +7,7 @@ export interface Hero {
   role: string;
   heroType: 'brawler' | 'marksman' | 'mystic' | 'assassin' | string;
   iconUrl: string;
+  backgroundUrl?: string | null;
   tags: string[];
   gunTag: string;
   complexity: number;
@@ -22,6 +23,7 @@ export const HEROES: Hero[] = [
     "role": "Charges into close combat",
     "heroType": "brawler",
     "iconUrl": "/heroes/abrams.webp",
+    "backgroundUrl": "/heroes/backgrounds/abrams_bg.webp",
     "tags": [
       "Tank",
       "Brawler",
@@ -39,6 +41,7 @@ export const HEROES: Hero[] = [
     "role": "assassin",
     "heroType": "assassin",
     "iconUrl": "/heroes/apollo.webp",
+    "backgroundUrl": "/heroes/backgrounds/apollo_bg.webp",
     "tags": [
       "Finesse",
       "Mobility",
@@ -56,6 +59,7 @@ export const HEROES: Hero[] = [
     "role": "Hooks an enemy for a knockout combo",
     "heroType": "brawler",
     "iconUrl": "/heroes/bebop.webp",
+    "backgroundUrl": "/heroes/backgrounds/bebop_bg.webp",
     "tags": [
       "Hook",
       "Bomb",
@@ -73,6 +77,7 @@ export const HEROES: Hero[] = [
     "role": "brawler",
     "heroType": "brawler",
     "iconUrl": "/heroes/billy.webp",
+    "backgroundUrl": "/heroes/backgrounds/billy_bg.webp",
     "tags": [
       "Punk",
       "Chaotic",
@@ -90,6 +95,7 @@ export const HEROES: Hero[] = [
     "role": "Wreaks havoc from the sidelines",
     "heroType": "assassin",
     "iconUrl": "/heroes/calico.webp",
+    "backgroundUrl": "/heroes/backgrounds/calico_bg.webp",
     "tags": [
       "Tricksy",
       "Slippery",
@@ -107,6 +113,7 @@ export const HEROES: Hero[] = [
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/celeste.webp",
+    "backgroundUrl": "/heroes/backgrounds/celeste_bg.webp",
     "tags": [
       "Performer",
       "Disruptive",
@@ -124,6 +131,7 @@ export const HEROES: Hero[] = [
     "role": "assassin",
     "heroType": "assassin",
     "iconUrl": "/heroes/drifter.webp",
+    "backgroundUrl": "/heroes/backgrounds/drifter_bg.webp",
     "tags": [
       "Stalker",
       "Bloodthirsty",
@@ -141,6 +149,7 @@ export const HEROES: Hero[] = [
     "role": "Locks down the enemy team",
     "heroType": "mystic",
     "iconUrl": "/heroes/dynamo.webp",
+    "backgroundUrl": "/heroes/backgrounds/dynamo_bg.webp",
     "tags": [
       "Teamplay",
       "Initiator",
@@ -158,6 +167,7 @@ export const HEROES: Hero[] = [
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/graves.webp",
+    "backgroundUrl": "/heroes/backgrounds/graves_bg.webp",
     "tags": [
       "Morbid",
       "Area Denial",
@@ -175,6 +185,7 @@ export const HEROES: Hero[] = [
     "role": "Delivers long range skill-shots",
     "heroType": "marksman",
     "iconUrl": "/heroes/grey_talon.webp",
+    "backgroundUrl": "/heroes/backgrounds/grey_talon_bg.webp",
     "tags": [
       "Precision",
       "Hunter",
@@ -192,6 +203,7 @@ export const HEROES: Hero[] = [
     "role": "Sneaks in and sprays bullets",
     "heroType": "assassin",
     "iconUrl": "/heroes/haze.webp",
+    "backgroundUrl": "/heroes/backgrounds/haze_bg.webp",
     "tags": [
       "Assassin",
       "Stealthy",
@@ -209,6 +221,7 @@ export const HEROES: Hero[] = [
     "role": "Bounces about dispensing trick shots",
     "heroType": "marksman",
     "iconUrl": "/heroes/holliday.webp",
+    "backgroundUrl": "/heroes/backgrounds/holliday_bg.webp",
     "tags": [
       "Crackshot",
       "Explosive",
@@ -226,6 +239,7 @@ export const HEROES: Hero[] = [
     "role": "Lights up enemies and watches them burn",
     "heroType": "marksman",
     "iconUrl": "/heroes/infernus.webp",
+    "backgroundUrl": "/heroes/backgrounds/infernus_bg.webp",
     "tags": [
       "Arsonist",
       "Explosive",
@@ -243,6 +257,7 @@ export const HEROES: Hero[] = [
     "role": "Sets up a power duo with a lucky ally",
     "heroType": "marksman",
     "iconUrl": "/heroes/ivy.webp",
+    "backgroundUrl": "/heroes/backgrounds/ivy_bg.webp",
     "tags": [
       "Team-up",
       "Disruptor",
@@ -260,6 +275,7 @@ export const HEROES: Hero[] = [
     "role": "Freezes enemies in their tracks",
     "heroType": "brawler",
     "iconUrl": "/heroes/kelvin.webp",
+    "backgroundUrl": "/heroes/backgrounds/kelvin_bg.webp",
     "tags": [
       "Protector",
       "Explorer",
@@ -277,6 +293,7 @@ export const HEROES: Hero[] = [
     "role": "Sacrifices health then drains it back",
     "heroType": "mystic",
     "iconUrl": "/heroes/lady_geist.webp",
+    "backgroundUrl": "/heroes/backgrounds/lady_geist_bg.webp",
     "tags": [
       "Lifesteal",
       "Self Damage",
@@ -294,6 +311,7 @@ export const HEROES: Hero[] = [
     "role": "Dives down to stomp his foes",
     "heroType": "assassin",
     "iconUrl": "/heroes/lash.webp",
+    "backgroundUrl": "/heroes/backgrounds/lash_bg.webp",
     "tags": [
       "Initiator",
       "High Flying",
@@ -311,6 +329,7 @@ export const HEROES: Hero[] = [
     "role": "Controls the battle with combat turrets",
     "heroType": "mystic",
     "iconUrl": "/heroes/mcginnis.webp",
+    "backgroundUrl": "/heroes/backgrounds/mcginnis_bg.webp",
     "tags": [
       "Inventor",
       "Support",
@@ -328,6 +347,7 @@ export const HEROES: Hero[] = [
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/mina.webp",
+    "backgroundUrl": "/heroes/backgrounds/mina_bg.webp",
     "tags": [
       "Harasser",
       "Nimble",
@@ -345,6 +365,7 @@ export const HEROES: Hero[] = [
     "role": "Times his shots and catches fleeing targets",
     "heroType": "assassin",
     "iconUrl": "/heroes/mirage.webp",
+    "backgroundUrl": "/heroes/backgrounds/mirage_bg.webp",
     "tags": [
       "Bodyguard",
       "Traveller",
@@ -362,6 +383,7 @@ export const HEROES: Hero[] = [
     "role": "Burrows underneath his enemies",
     "heroType": "brawler",
     "iconUrl": "/heroes/mo___krill.webp",
+    "backgroundUrl": "/heroes/backgrounds/mo___krill_bg.webp",
     "tags": [
       "Tag-Team",
       "Initiator",
@@ -379,6 +401,7 @@ export const HEROES: Hero[] = [
     "role": "mystic",
     "heroType": "mystic",
     "iconUrl": "/heroes/paige.webp",
+    "backgroundUrl": "/heroes/backgrounds/paige_bg.webp",
     "tags": [
       "Helpful",
       "Protector",
@@ -396,6 +419,7 @@ export const HEROES: Hero[] = [
     "role": "Manipulates Space and Time",
     "heroType": "marksman",
     "iconUrl": "/heroes/paradox.webp",
+    "backgroundUrl": "/heroes/backgrounds/paradox_bg.webp",
     "tags": [
       "Calculated",
       "Disruptor",
@@ -413,6 +437,7 @@ export const HEROES: Hero[] = [
     "role": "Infiltrates and disrupts the backline",
     "heroType": "assassin",
     "iconUrl": "/heroes/pocket.webp",
+    "backgroundUrl": "/heroes/backgrounds/pocket_bg.webp",
     "tags": [
       "Trickster",
       "Burst Damage",
@@ -430,6 +455,7 @@ export const HEROES: Hero[] = [
     "role": "Unknown",
     "heroType": "brawler",
     "iconUrl": "/heroes/rem.webp",
+    "backgroundUrl": "/heroes/backgrounds/rem_bg.webp",
     "tags": [
       "Helpful",
       "Tiny",
@@ -447,6 +473,7 @@ export const HEROES: Hero[] = [
     "role": "Electrocutes crowds of enemies",
     "heroType": "mystic",
     "iconUrl": "/heroes/seven.webp",
+    "backgroundUrl": "/heroes/backgrounds/seven_bg.webp",
     "tags": [
       "High Voltage",
       "Merciless",
@@ -464,6 +491,7 @@ export const HEROES: Hero[] = [
     "role": "Bleeds out foes, then goes in for a kill",
     "heroType": "brawler",
     "iconUrl": "/heroes/shiv.webp",
+    "backgroundUrl": "/heroes/backgrounds/shiv_bg.webp",
     "tags": [
       "Rage",
       "Bleed",
@@ -481,6 +509,7 @@ export const HEROES: Hero[] = [
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/silver.webp",
+    "backgroundUrl": "/heroes/backgrounds/silver_bg.webp",
     "tags": [
       "Feral",
       "Hot Mess",
@@ -498,6 +527,7 @@ export const HEROES: Hero[] = [
     "role": "Misdirect and hex enemies",
     "heroType": "mystic",
     "iconUrl": "/heroes/sinclair.webp",
+    "backgroundUrl": "/heroes/backgrounds/sinclair_bg.webp",
     "tags": [
       "Trickster",
       "Copycat",
@@ -515,6 +545,7 @@ export const HEROES: Hero[] = [
     "role": "mystic",
     "heroType": "mystic",
     "iconUrl": "/heroes/the_doorman.webp",
+    "backgroundUrl": "/heroes/backgrounds/the_doorman_bg.webp",
     "tags": [
       "Disorienting",
       "Map Control",
@@ -532,6 +563,7 @@ export const HEROES: Hero[] = [
     "role": "marksman",
     "heroType": "marksman",
     "iconUrl": "/heroes/venator.webp",
+    "backgroundUrl": "/heroes/backgrounds/venator_bg.webp",
     "tags": [
       "Devout",
       "Arms Expert",
@@ -549,6 +581,7 @@ export const HEROES: Hero[] = [
     "role": "brawler",
     "heroType": "brawler",
     "iconUrl": "/heroes/victor.webp",
+    "backgroundUrl": "/heroes/backgrounds/victor_bg.webp",
     "tags": [
       "You",
       "Can't",
@@ -566,6 +599,7 @@ export const HEROES: Hero[] = [
     "role": "Snipes the unsuspecting",
     "heroType": "marksman",
     "iconUrl": "/heroes/vindicta.webp",
+    "backgroundUrl": "/heroes/backgrounds/vindicta_bg.webp",
     "tags": [
       "Sniper",
       "Soaring",
@@ -583,6 +617,7 @@ export const HEROES: Hero[] = [
     "role": "Rolls around deflecting bullets",
     "heroType": "mystic",
     "iconUrl": "/heroes/viscous.webp",
+    "backgroundUrl": "/heroes/backgrounds/viscous_bg.webp",
     "tags": [
       "Evasive",
       "Disruptor",
@@ -600,6 +635,7 @@ export const HEROES: Hero[] = [
     "role": "Slither in and assassinate enemies",
     "heroType": "assassin",
     "iconUrl": "/heroes/vyper.webp",
+    "backgroundUrl": "/heroes/backgrounds/vyper_bg.webp",
     "tags": [
       "Gunner",
       "Slippery",
@@ -617,6 +653,7 @@ export const HEROES: Hero[] = [
     "role": "Weakens his enemies and chases them down",
     "heroType": "brawler",
     "iconUrl": "/heroes/warden.webp",
+    "backgroundUrl": "/heroes/backgrounds/warden_bg.webp",
     "tags": [
       "Initiator",
       "Fearless",
@@ -634,6 +671,7 @@ export const HEROES: Hero[] = [
     "role": "Melts isolated targets",
     "heroType": "marksman",
     "iconUrl": "/heroes/wraith.webp",
+    "backgroundUrl": "/heroes/backgrounds/wraith_bg.webp",
     "tags": [
       "Duelist",
       "Isolator",
@@ -651,6 +689,7 @@ export const HEROES: Hero[] = [
     "role": "Delivers charged attacks with finesse",
     "heroType": "assassin",
     "iconUrl": "/heroes/yamato.webp",
+    "backgroundUrl": "/heroes/backgrounds/yamato_bg.webp",
     "tags": [
       "Relentless",
       "Acrobatics",

@@ -164,7 +164,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white font-heading">
+                <h2 className="text-lg font-bold text-deadlock-steam font-heading">
                   Deadlock Live Log & Event Debugger
                 </h2>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -182,7 +182,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
           <div className="flex items-center gap-3 self-start lg:self-center">
             <div className="px-3 py-2 rounded-lg bg-deadlock-dark border border-deadlock-border text-center min-w-[90px]">
               <div className="text-[10px] uppercase font-bold text-deadlock-muted">Captured Lines</div>
-              <div className="text-base font-black text-white font-mono">{events.length}</div>
+              <div className="text-base font-black text-deadlock-steam font-mono">{events.length}</div>
             </div>
             <div className="px-3 py-2 rounded-lg bg-deadlock-dark border border-deadlock-border text-center min-w-[90px]">
               <div className="text-[10px] uppercase font-bold text-deadlock-muted">Match Events</div>
@@ -231,7 +231,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               localStorage.setItem('deadlock_custom_log_path', e.target.value);
             }}
             placeholder="C:\...\Deadlock\game\citadel\console.log"
-            className="flex-1 bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-deadlock-accent"
+            className="flex-1 bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-deadlock-steam font-mono focus:outline-none focus:border-deadlock-accent"
           />
           <button
             type="button"
@@ -282,7 +282,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
       </div>
 
       {/* Terminal Toolbar (Filter & Action buttons) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-deadlock-dark/80 border border-deadlock-border/80 px-4 py-2.5 rounded-t-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-deadlock-dark/80 border border-deadlock-border/80 px-4 py-2.5 rounded-t-xl steam-card">
         {/* Filter categories & search */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
@@ -292,7 +292,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               placeholder="Search console..."
-              className="bg-black/50 border border-deadlock-border rounded-md pl-8 pr-3 py-1 text-xs text-white font-mono w-44 focus:outline-none focus:border-deadlock-accent"
+              className="bg-black/50 border border-deadlock-border rounded-md pl-8 pr-3 py-1 text-xs text-deadlock-steam font-mono w-44 focus:outline-none focus:border-deadlock-accent"
             />
           </div>
 
@@ -301,7 +301,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               type="button"
               onClick={() => setFilterType('all')}
               className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                filterType === 'all' ? 'bg-deadlock-accent text-white font-bold' : 'text-deadlock-muted hover:text-white'
+                filterType === 'all' ? 'bg-deadlock-accent text-deadlock-steam font-bold' : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               All
@@ -311,8 +311,8 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               onClick={() => setFilterType('match_found')}
               className={`px-2 py-0.5 rounded font-medium transition-colors ${
                 filterType === 'match_found'
-                  ? 'bg-deadlock-archmother text-white font-bold'
-                  : 'text-deadlock-muted hover:text-white'
+                  ? 'bg-deadlock-archmother text-deadlock-steam font-bold'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               Match
@@ -322,8 +322,8 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               onClick={() => setFilterType('hero_detected')}
               className={`px-2 py-0.5 rounded font-medium transition-colors ${
                 filterType === 'hero_detected'
-                  ? 'bg-deadlock-hidden-king text-white font-bold'
-                  : 'text-deadlock-muted hover:text-white'
+                  ? 'bg-deadlock-hidden-king text-deadlock-steam font-bold'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               Hero/Player
@@ -332,7 +332,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
               type="button"
               onClick={() => setFilterType('info')}
               className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                filterType === 'info' ? 'bg-gray-700 text-white font-bold' : 'text-deadlock-muted hover:text-white'
+                filterType === 'info' ? 'bg-gray-700 text-deadlock-accent font-bold' : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
               Info
@@ -384,7 +384,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
       </div>
 
       {/* Terminal Screen */}
-      <div className="bg-[#0c0e14] border-x border-b border-deadlock-border rounded-b-xl p-4 font-mono text-xs overflow-y-auto h-[480px] shadow-inner flex flex-col select-text">
+      <div className="bg-[#0c0a08] border-x border-b border-deadlock-border rounded-b-xl p-4 font-mono text-xs overflow-y-auto h-[480px] shadow-inner flex flex-col select-text">
         {filteredEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-deadlock-muted gap-2">
             <Terminal className="w-8 h-8 opacity-40" />
@@ -416,12 +416,12 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
                   [{evt.timestamp}]
                 </span>
                 {isMatch && (
-                  <span className="px-1 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-deadlock-archmother text-white shrink-0">
+                  <span className="px-1 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-deadlock-archmother text-deadlock-steam shrink-0">
                     MATCH
                   </span>
                 )}
                 {isHero && (
-                  <span className="px-1 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-deadlock-hidden-king text-white shrink-0">
+                  <span className="px-1 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-deadlock-hidden-king text-deadlock-steam shrink-0">
                     HERO
                   </span>
                 )}

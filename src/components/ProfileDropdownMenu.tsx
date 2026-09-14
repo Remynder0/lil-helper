@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ConnectedProfile } from '../types/match';
 import {
   PlusCircle,
@@ -81,15 +81,15 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
           <span className="text-xs font-bold text-gray-200 max-w-[90px] truncate hidden sm:inline">
             {profile.personaName}
           </span>
-          <ChevronDown className={`w-3 h-3 text-deadlock-muted transition-transform ${isOpen ? 'rotate-180 text-white' : ''}`} />
+          <ChevronDown className={`w-3 h-3 text-deadlock-muted transition-transform ${isOpen ? 'rotate-180 text-deadlock-steam' : ''}`} />
         </button>
 
         {/* Profile Dropdown Menu */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel border border-deadlock-border shadow-2xl py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
+          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel steam-card border border-deadlock-border shadow-2xl py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
             {/* Header in dropdown */}
             <div className="px-3 py-2 border-b border-deadlock-border/60 flex flex-col">
-              <span className="text-[11px] font-bold text-white truncate">
+              <span className="text-[11px] font-bold text-deadlock-steam truncate">
                 {profile.personaName}
               </span>
               <span className="text-[10px] text-deadlock-muted font-mono">
@@ -104,7 +104,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onOpenAddMatch();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <PlusCircle className="w-4 h-4 text-deadlock-accent shrink-0" />
               <span>Add Match (Manual)</span>
@@ -117,7 +117,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onOpenImportById();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <Search className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Import Match by ID</span>
@@ -130,7 +130,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onOpenDebugConsole();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Debug Console</span>
@@ -143,7 +143,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onSwitchProfile();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <FolderSync className="w-4 h-4 text-blue-400 shrink-0" />
               <span>Switch Profile</span>
@@ -158,7 +158,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onExport();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <Download className="w-4 h-4 text-deadlock-hidden-king shrink-0" />
               <span>Export Matches (JSON)</span>
@@ -171,7 +171,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
                 onTriggerImportFile();
                 setIsOpen(false);
               }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-border/40 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <Upload className="w-4 h-4 text-deadlock-archmother shrink-0" />
               <span>Import Matches (JSON)</span>
@@ -207,7 +207,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
             : cooldownRemaining > 0
             ? 'bg-deadlock-border/40 text-deadlock-muted border border-deadlock-border/60 cursor-not-allowed'
-            : 'bg-deadlock-accent text-white hover:text-black hover:bg-yellow-400 shadow-sm'
+            : 'bg-deadlock-accent text-deadlock-steam hover:text-black hover:bg-yellow-400 shadow-sm'
         }`}
         title={
           cooldownRemaining > 0

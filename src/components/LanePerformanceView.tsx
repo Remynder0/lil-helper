@@ -37,9 +37,9 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
   if (laneStats.totalLaneTrackedMatches === 0) {
     return (
-      <div className="bg-deadlock-panel border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
         <Compass className="w-12 h-12 text-deadlock-muted opacity-40" />
-        <h2 className="text-lg font-bold text-gray-200">No lane data tracked yet</h2>
+        <h2 className="text-lg font-bold text-deadlock-steam">No lane data tracked yet</h2>
         <p className="text-sm text-deadlock-muted max-w-md">
           When recording or editing matches in the <strong>Log Match</strong> / <strong>History</strong> tabs, fill in the <strong>Lane Assignment</strong> section (Yellow, Blue, or Green lane) to unlock lane statistics and opponent tracking!
         </p>
@@ -50,11 +50,11 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
   return (
     <div className="flex flex-col gap-6">
       {/* FILTER HEADER: Choose "All My Heroes" or a specific hero piloted */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-deadlock-accent" />
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
               Filter Lane Stats by Your Hero:
             </span>
           </div>
@@ -72,8 +72,8 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
             onClick={() => setSelectedPlayerHeroId(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               selectedPlayerHeroId === null
-                ? 'bg-deadlock-accent/20 border-deadlock-accent text-white shadow-sm'
-                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white hover:border-white/30'
+                ? 'bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm'
+                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
             }`}
           >
             All Heroes
@@ -90,8 +90,8 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                 onClick={() => setSelectedPlayerHeroId(hero.id)}
                 className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border transition-all ${
                   isSelected
-                    ? 'bg-deadlock-border border-white text-white shadow-md ring-1 ring-white/40'
-                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-white hover:border-white/30'
+                    ? 'bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40'
+                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
                 }`}
               >
                 <HeroAvatar heroId={hero.id} size="xs" />
@@ -105,7 +105,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
       {/* SECTION 1: 3 LANE CARDS (Yellow, Blue, Green) WITH VERTICAL GAUGES */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-3 flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Compass className="w-4 h-4 text-deadlock-accent" />
             <span>Lane Performance & Outcome Gauges</span>
@@ -166,7 +166,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                 return (
                   <div
                     key={key}
-                    className={`bg-deadlock-panel border ${borderClass} rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden transition-all`}
+                    className={`bg-deadlock-panel/80 backdrop-blur-sm steam-card border ${borderClass} rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden transition-all`}
                   >
                     <div className={`absolute top-0 right-0 w-28 h-28 ${glowClass} rounded-full blur-xl pointer-events-none`} />
 
@@ -239,7 +239,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                         <span className="text-[10px] uppercase tracking-wider font-bold text-deadlock-muted whitespace-nowrap">
                           Game Win Rate
                         </span>
-                        <div className="text-2xl font-black text-white font-mono mt-1">
+                        <div className="text-2xl font-black text-deadlock-steam font-mono mt-1">
                           {stat.wins + stat.losses > 0 ? `${stat.winRate}%` : 'N/A'}
                         </div>
                         <span className="text-[11px] text-deadlock-muted font-mono mt-1 whitespace-nowrap">
@@ -256,17 +256,17 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
       </div>
 
       {/* SECTION 2: LANE RESULT CONVERSION (Win rate when winning vs losing lane) */}
-      <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl p-5">
+      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-deadlock-win" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-200">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
             Lane Outcome Conversion to Match Victory
           </h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Lane Won */}
-          <div className="bg-deadlock-dark/70 border border-deadlock-win/30 rounded-xl p-3.5 flex flex-col gap-2">
+          <div className="bg-deadlock-card/80 border border-deadlock-win/30 rounded-xl p-3.5 flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-deadlock-win">When Lane is Won</span>
               <span className="text-deadlock-muted font-mono">{laneStats.outcomes.won.matches} times</span>
@@ -282,7 +282,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
           </div>
 
           {/* Lane Even */}
-          <div className="bg-deadlock-dark/70 border border-yellow-500/30 rounded-xl p-3.5 flex flex-col gap-2">
+          <div className="bg-deadlock-card/80 border border-yellow-500/30 rounded-xl p-3.5 flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-yellow-300">When Lane is Even</span>
               <span className="text-deadlock-muted font-mono">{laneStats.outcomes.even.matches} times</span>
@@ -298,7 +298,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
           </div>
 
           {/* Lane Lost */}
-          <div className="bg-deadlock-dark/70 border border-deadlock-loss/30 rounded-xl p-3.5 flex flex-col gap-2">
+          <div className="bg-deadlock-card/80 border border-deadlock-loss/30 rounded-xl p-3.5 flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-deadlock-loss">When Lane is Lost</span>
               <span className="text-deadlock-muted font-mono">{laneStats.outcomes.lost.matches} times</span>
@@ -317,11 +317,11 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
       {/* SECTION 3: DIRECT LANE OPPONENTS TABLE */}
       {laneStats.opponents.length > 0 && (
-        <div className="bg-deadlock-panel border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
+        <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-deadlock-border/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-deadlock-hidden-king" />
-              <h3 className="text-sm font-bold tracking-wide uppercase text-gray-200">
+              <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
                 Direct Lane Opponents Faced ({laneStats.opponents.length} heroes)
               </h3>
             </div>
@@ -332,7 +332,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-deadlock-dark/60 text-deadlock-muted border-b border-deadlock-border/60">
+              <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
                 <tr>
                   <th className="py-3 px-4 font-semibold">Opponent Hero</th>
                   <th className="py-3 px-4 font-semibold">Lanes Faced</th>
@@ -343,14 +343,14 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
               </thead>
               <tbody className="divide-y divide-deadlock-border/40">
                 {laneStats.opponents.map((opp) => (
-                  <tr key={opp.opponentHeroId} className="hover:bg-deadlock-dark/30 transition-colors">
+                  <tr key={opp.opponentHeroId} className="hover:bg-deadlock-card/40 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
                         <HeroAvatar heroId={opp.opponentHeroId} size="xs" />
-                        <span className="font-bold text-gray-200">{opp.opponentHero?.name}</span>
+                        <span className="font-bold text-deadlock-steam">{opp.opponentHero?.name}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-gray-300">
+                    <td className="py-3 px-4 font-mono text-deadlock-steam">
                       {opp.lanesFaced}
                     </td>
                     <td className="py-3 px-4 font-mono">
