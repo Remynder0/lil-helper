@@ -140,22 +140,148 @@ export async function fetchPlayerRankedMatches(
   return rawMatches.filter((m) => m.match_mode === 4);
 }
 
+function getApiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache',
+  };
+  try {
+    const customKey =
+      localStorage.getItem('deadlock_api_key') ||
+      (import.meta as any).env?.VITE_DEADLOCK_API_KEY;
+    if (customKey && typeof customKey === 'string' && customKey.trim()) {
+      headers['X-API-KEY'] = customKey.trim();
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return headers;
+}
+
+export type FetchMetadataResult =
+  | { success: true; data: RawMatchMetadata }
+  | {
+      success: false;
+      error: 'steam_unavailable' | 'rate_limited' | 'not_found' | 'server_error' | 'network_error';
+      status?: number;
+      message?: string;
+      retryAfterSeconds?: number;
+    };
+
+export type FetchSingleMatchResult =
+  | { success: true; match: Match }
+  | {
+      success: false;
+      error:
+        | 'steam_unavailable'
+        | 'rate_limited'
+        | 'not_found'
+        | 'not_ranked'
+        | 'not_in_match'
+        | 'server_error'
+        | 'network_error';
+      status?: number;
+      message?: string;
+      retryAfterSeconds?: number;
+    };
+
+/**
+ * Fetches detailed metadata with full status diagnostic and retry on transient Steam 503 errors.
+ */
+export async function fetchMatchMetadataWithStatus(
+  matchId: number,
+  retryCount = 1
+): Promise<FetchMetadataResult> {
+  const url = `${BASE_API_URL}/matches/${matchId}/metadata`;
+  const headers = getApiHeaders();
+
+  for (let attempt = 0; attempt <= retryCount; attempt++) {
+    try {
+      const res = await fetch(url, { headers });
+
+      if (res.ok) {
+        const data = (await res.json()) as RawMatchMetadata;
+        return { success: true, data };
+      }
+
+      if (res.status === 503) {
+        // Steam service temporarily unavailable or overwhelmed
+        if (attempt < retryCount) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          continue;
+        }
+        return {
+          success: false,
+          error: 'steam_unavailable',
+          status: 503,
+          message: 'Failed to fetch data from Steam (service unavailable). Steam coordinator may be busy or down.',
+        };
+      }
+
+      if (res.status === 429) {
+        const body = await res.json().catch(() => null);
+        const retryAfter = body?.error?.next_request_in || 60;
+        return {
+          success: false,
+          error: 'rate_limited',
+          status: 429,
+          retryAfterSeconds: retryAfter,
+          message: body?.error?.quota
+            ? `Steam query quota reached (${body.error.quota.limit} requests/hour per IP). Next request allowed in ${retryAfter}s.`
+            : 'Rate limit exceeded. Please wait before retrying.',
+        };
+      }
+
+      if (res.status === 404) {
+        return {
+          success: false,
+          error: 'not_found',
+          status: 404,
+          message: `Match #${matchId} was not found on Steam or Deadlock API.`,
+        };
+      }
+
+      if (res.status >= 500) {
+        return {
+          success: false,
+          error: 'server_error',
+          status: res.status,
+          message: `Deadlock API server error (HTTP ${res.status}).`,
+        };
+      }
+
+      return {
+        success: false,
+        error: 'server_error',
+        status: res.status,
+        message: `HTTP error ${res.status}`,
+      };
+    } catch (err) {
+      if (attempt < retryCount) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        continue;
+      }
+      return {
+        success: false,
+        error: 'network_error',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  return {
+    success: false,
+    error: 'server_error',
+    message: 'Unknown error occurred while fetching match metadata.',
+  };
+}
+
 /**
  * Fetches detailed metadata for a specific match (complete 12 player compositions, lanes, duration).
  */
 export async function fetchMatchMetadata(matchId: number): Promise<RawMatchMetadata | null> {
-  try {
-    const url = `${BASE_API_URL}/matches/${matchId}/metadata`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`Could not fetch metadata for match ${matchId}: HTTP ${res.status}`);
-      return null;
-    }
-    return (await res.json()) as RawMatchMetadata;
-  } catch (err) {
-    console.warn(`Failed to fetch metadata for match ${matchId}:`, err);
-    return null;
-  }
+  const res = await fetchMatchMetadataWithStatus(matchId);
+  return res.success ? res.data : null;
 }
 
 /**
@@ -468,14 +594,65 @@ export function convertMetadataDirectlyToAppMatch(
 }
 
 /**
- * Fetches match metadata directly by Match ID and converts it for a given account.
+ * Fetches match metadata directly by Match ID with precise error diagnostics
+ * (differentiating between steam_unavailable, rate_limited, not_found, not_ranked, not_in_match).
+ */
+export async function fetchSingleMatchResultById(
+  matchId: number,
+  targetAccountId: number
+): Promise<FetchSingleMatchResult> {
+  const metaRes = await fetchMatchMetadataWithStatus(matchId);
+  if (!metaRes.success) {
+    return metaRes;
+  }
+
+  const metadata = metaRes.data;
+  const matchInfo = metadata.match_info;
+  if (!matchInfo || !matchInfo.players) {
+    return {
+      success: false,
+      error: 'server_error',
+      message: 'Invalid match metadata received from Deadlock API.',
+    };
+  }
+
+  if (matchInfo.match_mode !== 4) {
+    return {
+      success: false,
+      error: 'not_ranked',
+      message: `Match #${matchId} exists, but it is not a Ranked match (mode: ${matchInfo.match_mode}). Only ranked matches are imported.`,
+    };
+  }
+
+  const myPlayerMeta = matchInfo.players.find((p) => p.account_id === targetAccountId);
+  if (!myPlayerMeta) {
+    return {
+      success: false,
+      error: 'not_in_match',
+      message: `Match #${matchId} exists, but your connected Steam account was not a participant in this match.`,
+    };
+  }
+
+  const match = convertMetadataDirectlyToAppMatch(metadata, targetAccountId);
+  if (!match) {
+    return {
+      success: false,
+      error: 'server_error',
+      message: 'Failed to convert match metadata into internal match format.',
+    };
+  }
+
+  return { success: true, match };
+}
+
+/**
+ * Convenience wrapper returning Match or null.
  */
 export async function fetchSingleMatchById(
   matchId: number,
   targetAccountId: number
 ): Promise<Match | null> {
-  const metadata = await fetchMatchMetadata(matchId);
-  if (!metadata) return null;
-  return convertMetadataDirectlyToAppMatch(metadata, targetAccountId);
+  const res = await fetchSingleMatchResultById(matchId, targetAccountId);
+  return res.success ? res.match : null;
 }
 
