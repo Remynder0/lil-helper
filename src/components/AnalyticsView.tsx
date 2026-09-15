@@ -13,6 +13,7 @@ import {
   calculateLaneAnalytics,
   formatStreakDateRange,
   HeroPerformance,
+  getSampleThreshold,
 } from '../services/analytics';
 import {
   Flame,
@@ -42,6 +43,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
   const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
   const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
@@ -428,7 +431,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
           </div>
 
           {familiarFace && familiarFace.hero ? (
-            <div className="mt-4 flex items-center gap-3.5">
+            <div
+              className={`mt-4 flex items-center gap-3.5 transition-all duration-200 ${
+                !familiarFace.isRepresentative
+                  ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                  : ''
+              }`}
+              title={!familiarFace.isRepresentative ? `Low sample (< ${threshold} matches)` : undefined}
+            >
               <div className="relative shrink-0">
                 <HeroAvatar heroId={familiarFace.heroId} size="md" />
               </div>
@@ -570,10 +580,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
-              Hero Performance Breakdown
+              Hero Performance Breakdown ({sortedHeroes.length} heroes)
             </h2>
             <p className="text-xs text-deadlock-muted mt-0.5">
-              Statistics for each hero you have piloted in recorded drafts ({heroPerformances.length} heroes played)
+              Statistics for each hero you have piloted in recorded drafts
             </p>
           </div>
 
@@ -626,10 +636,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
             <tbody className="divide-y divide-deadlock-border/40">
               {sortedHeroes.map((hp: HeroPerformance) => {
                 const decided = hp.wins + hp.losses;
+                const isRep = hp.matches >= threshold;
                 return (
                   <tr
                     key={hp.heroId}
-                    className="hover:bg-deadlock-card/40 transition-colors"
+                    className={`transition-all duration-200 ${
+                      !isRep
+                        ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100'
+                        : 'hover:bg-deadlock-card/40'
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                   >
                     {/* Hero Info */}
                     <td className="py-3 px-4">

@@ -16,7 +16,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
 }) => {
   return (
     <div className="bg-deadlock-panel steam-panel steam-card arcane-glow border border-deadlock-border rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
-      <div className="flex items-center justify-between pb-3 border-b border-deadlock-border/60">
+      <div className="flex items-center justify-between pb-3 border-b border-deadlock-border/60 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-deadlock-accent" />
           <h3 className="font-bold text-sm uppercase tracking-wide text-gray-100">
@@ -115,12 +115,20 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                       </div>
 
                       <div className="text-right font-mono shrink-0">
-                        <div className="text-2xl font-black text-deadlock-win">
+                        <div className={`text-2xl font-black text-deadlock-win ${!bestOverall.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                           {bestOverall.projectedWinRate}%
                         </div>
                         <span className="text-[11px] text-deadlock-muted font-sans font-semibold">
                           Projected WR
                         </span>
+                        {!bestOverall.isRepresentative && (
+                          <span
+                            className="text-[9px] font-sans font-semibold text-amber-300 block"
+                            title={`Low sample (< ${bestOverall.threshold} games).`}
+                          >
+                            Low sample (&lt;{bestOverall.threshold} games)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -222,9 +230,17 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                         </div>
 
                         <div className="text-right font-mono shrink-0 pl-2">
-                          <div className="text-2xl font-black text-deadlock-win">
+                          <div className={`text-2xl font-black text-deadlock-win ${!bestOverall.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                             {bestOverall.projectedWinRate}%
                           </div>
+                          {!bestOverall.isRepresentative && (
+                            <span
+                              className="text-[9px] font-sans font-semibold text-amber-300 block"
+                              title={`Low sample (< ${bestOverall.threshold} games).`}
+                            >
+                              Low sample (&lt;{bestOverall.threshold} games)
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -261,9 +277,17 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                         </div>
 
                         <div className="text-right font-mono shrink-0 pl-2">
-                          <div className="text-2xl font-black text-blue-300">
+                          <div className={`text-2xl font-black text-blue-300 ${!bestSafe.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                             {bestSafe.projectedWinRate}%
                           </div>
+                          {!bestSafe.isRepresentative && (
+                            <span
+                              className="text-[9px] font-sans font-semibold text-amber-300 block"
+                              title={`Low sample (< ${bestSafe.threshold} games).`}
+                            >
+                              Low sample (&lt;{bestSafe.threshold} games)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,30 +1,36 @@
-﻿import { Match, LANE_LABELS } from '../../types/match';
+import { Match, LANE_LABELS } from '../../types/match';
 import { HEROES, getHeroById, Hero } from '../../data/heroes';
 import { DraftAction, BestActionsAdvisorResult } from './types';
+import { getSampleThreshold } from './global';
 
 /**
  * Evaluates a lane matchup score for hero H with partner P against opponents [E1, E2].
+ * Uses 5/10 rule threshold to regress low-sample stats towards 50%.
  */
 function evaluateLaneScore(
   matches: Match[],
   myHeroId: number,
   partnerId: number | null,
   opponents: number[]
-): number {
+): { score: number; isRepresentative: boolean; threshold: number } {
+  const threshold = getSampleThreshold(matches.length);
   const myMatches = matches.filter((m) => m.myHeroId === myHeroId);
-  if (myMatches.length === 0) return 50;
+  const isRepresentative = myMatches.length >= threshold;
+  if (myMatches.length === 0) return { score: 50, isRepresentative: false, threshold };
 
   let totalWeight = 0;
   let scoreSum = 0;
 
-  // 1. Historical lane encounters against these specific opponents
+  // 1. Historical lane encounters against these specific opponents (lane matchup excluded from threshold for now)
   for (const oppId of opponents) {
     const vsMatches = myMatches.filter((m) => m.laneOpponents && m.laneOpponents.includes(oppId));
     if (vsMatches.length > 0) {
       const won = vsMatches.filter((m) => m.laneOutcome === 'won').length;
       const lost = vsMatches.filter((m) => m.laneOutcome === 'lost').length;
-      if (won + lost > 0) {
-        scoreSum += (won / (won + lost)) * 100 * 3; // high weight for direct lane history
+      const count = won + lost;
+      if (count > 0) {
+        const rawWr = (won / count) * 100;
+        scoreSum += rawWr * 3; // direct lane history
         totalWeight += 3;
       }
     } else {
@@ -33,20 +39,23 @@ function evaluateLaneScore(
       const decided = genMatches.filter((m) => m.result === 'win' || m.result === 'loss');
       if (decided.length > 0) {
         const genWins = genMatches.filter((m) => m.result === 'win').length;
-        scoreSum += (genWins / decided.length) * 100 * 1.5;
+        const genWr = (genWins / decided.length) * 100;
+        scoreSum += genWr * 1.5;
         totalWeight += 1.5;
       }
     }
   }
 
-  // 2. Synergy with partner
+  // 2. Synergy with partner (lane matchup excluded from threshold for now)
   if (partnerId) {
     const withMatches = myMatches.filter((m) => m.laneAllyId === partnerId);
     if (withMatches.length > 0) {
       const won = withMatches.filter((m) => m.laneOutcome === 'won').length;
       const lost = withMatches.filter((m) => m.laneOutcome === 'lost').length;
-      if (won + lost > 0) {
-        scoreSum += (won / (won + lost)) * 100 * 2;
+      const count = won + lost;
+      if (count > 0) {
+        const rawWr = (won / count) * 100;
+        scoreSum += rawWr * 2;
         totalWeight += 2;
       }
     } else {
@@ -55,7 +64,8 @@ function evaluateLaneScore(
       const decided = genAllies.filter((m) => m.result === 'win' || m.result === 'loss');
       if (decided.length > 0) {
         const genWins = genAllies.filter((m) => m.result === 'win').length;
-        scoreSum += (genWins / decided.length) * 100 * 1;
+        const genWr = (genWins / decided.length) * 100;
+        scoreSum += genWr * 1;
         totalWeight += 1;
       }
     }
@@ -69,7 +79,8 @@ function evaluateLaneScore(
     totalWeight += 1;
   }
 
-  return totalWeight > 0 ? Math.round(scoreSum / totalWeight) : 50;
+  const finalScore = totalWeight > 0 ? Math.round(scoreSum / totalWeight) : 50;
+  return { score: finalScore, isRepresentative, threshold };
 }
 
 /**
@@ -95,21 +106,37 @@ export function calculateBestDraftActions(
   const currentOpponentIds = currentLaneData.enemies;
 
   // Baseline win rate: keeping current hero on current lane
-  const currentWr = evaluateLaneScore(matches, currentMyHeroId, currentPartnerId, currentOpponentIds);
+  const { score: currentWr } = evaluateLaneScore(matches, currentMyHeroId, currentPartnerId, currentOpponentIds);
 
-  // Candidate heroes you could pilot:
-  // Must be heroes you have already played in match history (or your current hero),
-  // and not already picked in the match or banned.
-  const playedHeroIds = new Set(matches.map((m) => m.myHeroId));
-  const availableHeroIds = [
-    currentMyHeroId,
-    ...HEROES.filter(
-      (h) =>
-        h.id !== currentMyHeroId &&
-        !allUnavailableHeroIds.includes(h.id) &&
-        playedHeroIds.has(h.id)
-    ).map((h) => h.id),
-  ];
+  const threshold = getSampleThreshold(matches.length);
+
+  // Count matches played per hero
+  const heroMatchCounts = new Map<number, number>();
+  for (const m of matches) {
+    heroMatchCounts.set(m.myHeroId, (heroMatchCounts.get(m.myHeroId) || 0) + 1);
+  }
+
+  // Candidate heroes to switch to:
+  // Must be representative (>= threshold games) to be proposed as an option,
+  // not already picked in the match or banned.
+  const representativeSwitchHeroes = HEROES.filter(
+    (h) =>
+      h.id !== currentMyHeroId &&
+      !allUnavailableHeroIds.includes(h.id) &&
+      (heroMatchCounts.get(h.id) || 0) >= threshold
+  ).map((h) => h.id);
+
+  // Graceful fallback only if user has zero representative heroes in history
+  const switchCandidates = representativeSwitchHeroes.length > 0
+    ? representativeSwitchHeroes
+    : HEROES.filter(
+        (h) =>
+          h.id !== currentMyHeroId &&
+          !allUnavailableHeroIds.includes(h.id) &&
+          (heroMatchCounts.get(h.id) || 0) > 0
+      ).map((h) => h.id);
+
+  const availableHeroIds = [currentMyHeroId, ...switchCandidates];
 
   const candidateActions: DraftAction[] = [];
 
@@ -155,7 +182,7 @@ export function calculateBestDraftActions(
 
     for (const laneOpt of laneOptions) {
       const isSameLane = laneOpt.lane === assignedLane && laneOpt.swapWithAllyId === null;
-      const score = evaluateLaneScore(matches, heroId, laneOpt.partnerId, laneOpt.opponents);
+      const { score, isRepresentative, threshold } = evaluateLaneScore(matches, heroId, laneOpt.partnerId, laneOpt.opponents);
       const delta = score - currentWr;
 
       let type: DraftAction['type'] = 'stay_current';
@@ -196,14 +223,19 @@ export function calculateBestDraftActions(
         projectedWinRate: score,
         deltaVsCurrent: delta,
         isSwapRequested: laneOpt.swapWithAllyId !== null,
+        isRepresentative,
+        threshold,
         title,
         description,
       });
     }
   }
 
-  // Sort descending by projected win rate
+  // Sort descending by projected win rate, prioritizing representative actions
   candidateActions.sort((a, b) => {
+    if (a.isRepresentative !== b.isRepresentative) {
+      return a.isRepresentative ? -1 : 1;
+    }
     if (b.projectedWinRate !== a.projectedWinRate) {
       return b.projectedWinRate - a.projectedWinRate;
     }
@@ -213,12 +245,17 @@ export function calculateBestDraftActions(
     return 0;
   });
 
+  // Only propose representative solutions (>= threshold games).
+  // Fallback to all candidate actions only if player has zero representative actions.
+  const representativeActions = candidateActions.filter((a) => a.isRepresentative);
+  const eligibleActions = representativeActions.length > 0 ? representativeActions : candidateActions;
+
   // 1. Best overall action (any possibility)
-  const bestOverallAction = candidateActions[0];
+  const bestOverallAction = eligibleActions[0] || candidateActions[0];
 
   // 2. Best safe action that does not require teammate approval
-  const safeActions = candidateActions.filter((a) => !a.isSwapRequested);
-  const bestSafeActionWithoutSwap = safeActions[0] || candidateActions[0];
+  const safeActions = eligibleActions.filter((a) => !a.isSwapRequested);
+  const bestSafeActionWithoutSwap = safeActions[0] || eligibleActions[0] || candidateActions[0];
 
   return {
     currentProjectedWinRate: currentWr,
@@ -228,6 +265,6 @@ export function calculateBestDraftActions(
     currentOpponents: currentOpponentIds.map((id) => getHeroById(id)).filter((h): h is Hero => h !== undefined),
     bestOverallAction,
     bestSafeActionWithoutSwap,
-    allRankedActions: candidateActions.slice(0, 10),
+    allRankedActions: eligibleActions.slice(0, 10),
   };
 }

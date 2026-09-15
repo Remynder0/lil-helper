@@ -4,6 +4,7 @@ import { HeroAvatar } from './HeroAvatar';
 import {
   calculateEnemyMatchups,
   EnemyMatchupStat,
+  getSampleThreshold,
 } from '../services/analytics';
 import { getHeroById } from '../data/heroes';
 import {
@@ -25,6 +26,8 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
   const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
   // Find all distinct heroes piloted by the player
   const playedHeroes = useMemo(() => {
@@ -50,10 +53,12 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
     });
   }, [matchups, sortField, sortAsc]);
 
-  // Calculate Highlights (at least 1 match played against)
+  // Calculate Highlights (prioritize representative matchups with at least threshold games)
   const qualifiedForHighlights = useMemo(() => {
+    const repMatchups = matchups.filter((m) => m.matchesAgainst >= threshold);
+    if (repMatchups.length >= 2) return repMatchups;
     return matchups.filter((m) => m.wins + m.losses >= 1);
-  }, [matchups]);
+  }, [matchups, threshold]);
 
   // Calculate Nemeses (lowest winrate with at least 2 matches against, or at least 1)
   const nemeses = useMemo(() => {
@@ -152,23 +157,29 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {nemeses.map((nemesis) => (
-                <div
-                  key={nemesis.enemyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={nemesis.enemyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {nemesis.enemyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-loss">
-                    {nemesis.winRate}% WR
+              {nemeses.map((nemesis) => {
+                const isRep = nemesis.matchesAgainst >= threshold;
+                return (
+                  <div
+                    key={nemesis.enemyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={nemesis.enemyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {nemesis.enemyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-loss">
+                      {nemesis.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {nemesis.wins}W - {nemesis.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {nemesis.wins}W - {nemesis.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -186,23 +197,29 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {favorable.map((fav) => (
-                <div
-                  key={fav.enemyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={fav.enemyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {fav.enemyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-win">
-                    {fav.winRate}% WR
+              {favorable.map((fav) => {
+                const isRep = fav.matchesAgainst >= threshold;
+                return (
+                  <div
+                    key={fav.enemyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={fav.enemyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {fav.enemyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
+                      {fav.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {fav.wins}W - {fav.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {fav.wins}W - {fav.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -270,10 +287,16 @@ export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({ matches })
               <tbody className="divide-y divide-deadlock-border/40">
                 {sortedMatchups.map((m: EnemyMatchupStat) => {
                   const decided = m.wins + m.losses;
+                  const isRep = m.matchesAgainst >= threshold;
                   return (
                     <tr
                       key={m.enemyHeroId}
-                      className="hover:bg-deadlock-card/40 transition-colors"
+                      className={`transition-all duration-200 ${
+                        !isRep
+                          ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100'
+                          : 'hover:bg-deadlock-card/40'
+                      }`}
+                      title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                     >
                       {/* Enemy Hero info */}
                       <td className="py-3 px-4">

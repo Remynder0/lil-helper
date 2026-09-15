@@ -1,4 +1,4 @@
-﻿import { Match } from '../../types/match';
+import { Match } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
 import {
   LaneDistributionStat,
@@ -7,6 +7,7 @@ import {
   DirectLaneAllyStat,
   LaneAnalyticsSummary,
 } from './types';
+import { getSampleThreshold } from './global';
 
 /**
  * Computes lane-specific metrics across 3 lanes (Yellow, Blue, Green).
@@ -16,6 +17,7 @@ export function calculateLaneAnalytics(
   matches: Match[],
   playerHeroId: number | null = null
 ): LaneAnalyticsSummary {
+  const threshold = getSampleThreshold(matches.length);
   const filtered = playerHeroId !== null
     ? matches.filter((m) => m.myHeroId === playerHeroId)
     : matches;
@@ -125,6 +127,8 @@ export function calculateLaneAnalytics(
       gameWins: stat.gWins,
       gameLosses: stat.gLosses,
       gameWinRate,
+      isRepresentative: stat.faced >= threshold,
+      threshold,
     });
   }
   opponents.sort((a, b) => b.lanesFaced - a.lanesFaced);
@@ -147,6 +151,8 @@ export function calculateLaneAnalytics(
       gameWins: stat.gWins,
       gameLosses: stat.gLosses,
       gameWinRate,
+      isRepresentative: stat.together >= threshold,
+      threshold,
     });
   }
   allies.sort((a, b) => b.lanesTogether - a.lanesTogether);

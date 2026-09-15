@@ -120,10 +120,32 @@ export function calculatePatronStats(matches: Match[]): PatronStats {
 }
 
 /**
+ * Rules of 5/10 for representative sample size:
+ * - If the player has less than 100 total games (< 100): threshold = 5 games.
+ * - Starting from 100 total games (>= 100): threshold = 10 games.
+ */
+export function getSampleThreshold(totalMatches: number): number {
+  return totalMatches < 100 ? 5 : 10;
+}
+
+export function isSampleRepresentative(sampleCount: number, totalMatches: number): boolean {
+  return sampleCount >= getSampleThreshold(totalMatches);
+}
+
+export function getSampleThresholdExplanation(totalMatches: number): string {
+  const threshold = getSampleThreshold(totalMatches);
+  if (totalMatches < 100) {
+    return `Threshold of representativeness: ${threshold} games (active because < 100 games in total: ${totalMatches}/100)`;
+  }
+  return `Threshold of representativeness: ${threshold} games (active because ≥ 100 games in total: ${totalMatches})`;
+}
+
+/**
  * Computes performance breakdown per played hero (myHeroId).
  * Sorted by matches played descending by default.
  */
 export function calculateHeroPerformance(matches: Match[]): HeroPerformance[] {
+  const threshold = getSampleThreshold(matches.length);
   const map = new Map<number, { matches: number; wins: number; losses: number; cancels: number }>();
 
   for (const m of matches) {
@@ -148,6 +170,8 @@ export function calculateHeroPerformance(matches: Match[]): HeroPerformance[] {
       losses: stat.losses,
       cancels: stat.cancels,
       winRate,
+      isRepresentative: stat.matches >= threshold,
+      threshold,
     });
   }
 
@@ -163,6 +187,7 @@ export function calculateHeroPerformance(matches: Match[]): HeroPerformance[] {
  */
 export function calculateFamiliarFace(matches: Match[]): FamiliarFaceStat | null {
   if (matches.length === 0) return null;
+  const threshold = getSampleThreshold(matches.length);
 
   const map = new Map<
     number,
@@ -231,5 +256,7 @@ export function calculateFamiliarFace(matches: Match[]): FamiliarFaceStat | null
     wins: top.wins,
     losses: top.losses,
     winRate: top.winRate,
+    isRepresentative: top.appearances >= threshold,
+    threshold,
   };
 }
