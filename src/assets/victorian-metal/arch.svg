@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" fill="none">
+  <defs>
+    <linearGradient id="vma-girder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8a7e6b"/>
+      <stop offset="40%" stop-color="#5a4e3c"/>
+      <stop offset="100%" stop-color="#2d261e"/>
+    </linearGradient>
+    <linearGradient id="vma-brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fae09c"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#6e3f16"/>
+    </linearGradient>
+    <radialGradient id="vma-rivet" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#3d3428"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Top Girder / Lintel Beam -->
+  <rect x="10" y="8" width="140" height="10" rx="1" fill="url(#vma-girder)" stroke="#3d3428" stroke-width="1"/>
+  <line x1="10" y1="8" x2="150" y2="8" stroke="#8a7e6b" stroke-width="0.8" opacity="0.7"/>
+
+  <!-- Beam Rivets -->
+  <circle cx="16" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+  <circle cx="36" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+  <circle cx="56" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+  <circle cx="104" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+  <circle cx="124" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+  <circle cx="144" cy="13" r="1.6" fill="url(#vma-rivet)"/>
+
+  <!-- Main Semicircular Victorian Arch Voussoir -->
+  <path d="M22 96 V54 C22 28, 138 28, 138 54 V96" 
+        stroke="url(#vma-girder)" 
+        stroke-width="6" 
+        fill="none"/>
+
+  <!-- Inner Flanged Rim of the Arch -->
+  <path d="M25 96 V54 C25 32, 135 32, 135 54 V96" 
+        stroke="#8a7e6b" 
+        stroke-width="0.8" 
+        opacity="0.8" 
+        fill="none"/>
+
+  <!-- Outer Concentric Trim -->
+  <path d="M19 96 V54 C19 24, 141 24, 141 54 V96" 
+        stroke="#3d3428" 
+        stroke-width="1.2" 
+        fill="none"/>
+
+  <!-- Central Keystone Bracket & Medallion -->
+  <polygon points="73,6 87,6 90,26 80,32 70,26" fill="url(#vma-brass)" stroke="#3d3428" stroke-width="1"/>
+  <circle cx="80" cy="18" r="4.5" fill="#2d261e" stroke="#e8c06a" stroke-width="1"/>
+  <circle cx="80" cy="18" r="2" fill="url(#vma-rivet)"/>
+
+  <!-- Keystone perimeter rivets -->
+  <circle cx="75" cy="10" r="1.2" fill="url(#vma-rivet)"/>
+  <circle cx="85" cy="10" r="1.2" fill="url(#vma-rivet)"/>
+  <circle cx="74" cy="24" r="1.2" fill="url(#vma-rivet)"/>
+  <circle cx="86" cy="24" r="1.2" fill="url(#vma-rivet)"/>
+  <circle cx="80" cy="30" r="1.2" fill="url(#vma-rivet)"/>
+
+
+
+  <!-- Left & Right Iron Pier Collars / Capitals with Rivets -->
+  <!-- Left Capital -->
+  <rect x="16" y="52" width="12" height="5" rx="1" fill="url(#vma-brass)" stroke="#3d3428" stroke-width="0.8"/>
+  <circle cx="18.5" cy="54.5" r="1" fill="url(#vma-rivet)"/>
+  <circle cx="25.5" cy="54.5" r="1" fill="url(#vma-rivet)"/>
+
+  <!-- Right Capital -->
+  <rect x="132" y="52" width="12" height="5" rx="1" fill="url(#vma-brass)" stroke="#3d3428" stroke-width="0.8"/>
+  <circle cx="134.5" cy="54.5" r="1" fill="url(#vma-rivet)"/>
+  <circle cx="141.5" cy="54.5" r="1" fill="url(#vma-rivet)"/>
+
+  <!-- Arch Segment Radial Rivets along the Curve -->
+  <circle cx="34" cy="42" r="1.5" fill="url(#vma-rivet)"/>
+  <circle cx="50" cy="37" r="1.5" fill="url(#vma-rivet)"/>
+  <circle cx="110" cy="37" r="1.5" fill="url(#vma-rivet)"/>
+  <circle cx="126" cy="42" r="1.5" fill="url(#vma-rivet)"/>
+  <circle cx="22" cy="74" r="1.5" fill="url(#vma-rivet)"/>
+  <circle cx="138" cy="74" r="1.5" fill="url(#vma-rivet)"/>
+</svg>

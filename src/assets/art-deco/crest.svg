@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="adt-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fae09c"/>
+      <stop offset="50%" stop-color="#e8c06a"/>
+      <stop offset="100%" stop-color="#b87333"/>
+    </linearGradient>
+    <linearGradient id="adt-brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c06a"/>
+      <stop offset="100%" stop-color="#8a4f1d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Central Crest / Finial Spearhead -->
+  <polygon points="60,6 67,28 60,34 53,28" fill="url(#adt-gold)"/>
+  <polygon points="60,12 65,27 60,30 55,27" fill="#1c1712"/>
+
+  <!-- Stepped Central Pedestal -->
+  <polygon points="60,34 68,48 52,48" fill="url(#adt-brass)"/>
+  <rect x="46" y="48" width="28" height="4" fill="#e8c06a"/>
+  <rect x="42" y="52" width="36" height="5" fill="#b87333"/>
+  <rect x="36" y="57" width="48" height="6" fill="#1c1712" stroke="#e8c06a" stroke-width="1"/>
+
+  <!-- Symmetrical Stepped Wings / Chevrons (Left & Right) -->
+  <!-- Wing 1 (Inner) -->
+  <polyline points="52,46 36,36 36,24 44,20 48,34" stroke="url(#adt-gold)" stroke-width="1.5" fill="none"/>
+  <polyline points="68,46 84,36 84,24 76,20 72,34" stroke="url(#adt-gold)" stroke-width="1.5" fill="none"/>
+
+  <!-- Wing 2 (Middle) -->
+  <polyline points="46,52 26,42 26,28 32,24 38,38" stroke="#b87333" stroke-width="1.2" fill="none"/>
+  <polyline points="74,52 94,42 94,28 88,24 82,38" stroke="#b87333" stroke-width="1.2" fill="none"/>
+
+  <!-- Wing 3 (Outer) -->
+  <polyline points="40,58 14,48 14,36 20,32 28,44" stroke="#c4956a" stroke-width="1" fill="none" opacity="0.8"/>
+  <polyline points="80,58 106,48 106,36 100,32 92,44" stroke="#c4956a" stroke-width="1" fill="none" opacity="0.8"/>
+
+  <!-- Fanning Rays downward / Base Spire -->
+  <line x1="60" y1="63" x2="60" y2="108" stroke="url(#adt-gold)" stroke-width="2"/>
+  <line x1="60" y1="63" x2="38" y2="98" stroke="#e8c06a" stroke-width="1.2" opacity="0.7"/>
+  <line x1="60" y1="63" x2="82" y2="98" stroke="#e8c06a" stroke-width="1.2" opacity="0.7"/>
+  <line x1="60" y1="63" x2="20" y2="86" stroke="#b87333" stroke-width="1" opacity="0.5"/>
+  <line x1="60" y1="63" x2="100" y2="86" stroke="#b87333" stroke-width="1" opacity="0.5"/>
+
+  <!-- Base Pendant Lozenge -->
+  <polygon points="60,98 68,108 60,118 52,108" fill="url(#adt-gold)"/>
+  <polygon points="60,102 65,108 60,114 55,108" fill="#15120e"/>
+  <circle cx="60" cy="108" r="2" fill="#fae09c"/>
+
+  <!-- Stepped horizontal brackets at base -->
+  <path d="M44 80 H54 V84 H66 V80 H76" stroke="#e8c06a" stroke-width="1" fill="none" opacity="0.6"/>
+
+  <!-- Diamond accents -->
+  <polygon points="38,98 42,94 46,98 42,102" fill="#c4956a"/>
+  <polygon points="82,98 86,94 90,98 86,102" fill="#c4956a"/>
+  <polygon points="20,86 23,83 26,86 23,89" fill="#b87333"/>
+  <polygon points="100,86 103,83 106,86 103,89" fill="#b87333"/>
+</svg>

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <radialGradient id="oc-eye-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b3a3a" stop-opacity="0.5"/>
+      <stop offset="60%" stop-color="#6b4c8a" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#110f0c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="oc-arcane-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9a6abf"/>
+      <stop offset="50%" stop-color="#6b4c8a"/>
+      <stop offset="100%" stop-color="#4a2e63"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient Ethereal Glow -->
+  <circle cx="50" cy="50" r="46" fill="url(#oc-eye-glow)"/>
+
+  <!-- Sacred Delta / Triangle of Sight -->
+  <polygon points="50,14 84,74 16,74" stroke="#6b4c8a" stroke-width="1.8" fill="none"/>
+  <polygon points="50,22 78,70 22,70" stroke="#8b3a3a" stroke-width="1" fill="none" opacity="0.6"/>
+
+  <!-- Trinitarian vertex rings & nodes -->
+  <circle cx="50" cy="14" r="3.5" stroke="#6b4c8a" stroke-width="1" fill="#110f0c"/>
+  <circle cx="50" cy="14" r="1.5" fill="#8b3a3a"/>
+
+  <circle cx="84" cy="74" r="3.5" stroke="#6b4c8a" stroke-width="1" fill="#110f0c"/>
+  <circle cx="84" cy="74" r="1.5" fill="#8b3a3a"/>
+
+  <circle cx="16" cy="74" r="3.5" stroke="#6b4c8a" stroke-width="1" fill="#110f0c"/>
+  <circle cx="16" cy="74" r="1.5" fill="#8b3a3a"/>
+
+  <!-- Radiant Occult Bursts / Lashes -->
+  <!-- Top rays -->
+  <line x1="50" y1="36" x2="50" y2="28" stroke="#8b3a3a" stroke-width="1.2"/>
+  <line x1="42" y1="38" x2="36" y2="32" stroke="#6b4c8a" stroke-width="1"/>
+  <line x1="58" y1="38" x2="64" y2="32" stroke="#6b4c8a" stroke-width="1"/>
+
+  <!-- Bottom rays -->
+  <line x1="50" y1="62" x2="50" y2="67" stroke="#8b3a3a" stroke-width="1.2"/>
+  <line x1="42" y1="60" x2="36" y2="65" stroke="#6b4c8a" stroke-width="1"/>
+  <line x1="58" y1="60" x2="64" y2="65" stroke="#6b4c8a" stroke-width="1"/>
+
+  <!-- Eye Shape -->
+  <path d="M26 49 C34 38, 66 38, 74 49 C66 60, 34 60, 26 49 Z" 
+        stroke="url(#oc-arcane-grad)" 
+        stroke-width="1.8" 
+        fill="#110f0c"/>
+
+  <!-- Iris & Pupil -->
+  <circle cx="50" cy="49" r="8" stroke="#8b3a3a" stroke-width="1.2" fill="#1b1221"/>
+  <circle cx="50" cy="49" r="4.5" fill="#6b4c8a" opacity="0.6"/>
+
+  <!-- Slit pupil -->
+  <path d="M50 43 C51.5 46, 51.5 52, 50 55 C48.5 52, 48.5 46, 50 43 Z" fill="#8b3a3a"/>
+
+  <!-- Triple-moon crowning crescent over apex -->
+  <path d="M42 8 A9 9 0 0 1 58 8 A6.5 6.5 0 0 0 42 8" fill="#6b4c8a" opacity="0.7"/>
+
+  <!-- Inverted crescent beneath the eye base -->
+  <path d="M36 82 A16 16 0 0 0 64 82 A13 13 0 0 1 36 82" fill="#8b3a3a" opacity="0.5"/>
+
+  <!-- Hanging droplet / pearl -->
+  <circle cx="50" cy="87" r="2" fill="#6b4c8a"/>
+  <line x1="50" y1="82" x2="50" y2="85" stroke="#6b4c8a" stroke-width="1"/>
+</svg>

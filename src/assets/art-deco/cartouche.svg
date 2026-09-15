@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 50" fill="none">
+  <defs>
+    <linearGradient id="adp-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b87333" stop-opacity="0.3"/>
+      <stop offset="25%" stop-color="#e8c06a"/>
+      <stop offset="50%" stop-color="#fae09c"/>
+      <stop offset="75%" stop-color="#e8c06a"/>
+      <stop offset="100%" stop-color="#b87333" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="adp-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1f1a14" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#15120e" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background plaque polygon with notched 45° Art Deco corners -->
+  <polygon points="12,4 148,4 156,12 156,38 148,46 12,46 4,38 4,12" 
+           fill="url(#adp-fill)" 
+           stroke="url(#adp-grad)" 
+           stroke-width="1.5"/>
+
+  <!-- Inner stepped border -->
+  <polygon points="15,7 145,7 153,15 153,35 145,43 15,43 7,35 7,15" 
+           fill="none" 
+           stroke="#c4956a" 
+           stroke-width="0.8" 
+           opacity="0.6"/>
+
+  <!-- Stepped corner brackets (Art Deco ziggurat style) -->
+  <path d="M7 19 H13 V13 H19 V7" stroke="#e8c06a" stroke-width="1" fill="none"/>
+  <path d="M153 19 H147 V13 H141 V7" stroke="#e8c06a" stroke-width="1" fill="none"/>
+  <path d="M7 31 H13 V37 H19 V43" stroke="#e8c06a" stroke-width="1" fill="none"/>
+  <path d="M153 31 H147 V37 H141 V43" stroke="#e8c06a" stroke-width="1" fill="none"/>
+
+  <!-- Top and Bottom Center Finial Diamonds -->
+  <polygon points="80,1 84,4 80,7 76,4" fill="#e8c06a"/>
+  <polygon points="80,43 84,46 80,49 76,46" fill="#e8c06a"/>
+
+
+
+  <!-- Left & Right Diamond Nodes -->
+  <polygon points="1,25 4,22 7,25 4,28" fill="#b87333"/>
+  <polygon points="153,25 156,22 159,25 156,28" fill="#b87333"/>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <radialGradient id="oc-seal-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b3a3a" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#6b4c8a" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#110f0c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Arcane background glow -->
+  <circle cx="50" cy="50" r="48" fill="url(#oc-seal-glow)"/>
+
+  <!-- Outer Ring with astrological tick marks -->
+  <circle cx="50" cy="50" r="46" stroke="#6b4c8a" stroke-width="1.2"/>
+  <circle cx="50" cy="50" r="42" stroke="#6b4c8a" stroke-width="0.8" stroke-dasharray="3 2" opacity="0.7"/>
+
+  <!-- 12 Cardinal & Astrological Ticks -->
+  <g stroke="#8b3a3a" stroke-width="1.2">
+    <line x1="50" y1="42" x2="50" y2="46"/>
+    <line x1="50" y1="54" x2="50" y2="58"/>
+    <line x1="42" y1="50" x2="46" y2="50"/>
+    <line x1="54" y1="50" x2="58" y2="50"/>
+    <line x1="50" y1="4" x2="50" y2="8"/>
+    <line x1="50" y1="92" x2="50" y2="96"/>
+    <line x1="4" y1="50" x2="8" y2="50"/>
+    <line x1="92" y1="50" x2="96" y2="50"/>
+  </g>
+
+  <!-- Sacred Hexagram / Seal of Solomon (Alchemical fire & water triangles) -->
+  <!-- Upward triangle (Fire / Spirit) -->
+  <polygon points="50,14 79,64 21,64" stroke="#6b4c8a" stroke-width="1.5" fill="none"/>
+  <!-- Downward triangle (Water / Body) -->
+  <polygon points="50,86 21,36 79,36" stroke="#8b3a3a" stroke-width="1.5" fill="none"/>
+
+  <!-- Inner circle uniting the star vertices -->
+  <circle cx="50" cy="50" r="24" stroke="#6b4c8a" stroke-width="1" opacity="0.8"/>
+  <circle cx="50" cy="50" r="16" stroke="#8b3a3a" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.6"/>
+
+  <!-- Central Enochian / Alchemical Binding Cross & Crescent -->
+  <!-- Cross -->
+  <line x1="50" y1="36" x2="50" y2="64" stroke="#6b4c8a" stroke-width="1.5"/>
+  <line x1="38" y1="50" x2="62" y2="50" stroke="#6b4c8a" stroke-width="1.5"/>
+  <!-- Horizontal bars for orthodox / patriarchal cross -->
+  <line x1="44" y1="42" x2="56" y2="42" stroke="#8b3a3a" stroke-width="1"/>
+  <line x1="43" y1="58" x2="57" y2="58" stroke="#8b3a3a" stroke-width="1"/>
+
+  <!-- Center Sanctum Core -->
+  <circle cx="50" cy="50" r="4.5" fill="#110f0c" stroke="#8b3a3a" stroke-width="1.2"/>
+  <circle cx="50" cy="50" r="2" fill="#6b4c8a"/>
+
+  <!-- Six Star Vertex Nodes -->
+  <circle cx="50" cy="14" r="2" fill="#8b3a3a"/>
+  <circle cx="79" cy="64" r="2" fill="#8b3a3a"/>
+  <circle cx="21" cy="64" r="2" fill="#8b3a3a"/>
+  <circle cx="50" cy="86" r="2" fill="#6b4c8a"/>
+  <circle cx="21" cy="36" r="2" fill="#6b4c8a"/>
+  <circle cx="79" cy="36" r="2" fill="#6b4c8a"/>
+
+</svg>
