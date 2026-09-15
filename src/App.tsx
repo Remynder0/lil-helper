@@ -205,25 +205,29 @@ export const App: React.FC = () => {
           className="fixed inset-0 z-0 pointer-events-none overflow-hidden transition-all duration-700 select-none"
           aria-hidden="true"
         >
-          {/* Rotating celestial sigil in background — clearly visible behind hero */}
-          <div className="absolute top-16 right-16 opacity-65 pointer-events-none">
-            <img src={occultBadge} alt="" aria-hidden="true" className="w-[420px] h-[420px] animate-[spin_20s_linear_infinite] opacity-60" />
+          {/* Rotating celestial sigil in background with warm brass illumination */}
+          <div className="absolute top-12 right-12 opacity-80 pointer-events-none drop-shadow-[0_0_24px_rgba(232,192,106,0.35)]">
+            <img src={occultBadge} alt="" aria-hidden="true" className="w-[480px] h-[480px] animate-[spin_25s_linear_infinite]" />
           </div>
 
-          {/* Full-bleed un-shrunk hero artwork: covers full screen height at the right */}
+          {/* Luminous brass/amber aura backlights behind the hero */}
+          <div className="absolute top-1/4 right-8 w-[650px] h-[650px] bg-gradient-to-br from-deadlock-accent/25 via-amber-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-10 right-28 w-[400px] h-[400px] bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Full-bleed hero artwork: covers full screen height at right with vivid brilliance, contrast and shadow */}
           <div
-            className="absolute inset-0 bg-cover bg-right bg-no-repeat transition-all duration-700 opacity-80"
-            style={{ backgroundImage: `url(${activeHeroBgUrl})` }}
+            className="absolute inset-0 bg-cover bg-right bg-no-repeat transition-all duration-700 opacity-95"
+            style={{
+              backgroundImage: `url(${activeHeroBgUrl})`,
+              filter: 'brightness(1.16) contrast(1.08) saturate(1.14) drop-shadow(0 0 45px rgba(232, 192, 106, 0.25))',
+            }}
           />
 
-          {/* Left-to-right fade: dark on left for card legibility, transparent on right for full hero visibility */}
-          <div className="absolute inset-0 bg-gradient-to-r from-deadlock-dark via-deadlock-dark/60 to-transparent via-40%" />
+          {/* Left-to-right fade: softened mask allowing character illumination to radiate while preserving card clarity */}
+          <div className="absolute inset-0 bg-gradient-to-r from-deadlock-dark/85 via-deadlock-dark/35 to-transparent via-55%" />
 
           {/* Subtle top and bottom atmospheric vignette */}
-          <div className="absolute inset-0 bg-gradient-to-b from-deadlock-dark/50 via-transparent to-deadlock-dark/80" />
-
-          {/* Warm brass occult ambient glow behind hero */}
-          <div className="absolute top-1/4 right-20 w-[450px] h-[450px] bg-deadlock-accent/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-deadlock-dark/35 via-transparent to-deadlock-dark/70" />
         </div>
       )}
 

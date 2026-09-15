@@ -121,23 +121,58 @@ h1, h2 {
   right: 8px;
 }
 
-/* Translucent Steampunk Glass: allows the hero wallpaper to glow through with rich depth */
+/* Liquid Glass: Fluid, refractive, optical lens glassmorphism */
 .steam-glass {
-  background-color: rgba(22, 18, 14, 0.68);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(196, 149, 106, 0.28);
+  background: linear-gradient(
+    145deg,
+    rgba(38, 29, 20, 0.42) 0%,
+    rgba(16, 13, 10, 0.22) 45%,
+    rgba(46, 35, 23, 0.32) 100%
+  );
+  backdrop-filter: blur(10px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(200%) brightness(1.08);
+  border: 1px solid rgba(232, 192, 106, 0.38);
   box-shadow: 
-    inset 0 1px 0 rgba(232, 192, 106, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-    0 8px 32px rgba(0, 0, 0, 0.7);
+    inset 0 1.5px 1px rgba(255, 238, 198, 0.45),
+    inset 0 0 20px rgba(232, 192, 106, 0.08),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.55),
+    0 16px 42px rgba(0, 0, 0, 0.65),
+    0 0 30px rgba(232, 192, 106, 0.12);
 }
 
 .steam-glass-subtle {
-  background-color: rgba(17, 15, 12, 0.52);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(184, 115, 51, 0.2);
+  background: linear-gradient(
+    145deg,
+    rgba(30, 23, 16, 0.30) 0%,
+    rgba(14, 11, 8, 0.16) 50%,
+    rgba(36, 27, 18, 0.25) 100%
+  );
+  backdrop-filter: blur(6px) saturate(185%);
+  -webkit-backdrop-filter: blur(6px) saturate(185%);
+  border: 1px solid rgba(212, 163, 115, 0.28);
+  box-shadow: 
+    inset 0 1px 0 rgba(232, 192, 106, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Liquid Glass Modal Window (as featured in Dribbble Liquid Glass UI) */
+.liquid-glass-modal {
+  background: linear-gradient(
+    150deg,
+    rgba(45, 34, 23, 0.52) 0%,
+    rgba(18, 14, 10, 0.28) 45%,
+    rgba(54, 40, 27, 0.40) 100%
+  );
+  backdrop-filter: blur(14px) saturate(210%) brightness(1.10);
+  -webkit-backdrop-filter: blur(14px) saturate(210%) brightness(1.10);
+  border: 1.5px solid rgba(232, 192, 106, 0.48);
+  box-shadow: 
+    inset 0 2px 1.5px rgba(255, 245, 215, 0.55),
+    inset 0 0 30px rgba(232, 192, 106, 0.14),
+    inset 0 -2px 1.5px rgba(0, 0, 0, 0.7),
+    0 24px 64px rgba(0, 0, 0, 0.8),
+    0 0 45px rgba(232, 192, 106, 0.2);
 }
 
 /* Engraved Brass Plaque */

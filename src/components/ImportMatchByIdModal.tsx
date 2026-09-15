@@ -23,8 +23,8 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-fadeIn">
+      <div className="liquid-glass-modal steam-panel rounded-2xl w-full max-w-md p-6 flex flex-col gap-4 relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Search className="w-5 h-5 text-amber-400" />

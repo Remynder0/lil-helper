@@ -58,8 +58,8 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-fadeIn">
+      <div className="liquid-glass-modal steam-panel rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
         {/* Modal Header */}
         <div className="px-5 py-4 border-b border-deadlock-border/80 flex items-center justify-between bg-deadlock-dark/60">
           <div className="flex items-center gap-2.5">

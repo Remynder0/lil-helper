@@ -49,28 +49,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenConnectModal,
 }) => {
   return (
-    <header className="border-b-2 border-deadlock-brass/40 bg-deadlock-panel/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40 steam-panel shadow-[0_4px_20px_rgba(0,0,0,0.7)] relative">
+    <header className="border-b-2 border-deadlock-brass/40 bg-deadlock-panel/80 backdrop-blur-lg px-6 py-3.5 flex items-center justify-between sticky top-0 z-40 steam-panel shadow-[0_4px_20px_rgba(0,0,0,0.7)] relative">
       {/* Decorative background brass conduit line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-deadlock-accent/60 to-transparent" />
 
       {/* Brand & Steampunk Apparatus Emblem */}
       <div className="flex items-center gap-3 relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-b from-[#d4a373] via-[#b87333] to-[#5a3818] flex items-center justify-center text-deadlock-dark font-black text-base shadow-lg shadow-deadlock-accent/30 ring-1 ring-deadlock-steam/40 border border-[#e8c06a] shrink-0">
-            D
-          </div>
+        <div className="flex items-center gap-2"> 
           {/* Prominent mechanical turning gears */}
           <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
         </div>
 
-        <div className="flex flex-col">
-          <h1 className="text-base font-bold tracking-wide text-deadlock-steam drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            Deadlock Draft & Match Analyzer
-          </h1>
-          <p className="text-xs text-deadlock-muted">
-            Ranked Matchup & Synergy Companion
-          </p>
-        </div>
       </div>
 
       {/* Global Quick Stats & Navigation */}
