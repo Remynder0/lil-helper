@@ -52,6 +52,8 @@ export interface FamiliarFaceStat {
   heroId: number;
   hero: Hero | undefined;
   appearances: number;
+  asAlly: number;
+  asEnemy: number;
   presenceRate: number; // 0-100 percentage
   wins: number;
   losses: number;

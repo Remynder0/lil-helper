@@ -299,6 +299,7 @@ export const App: React.FC = () => {
         {activeTab === 'history' && (
           <HistoryList
             matches={matches}
+            profile={profile}
             onEditMatch={handleEditMatch}
             onDeleteMatch={handleDeleteMatch}
             onHeroFilterChange={setPreviewHeroId}
