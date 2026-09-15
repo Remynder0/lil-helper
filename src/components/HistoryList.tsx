@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { HeroAvatar } from './HeroAvatar';
 import { HEROES, getHeroById } from '../data/heroes';
 import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS, LANE_LABELS, LANE_OUTCOME_LABELS } from '../types/match';
@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Swords,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 
 interface HistoryListProps {
@@ -27,6 +28,9 @@ interface HistoryListProps {
   onEditMatch: (match: Match) => void;
   onDeleteMatch: (id: string) => void;
   onHeroFilterChange?: (heroId: number | null) => void;
+  highlightedMatchIds?: string[] | null;
+  highlightedStreakType?: 'win' | 'loss' | null;
+  onClearHighlight?: () => void;
   className?: string;
 }
 
@@ -35,6 +39,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   onEditMatch,
   onDeleteMatch,
   onHeroFilterChange,
+  highlightedMatchIds,
+  highlightedStreakType,
+  onClearHighlight,
   className = '',
 }) => {
   // Filter states
@@ -100,6 +107,27 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     setExpandedMatchId((prev) => (prev === id ? null : id));
   };
 
+  // Scroll to streak and reset filters when highlightedMatchIds changes
+  useEffect(() => {
+    if (highlightedMatchIds && highlightedMatchIds.length > 0) {
+      setHeroFilter('all');
+      setOutcomeFilter('all');
+      setSideFilter('all');
+      onHeroFilterChange?.(null);
+
+      const timer = setTimeout(() => {
+        for (const id of highlightedMatchIds) {
+          const el = document.getElementById(`match-${id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedMatchIds, onHeroFilterChange]);
+
   // Active hero currently focused in wallpaper & filters
   const activeHero = useMemo(() => {
     if (heroFilter !== 'all') {
@@ -154,7 +182,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
           {/* Active Wallpaper Indicator with turning gear */}
           <div className="hidden sm:flex items-center gap-3 relative z-10 text-right pr-3">
-            <img src={victorianBadge} alt="" aria-hidden="true" className="w-7 h-7 shrink-0 animate-[spin_12s_linear_infinite]" />
             <div className="flex flex-col items-end">
               <span className="text-[10px] uppercase font-mono tracking-wider text-deadlock-muted">Background Art</span>
               <span className="text-xs font-bold text-deadlock-accent flex items-center gap-1.5">
@@ -166,8 +193,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         </div>
       )}
 
-      {/* Prominent Steampunk Conduit Connecting Dossier and Toolbar */}
-      <img src={victorianDivider} alt="" aria-hidden="true" className="w-full h-4 object-cover my-4 opacity-80" />
 
       {/* Filter Toolbar */}
       <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 relative border border-deadlock-border/80">
@@ -364,7 +389,33 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
+          {/* Highlight Streak Banner */}
+          {highlightedMatchIds && highlightedMatchIds.length > 0 && (
+            <div
+              className={`p-3 rounded-xl border flex items-center justify-between text-xs font-semibold animate-fadeIn ${
+                highlightedStreakType === 'win'
+                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.15)]'
+                  : 'bg-red-500/10 border-red-500/40 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span>
+                  Highlighting {highlightedStreakType === 'win' ? 'Best Win Streak' : 'Worst Lose Streak'} ({highlightedMatchIds.length} matches)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onClearHighlight?.()}
+                className="px-2.5 py-1 rounded bg-black/40 hover:bg-black/60 text-deadlock-steam border border-deadlock-border/60 hover:border-deadlock-steam transition-all"
+              >
+                Clear Highlight ✕
+              </button>
+            </div>
+          )}
+
           {filteredMatches.map((m) => {
+            const isStreakMatch = Boolean(highlightedMatchIds?.includes(m.id));
             const enemySide: Side = m.side === 'hidden_king' ? 'archmother' : 'hidden_king';
             const isExpanded = expandedMatchId === m.id;
             const myHero = getHeroById(m.myHeroId);
@@ -383,7 +434,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             return (
               <div
                 key={m.id}
-                className="steam-glass hover:border-deadlock-brass/70 rounded-xl transition-all overflow-hidden flex flex-col hover:shadow-[0_4px_24px_rgba(184,115,51,0.25)] relative group border border-deadlock-border/70"
+                id={`match-${m.id}`}
+                className={`steam-glass rounded-xl transition-all overflow-hidden flex flex-col relative group border ${
+                  isStreakMatch
+                    ? highlightedStreakType === 'win'
+                      ? 'border-amber-400 ring-2 ring-amber-400/60 shadow-[0_0_24px_rgba(251,191,36,0.3)] bg-gradient-to-r from-amber-950/25 to-transparent'
+                      : 'border-red-500 ring-2 ring-red-500/60 shadow-[0_0_24px_rgba(239,68,68,0.3)] bg-gradient-to-r from-red-950/25 to-transparent'
+                    : 'border-deadlock-border/70 hover:border-deadlock-brass/70 hover:shadow-[0_4px_24px_rgba(184,115,51,0.25)]'
+                }`}
               >
                 {/* Main Card Row */}
                 <div className="p-3.5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -420,6 +478,17 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                         >
                           {RESULT_LABELS[m.result] || m.result}
                         </span>
+                        {isStreakMatch && (
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                              highlightedStreakType === 'win'
+                                ? 'bg-amber-400/20 text-amber-300 border-amber-400/50'
+                                : 'bg-red-500/20 text-red-300 border-red-500/50'
+                            }`}
+                          >
+                            ★ Streak
+                          </span>
+                        )}
                         <span
                           className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                             m.side === 'hidden_king'

@@ -1,8 +1,15 @@
-﻿import { Hero } from '../../data/heroes';
+import { Hero } from '../../data/heroes';
 
 /* ==========================================================================
    GLOBAL STATISTICS & HERO PERFORMANCE TYPES
    ========================================================================== */
+
+export interface StreakDetail {
+  count: number;
+  startDate?: string;
+  endDate?: string;
+  matchIds: string[];
+}
 
 export interface GlobalStats {
   totalMatches: number;
@@ -10,6 +17,8 @@ export interface GlobalStats {
   totalLosses: number;
   totalCancels: number;
   winRate: number; // 0-100 percentage excluding cancels
+  bestWinStreak: StreakDetail;
+  worstLoseStreak: StreakDetail;
 }
 
 export interface PatronStats {
@@ -36,6 +45,16 @@ export interface HeroPerformance {
   wins: number;
   losses: number;
   cancels: number;
+  winRate: number; // 0-100 percentage
+}
+
+export interface FamiliarFaceStat {
+  heroId: number;
+  hero: Hero | undefined;
+  appearances: number;
+  presenceRate: number; // 0-100 percentage
+  wins: number;
+  losses: number;
   winRate: number; // 0-100 percentage
 }
 

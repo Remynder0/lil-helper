@@ -1,6 +1,6 @@
-﻿import { Match } from '../../types/match';
+import { Match } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
-import { GlobalStats, PatronStats, HeroPerformance } from './types';
+import { GlobalStats, PatronStats, HeroPerformance, FamiliarFaceStat } from './types';
 
 /**
  * Calculates global statistics over a list of matches.
@@ -20,13 +20,76 @@ export function calculateGlobalStats(matches: Match[]): GlobalStats {
   const decided = totalWins + totalLosses;
   const winRate = decided > 0 ? Math.round((totalWins / decided) * 100) : 0;
 
+  // Chronological sort to calculate accurate streaks (oldest to newest)
+  const chronological = [...matches].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  let currentWinMatches: Match[] = [];
+  let bestWinMatches: Match[] = [];
+
+  let currentLossMatches: Match[] = [];
+  let worstLossMatches: Match[] = [];
+
+  for (const m of chronological) {
+    if (m.result === 'win') {
+      currentWinMatches.push(m);
+      currentLossMatches = [];
+      if (currentWinMatches.length >= bestWinMatches.length) {
+        bestWinMatches = [...currentWinMatches];
+      }
+    } else if (m.result === 'loss') {
+      currentLossMatches.push(m);
+      currentWinMatches = [];
+      if (currentLossMatches.length >= worstLossMatches.length) {
+        worstLossMatches = [...currentLossMatches];
+      }
+    }
+  }
+
   return {
     totalMatches: matches.length,
     totalWins,
     totalLosses,
     totalCancels,
     winRate,
+    bestWinStreak: {
+      count: bestWinMatches.length,
+      startDate: bestWinMatches[0]?.date,
+      endDate: bestWinMatches[bestWinMatches.length - 1]?.date,
+      matchIds: bestWinMatches.map((m) => m.id),
+    },
+    worstLoseStreak: {
+      count: worstLossMatches.length,
+      startDate: worstLossMatches[0]?.date,
+      endDate: worstLossMatches[worstLossMatches.length - 1]?.date,
+      matchIds: worstLossMatches.map((m) => m.id),
+    },
   };
+}
+
+/**
+ * Formats a streak's start and end date for display.
+ */
+export function formatStreakDateRange(startDate?: string, endDate?: string): string {
+  if (!startDate) return '';
+  const d1 = new Date(startDate);
+  const d2 = endDate ? new Date(endDate) : d1;
+
+  const sameDay = d1.toDateString() === d2.toDateString();
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+
+  if (sameDay) {
+    return d1.toLocaleDateString([], options);
+  }
+
+  if (d1.getFullYear() === d2.getFullYear()) {
+    const startStr = d1.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const endStr = d2.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} – ${endStr}`;
+  }
+
+  return `${d1.toLocaleDateString([], options)} – ${d2.toLocaleDateString([], options)}`;
 }
 
 /**
@@ -92,4 +155,81 @@ export function calculateHeroPerformance(matches: Match[]): HeroPerformance[] {
   list.sort((a, b) => b.matches - a.matches);
 
   return list;
+}
+
+/**
+ * Computes the hero most frequently encountered across all matches
+ * (excluding the hero the player picked themselves).
+ */
+export function calculateFamiliarFace(matches: Match[]): FamiliarFaceStat | null {
+  if (matches.length === 0) return null;
+
+  const map = new Map<
+    number,
+    { heroId: number; asAlly: number; asEnemy: number; wins: number; losses: number }
+  >();
+
+  for (const m of matches) {
+    for (const allyId of m.allies) {
+      if (allyId && allyId !== m.myHeroId) {
+        const cur = map.get(allyId) || {
+          heroId: allyId,
+          asAlly: 0,
+          asEnemy: 0,
+          wins: 0,
+          losses: 0,
+        };
+        cur.asAlly += 1;
+        if (m.result === 'win') cur.wins += 1;
+        else if (m.result === 'loss') cur.losses += 1;
+        map.set(allyId, cur);
+      }
+    }
+    for (const enemyId of m.enemies) {
+      if (enemyId) {
+        const cur = map.get(enemyId) || {
+          heroId: enemyId,
+          asAlly: 0,
+          asEnemy: 0,
+          wins: 0,
+          losses: 0,
+        };
+        cur.asEnemy += 1;
+        // When user loses, enemy team wins; when user wins, enemy team loses
+        if (m.result === 'loss') cur.wins += 1;
+        else if (m.result === 'win') cur.losses += 1;
+        map.set(enemyId, cur);
+      }
+    }
+  }
+
+  const entries = Array.from(map.values()).map((entry) => {
+    const appearances = entry.asAlly + entry.asEnemy;
+    const decided = entry.wins + entry.losses;
+    const winRate = decided > 0 ? Math.round((entry.wins / decided) * 100) : 0;
+    return {
+      ...entry,
+      appearances,
+      winRate,
+    };
+  });
+
+  entries.sort((a, b) => b.appearances - a.appearances);
+
+  if (entries.length === 0 || entries[0].appearances === 0) return null;
+
+  const top = entries[0];
+  const presenceRate = Math.round((top.appearances / matches.length) * 100);
+
+  return {
+    heroId: top.heroId,
+    hero: getHeroById(top.heroId),
+    appearances: top.appearances,
+    asAlly: top.asAlly,
+    asEnemy: top.asEnemy,
+    presenceRate,
+    wins: top.wins,
+    losses: top.losses,
+    winRate: top.winRate,
+  };
 }

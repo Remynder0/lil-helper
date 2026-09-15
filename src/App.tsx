@@ -28,7 +28,15 @@ export const App: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [previewHeroId, setPreviewHeroId] = useState<number | null>(null);
+  const [highlightedMatchIds, setHighlightedMatchIds] = useState<string[] | null>(null);
+  const [highlightedStreakType, setHighlightedStreakType] = useState<'win' | 'loss' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleNavigateToStreak = (matchIds: string[], type: 'win' | 'loss') => {
+    setHighlightedMatchIds(matchIds);
+    setHighlightedStreakType(type);
+    setActiveTab('history');
+  };
 
   const {
     profile,
@@ -294,10 +302,19 @@ export const App: React.FC = () => {
             onEditMatch={handleEditMatch}
             onDeleteMatch={handleDeleteMatch}
             onHeroFilterChange={setPreviewHeroId}
+            highlightedMatchIds={highlightedMatchIds}
+            highlightedStreakType={highlightedStreakType}
+            onClearHighlight={() => {
+              setHighlightedMatchIds(null);
+              setHighlightedStreakType(null);
+            }}
           />
         )}
         {activeTab === 'analytics' && (
-          <AnalyticsView matches={matches} />
+          <AnalyticsView
+            matches={matches}
+            onNavigateToStreak={handleNavigateToStreak}
+          />
         )}
         {activeTab === 'assistant' && (
           <DraftAssistantView matches={matches} gameContext={gameContext} />

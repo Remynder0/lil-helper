@@ -9,12 +9,14 @@ import {
   calculateGlobalStats,
   calculatePatronStats,
   calculateHeroPerformance,
+  calculateFamiliarFace,
+  calculateLaneAnalytics,
+  formatStreakDateRange,
   HeroPerformance,
 } from '../services/analytics';
 import {
-  Trophy,
-  XCircle,
-  AlertCircle,
+  Flame,
+  TrendingDown,
   TrendingUp,
   Gamepad2,
   Crown,
@@ -24,16 +26,19 @@ import {
   BarChart2,
   Users,
   Compass,
+  Eye,
+  Shield,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
   matches: Match[];
+  onNavigateToStreak?: (matchIds: string[], type: 'win' | 'loss') => void;
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
 type AnalyticsSubTab = 'overview' | 'matchups' | 'synergies' | 'lanes';
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigateToStreak }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
@@ -41,6 +46,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
   const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
   const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
   const heroPerformances = useMemo(() => calculateHeroPerformance(matches), [matches]);
+  const familiarFace = useMemo(() => calculateFamiliarFace(matches), [matches]);
+  const laneAnalytics = useMemo(() => calculateLaneAnalytics(matches), [matches]);
+
+  const topLanePartner = useMemo(() => {
+    return laneAnalytics.allies.length > 0 && laneAnalytics.allies[0].lanesTogether > 0
+      ? laneAnalytics.allies[0]
+      : null;
+  }, [laneAnalytics]);
+
+  const topRival = useMemo(() => {
+    return laneAnalytics.opponents.length > 0 && laneAnalytics.opponents[0].lanesFaced > 0
+      ? laneAnalytics.opponents[0]
+      : null;
+  }, [laneAnalytics]);
 
   const sortedHeroes = useMemo(() => {
     return [...heroPerformances].sort((a, b) => {
@@ -95,7 +114,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
             }`}
           >
             <BarChart2 className="w-3.5 h-3.5" />
-            <span>Overview & Heroes</span>
+            <span>Overview</span>
           </button>
           <button
             type="button"
@@ -184,35 +203,114 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
           </div>
         </div>
 
-        {/* Victories */}
-        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
+        {/* Win Streak (Best) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (globalStats.bestWinStreak.count > 0 && onNavigateToStreak) {
+              onNavigateToStreak(globalStats.bestWinStreak.matchIds, 'win');
+            }
+          }}
+          onKeyDown={(e) => {
+            if (
+              (e.key === 'Enter' || e.key === ' ') &&
+              globalStats.bestWinStreak.count > 0 &&
+              onNavigateToStreak
+            ) {
+              onNavigateToStreak(globalStats.bestWinStreak.matchIds, 'win');
+            }
+          }}
+          title={globalStats.bestWinStreak.count > 0 ? 'Click to view this streak in History' : undefined}
+          className={`steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between transition-all group ${
+            globalStats.bestWinStreak.count > 0
+              ? 'cursor-pointer hover:border-amber-400/60 hover:shadow-[0_0_16px_rgba(251,191,36,0.15)] hover:scale-[1.01]'
+              : ''
+          }`}
+        >
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
-            <span>Victories</span>
-            <Trophy className="w-4 h-4 text-deadlock-win" />
+            <span className="font-semibold text-deadlock-steam">Win Streak</span>
+            <div className="flex items-center gap-1.5">
+              {globalStats.bestWinStreak.count > 0 && (
+                <span className="text-[10px] text-amber-400/80 group-hover:text-amber-300 font-medium transition-colors hidden sm:inline">
+                  View in history →
+                </span>
+              )}
+              <Flame className="w-4 h-4 text-amber-400" />
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-deadlock-win">{globalStats.totalWins}</span>
-            <span className="text-xs text-deadlock-muted">
-              {globalStats.totalMatches > 0
-                ? `${Math.round((globalStats.totalWins / globalStats.totalMatches) * 100)}% of games`
-                : ''}
+          <div className="mt-2 flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-deadlock-win">
+                {globalStats.bestWinStreak.count}
+              </span>
+              <span className="text-xs font-semibold text-deadlock-steam">
+                {globalStats.bestWinStreak.count === 1 ? 'win' : 'wins in a row'}
+              </span>
+            </div>
+            <span className="text-xs text-deadlock-muted truncate">
+              {globalStats.bestWinStreak.count > 0
+                ? formatStreakDateRange(
+                    globalStats.bestWinStreak.startDate,
+                    globalStats.bestWinStreak.endDate
+                  )
+                : 'No win streak recorded'}
             </span>
           </div>
         </div>
 
-        {/* Defeats & Cancels */}
-        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
+        {/* Lose Streak (Worst) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (globalStats.worstLoseStreak.count > 0 && onNavigateToStreak) {
+              onNavigateToStreak(globalStats.worstLoseStreak.matchIds, 'loss');
+            }
+          }}
+          onKeyDown={(e) => {
+            if (
+              (e.key === 'Enter' || e.key === ' ') &&
+              globalStats.worstLoseStreak.count > 0 &&
+              onNavigateToStreak
+            ) {
+              onNavigateToStreak(globalStats.worstLoseStreak.matchIds, 'loss');
+            }
+          }}
+          title={globalStats.worstLoseStreak.count > 0 ? 'Click to view this streak in History' : undefined}
+          className={`steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between transition-all group ${
+            globalStats.worstLoseStreak.count > 0
+              ? 'cursor-pointer hover:border-red-400/60 hover:shadow-[0_0_16px_rgba(239,68,68,0.15)] hover:scale-[1.01]'
+              : ''
+          }`}
+        >
           <div className="flex items-center justify-between text-deadlock-muted text-xs">
-            <span>Losses & Cancels</span>
-            <div className="flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5 text-deadlock-loss" />
-              <AlertCircle className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-semibold text-deadlock-steam">Lose Streak</span>
+            <div className="flex items-center gap-1.5">
+              {globalStats.worstLoseStreak.count > 0 && (
+                <span className="text-[10px] text-red-400/80 group-hover:text-red-300 font-medium transition-colors hidden sm:inline">
+                  View in history →
+                </span>
+              )}
+              <TrendingDown className="w-4 h-4 text-deadlock-loss" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-deadlock-loss">{globalStats.totalLosses}</span>
-            <span className="text-xs text-deadlock-muted">
-              loss{globalStats.totalLosses !== 1 ? 'es' : ''} / <strong className="text-deadlock-steam">{globalStats.totalCancels}</strong> cancelled
+          <div className="mt-2 flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-deadlock-loss">
+                {globalStats.worstLoseStreak.count}
+              </span>
+              <span className="text-xs font-semibold text-deadlock-steam">
+                {globalStats.worstLoseStreak.count === 1 ? 'loss' : 'losses in a row'}
+              </span>
+            </div>
+            <span className="text-xs text-deadlock-muted truncate">
+              {globalStats.worstLoseStreak.count > 0
+                ? formatStreakDateRange(
+                    globalStats.worstLoseStreak.startDate,
+                    globalStats.worstLoseStreak.endDate
+                  )
+                : 'No lose streak recorded'}
             </span>
           </div>
         </div>
@@ -309,6 +407,161 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches }) => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* SECTION: TRIO ENCOUNTERS (Familiar Face, Lane Partner, Rival) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Familiar Face */}
+        <div className="steam-glass steam-panel rounded-xl p-5 border border-deadlock-border/80 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-400/40 transition-all">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-xs font-bold tracking-wide uppercase text-deadlock-steam">
+                Familiar Face
+              </h3>
+            </div>
+            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+              Most Encountered
+            </span>
+          </div>
+
+          {familiarFace && familiarFace.hero ? (
+            <div className="mt-4 flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <HeroAvatar heroId={familiarFace.heroId} size="md" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-black text-white truncate">
+                  {familiarFace.hero.name}
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-lg font-black text-cyan-400">
+                    {familiarFace.appearances}
+                  </span>
+                  <span className="text-xs text-deadlock-muted">
+                    matches ({familiarFace.presenceRate}%)
+                  </span>
+                </div>
+                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                  Win Rate: <strong className={familiarFace.winRate >= 50 ? 'text-deadlock-win' : 'text-deadlock-loss'}>{familiarFace.winRate}%</strong> ({familiarFace.wins}W - {familiarFace.losses}L)
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 text-center py-4 text-xs text-deadlock-muted">
+              No match data recorded yet.
+            </div>
+          )}
+        </div>
+
+        {/* Lane Partner */}
+        <div
+          role={topLanePartner ? 'button' : undefined}
+          tabIndex={topLanePartner ? 0 : undefined}
+          onClick={() => topLanePartner && setSubTab('lanes')}
+          title={topLanePartner ? 'Click to view Lane Matchups' : undefined}
+          className={`steam-glass steam-panel rounded-xl p-5 border border-deadlock-border/80 flex flex-col justify-between relative overflow-hidden group transition-all ${
+            topLanePartner
+              ? 'cursor-pointer hover:border-emerald-400/50 hover:shadow-[0_0_16px_rgba(16,185,129,0.15)]'
+              : ''
+          }`}
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-xs font-bold tracking-wide uppercase text-deadlock-steam">
+                Lane Partner
+              </h3>
+            </div>
+            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+              Most Duo Lanes
+            </span>
+          </div>
+
+          {topLanePartner && topLanePartner.allyHero ? (
+            <div className="mt-4 flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <HeroAvatar heroId={topLanePartner.allyHeroId} size="md" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-black text-white truncate">
+                  {topLanePartner.allyHero.name}
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-lg font-black text-emerald-400">
+                    {topLanePartner.lanesTogether}
+                  </span>
+                  <span className="text-xs text-deadlock-muted">
+                    duo lane{topLanePartner.lanesTogether > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                  Lane Win Rate: <strong className="text-deadlock-steam">{topLanePartner.laneWinRate}%</strong> ({topLanePartner.laneWins}W - {topLanePartner.laneLosses}L)
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 text-center py-4 text-xs text-deadlock-muted">
+              No duo lane ally recorded yet.
+            </div>
+          )}
+        </div>
+
+        {/* Rival */}
+        <div
+          role={topRival ? 'button' : undefined}
+          tabIndex={topRival ? 0 : undefined}
+          onClick={() => topRival && setSubTab('lanes')}
+          title={topRival ? 'Click to view Lane Matchups' : undefined}
+          className={`steam-glass steam-panel rounded-xl p-5 border border-deadlock-border/80 flex flex-col justify-between relative overflow-hidden group transition-all ${
+            topRival
+              ? 'cursor-pointer hover:border-red-400/50 hover:shadow-[0_0_16px_rgba(239,68,68,0.15)]'
+              : ''
+          }`}
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-red-400/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Swords className="w-4 h-4 text-red-400" />
+              <h3 className="text-xs font-bold tracking-wide uppercase text-deadlock-steam">
+                Rival
+              </h3>
+            </div>
+            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+              Most Faced on Lane
+            </span>
+          </div>
+
+          {topRival && topRival.opponentHero ? (
+            <div className="mt-4 flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <HeroAvatar heroId={topRival.opponentHeroId} size="md" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-black text-white truncate">
+                  {topRival.opponentHero.name}
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-lg font-black text-red-400">
+                    {topRival.lanesFaced}
+                  </span>
+                  <span className="text-xs text-deadlock-muted">
+                    lane duel{topRival.lanesFaced > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                  Lane Win Rate: <strong className="text-deadlock-steam">{topRival.laneWinRate}%</strong> ({topRival.laneWins}W - {topRival.laneLosses}L)
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 text-center py-4 text-xs text-deadlock-muted">
+              No lane opponent recorded yet.
+            </div>
+          )}
         </div>
       </div>
 
