@@ -284,55 +284,63 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
 
   return (
     <div className="relative">
-      {/* Occult corner ornaments */}
-      <img src={occultCorner} alt="" aria-hidden="true" className="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50 z-10" />
-      <img src={occultCorner} alt="" aria-hidden="true" className="absolute top-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 z-10" />
-      <img src={occultCorner} alt="" aria-hidden="true" className="absolute bottom-0 left-0 w-14 h-14 pointer-events-none opacity-50 -scale-y-100 z-10" />
-      <img src={occultCorner} alt="" aria-hidden="true" className="absolute bottom-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 -scale-y-100 z-10" />
-
-    <div className="flex flex-col gap-6">
-      {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET + LIVE SYNC */}
-      <DraftHeader
-        side={side}
-        onSideChange={setSide}
-        bannedHeroIds={bannedHeroIds}
-        onSelectBanSlot={(index) => setActiveSlot({ type: 'ban', index })}
-        onRemoveBan={(index) => {
-          const next = [...bannedHeroIds];
-          next[index] = null;
-          setBannedHeroIds(next);
-        }}
-        activeSlot={activeSlot}
-        isScanningScreen={isScanningScreen}
-        onScanScreen={handleScanScreen}
-        hasLastScanResult={lastScanResult !== null}
-        onOpenOcrInspector={() => setShowOcrInspector(true)}
-        onReset={handleReset}
-        scanStatusMessage={scanStatusMessage}
-        gameContext={gameContext}
-        assignedLane={assignedLane}
-        onSetAssignedLane={handleSetAssignedLane}
+      {/* Massive Occult Corners placed directly beneath the App Header */}
+      <img
+        src={occultCorner}
+        alt=""
+        aria-hidden="true"
+        className="absolute -top-5 -left-25 w-44 h-44 md:w-64 md:h-64 pointer-events-none opacity-85 z-20 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)]"
+      />
+      <img
+        src={occultCorner}
+        alt=""
+        aria-hidden="true"
+        className="absolute -top-5 -right-25 w-44 h-44 md:w-64 md:h-64 pointer-events-none opacity-85 -scale-x-100 z-20 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)]"
       />
 
-      {/* 2. THE 3 DUO LANES BOARD (6v6: Yellow, Blue, Green) */}
-      <DraftLanesBoard
-        lanes={lanes}
-        assignedLane={assignedLane}
-        myHeroId={myHeroId}
-        activeSlot={activeSlot}
-        onSelectSlot={setActiveSlot}
-        onSetMyHeroId={setMyHeroId}
-        onRemoveHero={(lane, team, index) => {
-          const heroToRemove = lanes[lane][team][index];
-          const next = { ...lanes };
-          next[lane][team][index] = null;
-          setLanes(next);
-          if (team === 'allies' && myHeroId === heroToRemove) {
-            setMyHeroId(null);
-          }
-        }}
-        onSetAssignedLane={handleSetAssignedLane}
-      />
+      <div className="flex flex-col gap-6 relative z-10">
+        {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET + LIVE SYNC */}
+        <DraftHeader
+          side={side}
+          onSideChange={setSide}
+          bannedHeroIds={bannedHeroIds}
+          onSelectBanSlot={(index) => setActiveSlot({ type: 'ban', index })}
+          onRemoveBan={(index) => {
+            const next = [...bannedHeroIds];
+            next[index] = null;
+            setBannedHeroIds(next);
+          }}
+          activeSlot={activeSlot}
+          isScanningScreen={isScanningScreen}
+          onScanScreen={handleScanScreen}
+          hasLastScanResult={lastScanResult !== null}
+          onOpenOcrInspector={() => setShowOcrInspector(true)}
+          onReset={handleReset}
+          scanStatusMessage={scanStatusMessage}
+          gameContext={gameContext}
+          assignedLane={assignedLane}
+          onSetAssignedLane={handleSetAssignedLane}
+        />
+
+        {/* 2. THE 3 DUO LANES BOARD */}
+        <DraftLanesBoard
+          lanes={lanes}
+          assignedLane={assignedLane}
+          myHeroId={myHeroId}
+          activeSlot={activeSlot}
+          onSelectSlot={setActiveSlot}
+          onSetMyHeroId={setMyHeroId}
+          onRemoveHero={(lane, team, index) => {
+            const heroToRemove = lanes[lane][team][index];
+            const next = { ...lanes };
+            next[lane][team][index] = null;
+            setLanes(next);
+            if (team === 'allies' && myHeroId === heroToRemove) {
+              setMyHeroId(null);
+            }
+          }}
+          onSetAssignedLane={handleSetAssignedLane}
+        />
 
       {/* 3. OPTIMAL ACTIONS VISUAL DECISION TREE */}
       <DraftDecisionTree

@@ -2,16 +2,16 @@ import React from 'react';
 import { Side, LaneColor, LANE_LABELS, SIDE_LABELS } from '../../types/match';
 import { HeroAvatar } from '../HeroAvatar';
 import {
-  Brain,
   RotateCcw,
   Ban,
   Crown,
   Gamepad2,
-  Camera,
   Loader2,
   CheckCircle2,
   Terminal,
+  Sparkles,
 } from 'lucide-react';
+import { OccultEyeButton } from './OccultEyeButton';
 import { ParsedGameContext } from '../../services/logWatcher';
 import { ActiveSlot } from './types';
 
@@ -53,20 +53,20 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
   return (
     <>
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET */}
-      <div className="bg-deadlock-panel steam-panel steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-b from-[#181124]/95 via-[#120d1c]/95 to-[#160e22]/95 steam-panel steam-card border border-deadlock-arcane/45 shadow-[0_0_25px_rgba(107,76,138,0.16)] rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         {/* Left: Title & Patron Side Selection */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div>
             <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-              <Brain className="w-5 h-5 text-deadlock-accent" />
+              <Sparkles className="w-5 h-5 text-deadlock-arcane" />
               <span>Deadlock Draft & Pre-Match Assistant</span>
             </h2>
-            <p className="text-xs text-deadlock-muted">
+            <p className="text-xs text-purple-300/70">
               Live optimal actions: Hero switch & Lane swap advice (with Plan B fallback)
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-deadlock-card p-1 rounded-lg border border-deadlock-border">
+          <div className="flex items-center gap-1.5 bg-[#1a1226]/80 p-1 rounded-lg border border-deadlock-arcane/35">
             <button
               type="button"
               onClick={() => onSideChange('hidden_king')}
@@ -125,20 +125,10 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
+          <OccultEyeButton
+            isScanning={isScanningScreen}
             onClick={onScanScreen}
-            disabled={isScanningScreen}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/50 bg-purple-950/40 hover:bg-purple-900/60 text-xs font-bold text-purple-200 transition-all shadow-sm cursor-pointer disabled:opacity-50"
-            title="Press Escape in Deadlock then click here to auto-detect both teams with OCR"
-          >
-            {isScanningScreen ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
-            ) : (
-              <Camera className="w-3.5 h-3.5 text-purple-400" />
-            )}
-            <span>{isScanningScreen ? 'Scanning...' : 'Scan Screen (Escape)'}</span>
-          </button>
+          />
 
           {hasLastScanResult && (
             <button

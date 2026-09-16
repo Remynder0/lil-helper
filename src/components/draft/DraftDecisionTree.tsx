@@ -4,6 +4,7 @@ import { getHeroById } from '../../data/heroes';
 import { HeroAvatar } from '../HeroAvatar';
 import { Sparkles, Users, ArrowRight, ArrowRightLeft } from 'lucide-react';
 import { BestActionsAdvisorResult } from '../../services/analytics';
+import occultSeal from '../../assets/occult/seal.svg';
 
 interface DraftDecisionTreeProps {
   bestActionsAdvisor: BestActionsAdvisorResult | null;
@@ -15,18 +16,26 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
   myHeroId,
 }) => {
   return (
-    <div className="bg-deadlock-panel steam-panel steam-card arcane-glow border border-deadlock-border rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
-      <div className="flex items-center justify-between pb-3 border-b border-deadlock-border/60">
+    <div className="bg-gradient-to-b from-[#181124]/95 via-[#120d1c]/95 to-[#160e22]/95 steam-panel steam-card border border-deadlock-arcane/45 shadow-[0_0_30px_rgba(107,76,138,0.2)] rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
+      {/* Alchemical Solomon Seal Watermark */}
+      <img
+        src={occultSeal}
+        alt=""
+        aria-hidden="true"
+        className="absolute -right-20 -bottom-20 w-80 h-80 pointer-events-none opacity-[0.05] filter drop-shadow-[0_0_20px_rgba(107,76,138,0.5)]"
+      />
+
+      <div className="flex items-center justify-between pb-3 border-b border-deadlock-arcane/30 relative z-10">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-deadlock-accent" />
-          <h3 className="font-bold text-sm uppercase tracking-wide text-gray-100">
-            Recommended Draft & Lane Actions
+          <Sparkles className="w-4 h-4 text-deadlock-arcane" />
+          <h3 className="font-bold text-sm uppercase tracking-wide text-purple-100 font-mono">
+            Oracle Divination • Recommended Actions
           </h3>
         </div>
         {bestActionsAdvisor && myHeroId && (
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-deadlock-muted">Current projected WR:</span>
-            <span className="font-black px-2 py-0.5 rounded bg-deadlock-card border border-deadlock-border text-gray-200">
+            <span className="text-purple-300/70">Baseline projected WR:</span>
+            <span className="font-black px-2 py-0.5 rounded bg-[#1a1228] border border-deadlock-arcane/40 text-purple-200">
               {bestActionsAdvisor.currentProjectedWinRate}% WR
             </span>
           </div>
