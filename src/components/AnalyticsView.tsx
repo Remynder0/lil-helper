@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import artDecoCorner from '../assets/art-deco/corner.svg';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
-import { EnemyMatchupsView } from './EnemyMatchupsView';
-import { AllySynergiesView } from './AllySynergiesView';
+import { HeroMatchupsAndSynergiesView } from './HeroMatchupsAndSynergiesView';
 import { LanePerformanceView } from './LanePerformanceView';
 import {
   calculateGlobalStats,
@@ -17,7 +16,6 @@ import {
 import {
   Flame,
   TrendingDown,
-  TrendingUp,
   Gamepad2,
   Crown,
   ChevronDown,
@@ -28,6 +26,7 @@ import {
   Compass,
   Eye,
   Shield,
+  Search,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -36,12 +35,13 @@ interface AnalyticsViewProps {
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
-type AnalyticsSubTab = 'overview' | 'matchups' | 'synergies' | 'lanes';
+type AnalyticsSubTab = 'overview' | 'relations' | 'lanes';
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigateToStreak }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+  const [heroSearch, setHeroSearch] = useState<string>('');
 
   const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
   const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
@@ -71,6 +71,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
     });
   }, [heroPerformances, sortField, sortAsc]);
 
+  const displayedHeroes = useMemo(() => {
+    if (!heroSearch.trim()) return sortedHeroes;
+    const q = heroSearch.toLowerCase().trim();
+    return sortedHeroes.filter((hp) => hp.hero?.name.toLowerCase().includes(q));
+  }, [sortedHeroes, heroSearch]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
@@ -94,11 +100,35 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
 
   return (
     <div className="relative">
-      {/* Art Déco corner ornaments */}
-      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50" />
-      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute top-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100" />
-      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute bottom-0 left-0 w-14 h-14 pointer-events-none opacity-50 -scale-y-100" />
-      <img src={artDecoCorner} alt="" aria-hidden="true" className="absolute bottom-0 right-0 w-14 h-14 pointer-events-none opacity-50 -scale-x-100 -scale-y-100" />
+      {/* Art Déco corner ornaments adapting dynamically to window width */}
+      <div className="fixed top-[74px] left-0 right-0 pointer-events-none z-20 flex justify-between overflow-hidden">
+        <img
+          src={artDecoCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 pointer-events-none opacity-60 drop-shadow-[0_0_14px_rgba(232,192,106,0.3)] select-none"
+        />
+        <img
+          src={artDecoCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 pointer-events-none opacity-60 -scale-x-100 drop-shadow-[0_0_14px_rgba(232,192,106,0.3)] select-none"
+        />
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 pointer-events-none z-20 flex justify-between overflow-hidden">
+        <img
+          src={artDecoCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 pointer-events-none opacity-60 -scale-y-100 drop-shadow-[0_0_14px_rgba(232,192,106,0.3)] select-none"
+        />
+        <img
+          src={artDecoCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 pointer-events-none opacity-60 -scale-x-100 -scale-y-100 drop-shadow-[0_0_14px_rgba(232,192,106,0.3)] select-none"
+        />
+      </div>
 
     <div className="flex flex-col gap-6">
       {/* Subtab Navigation */}
@@ -118,27 +148,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
           </button>
           <button
             type="button"
-            onClick={() => setSubTab('matchups')}
+            onClick={() => setSubTab('relations')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
-              subTab === 'matchups'
+              subTab === 'relations'
                 ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
                 : 'text-deadlock-muted hover:text-deadlock-steam'
             }`}
           >
             <Swords className="w-3.5 h-3.5" />
-            <span>How I perform against</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab('synergies')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
-              subTab === 'synergies'
-                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
-                : 'text-deadlock-muted hover:text-deadlock-steam'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>How I perform with</span>
+            <span>How I perform against & with</span>
           </button>
           <button
             type="button"
@@ -159,49 +177,166 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
         </span>
       </div>
 
-      {subTab === 'matchups' && <EnemyMatchupsView matches={matches} />}
-      {subTab === 'synergies' && <AllySynergiesView matches={matches} />}
+      {subTab === 'relations' && <HeroMatchupsAndSynergiesView matches={matches} />}
       {subTab === 'lanes' && <LanePerformanceView matches={matches} />}
       {subTab === 'overview' && (
-        <>
+        <div className="flex flex-col lg:flex-row items-start gap-6">
+          {/* LEFT LATERAL PANEL: HERO PERFORMANCE */}
+          <div className="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-20">
+            <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+              {/* Panel Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-deadlock-accent" />
+                  <h2 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
+                    Hero Performance
+                  </h2>
+                </div>
+                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60 text-deadlock-muted">
+                  {heroPerformances.length} played
+                </span>
+              </div>
 
-      {/* SECTION 1: GLOBAL STATS CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* Total Matches */}
-        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-deadlock-muted text-xs">
-            <span>Total Matches</span>
-            <Gamepad2 className="w-4 h-4 text-deadlock-muted" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-deadlock-steam">{globalStats.totalMatches}</span>
-            <span className="text-xs text-deadlock-muted">recorded</span>
-          </div>
-        </div>
+              {/* Search & Sort Controls */}
+              <div className="flex flex-col gap-2 pt-1 border-t border-deadlock-border/40">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-deadlock-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    placeholder="Filter hero..."
+                    className="w-full bg-deadlock-card/60 border border-deadlock-border/80 rounded-lg pl-8 pr-7 py-1.5 text-xs text-deadlock-steam placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent/60 transition-colors"
+                  />
+                  {heroSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setHeroSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-deadlock-muted hover:text-deadlock-steam text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
 
-        {/* Global Winrate */}
-        <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-deadlock-muted text-xs">
-            <span>Win Rate</span>
-            <TrendingUp className="w-4 h-4 text-deadlock-win" />
+                {/* Sort Toggle Controls */}
+                <div className="flex items-center justify-between gap-1 text-[11px] pt-1">
+                  <span className="text-deadlock-muted font-medium">Sort:</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('matches')}
+                      className={`px-2 py-0.5 rounded flex items-center gap-0.5 font-medium transition-colors ${
+                        sortField === 'matches'
+                          ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 font-bold'
+                          : 'text-deadlock-muted hover:text-deadlock-steam bg-deadlock-card/40 border border-transparent'
+                      }`}
+                    >
+                      <span>Matches</span>
+                      {sortField === 'matches' && (
+                        sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('winRate')}
+                      className={`px-2 py-0.5 rounded flex items-center gap-0.5 font-medium transition-colors ${
+                        sortField === 'winRate'
+                          ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 font-bold'
+                          : 'text-deadlock-muted hover:text-deadlock-steam bg-deadlock-card/40 border border-transparent'
+                      }`}
+                    >
+                      <span>Winrate</span>
+                      {sortField === 'winRate' && (
+                        sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSort('wins')}
+                      className={`px-2 py-0.5 rounded flex items-center gap-0.5 font-medium transition-colors ${
+                        sortField === 'wins'
+                          ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 font-bold'
+                          : 'text-deadlock-muted hover:text-deadlock-steam bg-deadlock-card/40 border border-transparent'
+                      }`}
+                    >
+                      <span>Wins</span>
+                      {sortField === 'wins' && (
+                        sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Heroes List */}
+              <div className="flex flex-col gap-1.5 max-h-[calc(100vh-280px)] min-h-[300px] overflow-y-auto pr-1">
+                {displayedHeroes.map((hp: HeroPerformance) => {
+                  const decided = hp.wins + hp.losses;
+                  const isPositive = hp.winRate >= 50;
+                  return (
+                    <div key={hp.heroId} className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <HeroAvatar heroId={hp.heroId} size="sm" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-xs text-deadlock-steam group-hover:text-white truncate">
+                            {hp.hero?.name || `Hero #${hp.heroId}`}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-deadlock-muted">
+                            <span className="font-mono text-deadlock-steam/90 font-medium">
+                              {hp.matches} {hp.matches === 1 ? 'match' : 'matches'}
+                            </span>
+                            <span>•</span>
+                            <span className="text-deadlock-win font-mono font-medium">{hp.wins}W</span>
+                            <span className="text-deadlock-loss font-mono font-medium">{hp.losses}L</span>
+                            {hp.cancels > 0 && (
+                              <span className="text-deadlock-muted/70 font-mono">{hp.cancels}C</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end shrink-0 gap-1">
+                        <span
+                          className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
+                            decided > 0
+                              ? isPositive
+                                ? 'bg-deadlock-win/10 text-deadlock-win border-deadlock-win/30'
+                                : 'bg-deadlock-loss/10 text-deadlock-loss border-deadlock-loss/30'
+                              : 'bg-deadlock-card text-deadlock-muted border-deadlock-border/40'
+                          }`}
+                        >
+                          {decided > 0 ? `${hp.winRate}%` : 'N/A'}
+                        </span>
+                        {decided > 0 && (
+                          <div className="w-14 bg-deadlock-dark/80 rounded-full h-1 overflow-hidden border border-deadlock-border/40">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                isPositive ? 'bg-deadlock-win' : 'bg-deadlock-loss'
+                              }`}
+                              style={{ width: `${hp.winRate}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {displayedHeroes.length === 0 && (
+                  <div className="text-center py-8 text-xs text-deadlock-muted">
+                    No heroes match "{heroSearch}".
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span
-              className={`text-2xl font-black ${
-                globalStats.winRate >= 50
-                  ? 'text-deadlock-win'
-                  : globalStats.totalMatches > 0
-                  ? 'text-deadlock-loss'
-                  : 'text-deadlock-steam'
-              }`}
-            >
-              {globalStats.totalWins + globalStats.totalLosses > 0 ? `${globalStats.winRate}%` : 'N/A'}
-            </span>
-            <span className="text-xs text-deadlock-muted">
-              ({globalStats.totalWins}W - {globalStats.totalLosses}L)
-            </span>
-          </div>
-        </div>
+
+          {/* RIGHT MAIN PANEL */}
+          <div className="flex-1 min-w-0 flex flex-col gap-6 w-full">
+            {/* SECTION 1: STREAKS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Win Streak (Best) */}
         <div
@@ -565,138 +700,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
         </div>
       </div>
 
-      {/* SECTION 3: HERO PERFORMANCE BREAKDOWN TABLE */}
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
-              Hero Performance Breakdown
-            </h2>
-            <p className="text-xs text-deadlock-muted mt-0.5">
-              Statistics for each hero you have piloted in recorded drafts ({heroPerformances.length} heroes played)
-            </p>
-          </div>
-
-          <div className="text-xs text-deadlock-muted">
-            Click column headers to sort
           </div>
         </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
-              <tr>
-                <th className="py-3 px-4 font-semibold">Hero</th>
-                <th
-                  onClick={() => handleSort('matches')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Matches</span>
-                    {sortField === 'matches' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('wins')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Record (W / L / C)</span>
-                    {sortField === 'wins' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('winRate')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors text-right"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Win Rate</span>
-                    {sortField === 'winRate' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-deadlock-border/40">
-              {sortedHeroes.map((hp: HeroPerformance) => {
-                const decided = hp.wins + hp.losses;
-                return (
-                  <tr
-                    key={hp.heroId}
-                    className="hover:bg-deadlock-card/40 transition-colors"
-                  >
-                    {/* Hero Info */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <HeroAvatar heroId={hp.heroId} size="xs" />
-                        <div>
-                          <div className="font-bold text-deadlock-steam text-sm">
-                            {hp.hero?.name || `Hero #${hp.heroId}`}
-                          </div>
-                          <div className="text-[11px] text-deadlock-muted capitalize">
-                            {hp.hero?.heroType || hp.hero?.role || 'Unknown'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Total Matches */}
-                    <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
-                      {hp.matches}
-                    </td>
-
-                    {/* Record */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-deadlock-win font-bold font-mono">{hp.wins}W</span>
-                        <span className="text-deadlock-muted">-</span>
-                        <span className="text-deadlock-loss font-bold font-mono">{hp.losses}L</span>
-                        {hp.cancels > 0 && (
-                          <span className="text-deadlock-muted font-mono">
-                            - {hp.cancels}C
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Winrate Bar & Percentage */}
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
-                          <div
-                            className={`h-full ${
-                              hp.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'
-                            }`}
-                            style={{ width: `${hp.winRate}%` }}
-                          />
-                        </div>
-                        <span
-                          className={`font-mono font-bold text-sm ${
-                            decided > 0
-                              ? hp.winRate >= 50
-                                ? 'text-deadlock-win'
-                                : 'text-deadlock-loss'
-                              : 'text-deadlock-muted'
-                          }`}
-                        >
-                          {decided > 0 ? `${hp.winRate}%` : 'N/A'}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-        </>
       )}
     </div>
     </div>

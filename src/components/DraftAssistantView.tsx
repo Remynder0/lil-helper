@@ -284,19 +284,21 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
 
   return (
     <div className="relative">
-      {/* Massive Occult Corners placed directly beneath the App Header */}
-      <img
-        src={occultCorner}
-        alt=""
-        aria-hidden="true"
-        className="absolute -top-5 -left-25 w-44 h-44 md:w-64 md:h-64 pointer-events-none opacity-85 z-20 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)]"
-      />
-      <img
-        src={occultCorner}
-        alt=""
-        aria-hidden="true"
-        className="absolute -top-5 -right-25 w-44 h-44 md:w-64 md:h-64 pointer-events-none opacity-85 -scale-x-100 z-20 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)]"
-      />
+      {/* Massive Occult Corners placed directly beneath the App Header adapting dynamically to window width */}
+      <div className="fixed top-[74px] left-0 right-0 pointer-events-none z-20 flex justify-between overflow-hidden">
+        <img
+          src={occultCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-36 h-36 sm:w-48 sm:h-48 md:w-64 md:h-64 opacity-85 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)] select-none"
+        />
+        <img
+          src={occultCorner}
+          alt=""
+          aria-hidden="true"
+          className="w-36 h-36 sm:w-48 sm:h-48 md:w-64 md:h-64 opacity-85 -scale-x-100 drop-shadow-[0_0_24px_rgba(107,76,138,0.8)] select-none"
+        />
+      </div>
 
       <div className="flex flex-col gap-6 relative z-10">
         {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET + LIVE SYNC */}

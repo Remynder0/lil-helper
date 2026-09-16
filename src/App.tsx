@@ -198,7 +198,7 @@ export const App: React.FC = () => {
   }, [previewHeroId, gameContext.myHeroId, matches]);
 
   return (
-    <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative">
       {/* Dynamic hero background — Full-size theatrical hero wallpaper */}
       {activeHeroBgUrl && (
         <div
@@ -263,6 +263,9 @@ export const App: React.FC = () => {
         onDisconnect={handleDisconnectProfile}
         onOpenConnectModal={() => setIsProfileModalOpen(true)}
       />
+
+      {/* Spacer for fixed header */}
+      <div className="h-[74px] shrink-0 pointer-events-none" aria-hidden="true" />
 
       {/* Hidden file input for Import */}
       <input
