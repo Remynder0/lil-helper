@@ -55,6 +55,14 @@ export interface Match {
   laneAllyId?: number; // 1 ally on your duo lane
   laneOpponents?: number[]; // 1 or 2 enemies on your duo lane
   laneOutcome?: LaneOutcome;
+
+  // Ranked progression tracking - Auto-retrieved from Deadlock API
+  rankedBadge?: number | null; // e.g. 13 (badge code)
+  rankedRank?: number | null; // e.g. 1 (Initiate)
+  rankedSubrank?: number | null; // e.g. 3 (III)
+  rankedDelta?: number | null; // e.g. +300, -300 points gained/lost
+  rankedProgress?: number | null; // final flat progress (1000 pts per subrank)
+  rankedInitialProgress?: number | null; // initial flat progress before match
 }
 
 export interface MatchDraftInput {

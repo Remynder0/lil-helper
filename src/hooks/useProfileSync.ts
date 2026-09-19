@@ -6,7 +6,11 @@ import {
   removeTrackedPendingMatch,
   saveTrackedPendingMatch,
 } from '../services/storage';
-import { syncRankedMatchesForAccount, fetchSingleMatchResultById } from '../services/deadlockApi';
+import {
+  syncRankedMatchesForAccount,
+  fetchSingleMatchResultById,
+  backfillRankedDataForMatches,
+} from '../services/deadlockApi';
 
 export const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
@@ -141,6 +145,22 @@ export function useProfileSync() {
         setSyncStatusText(`+${allNewMatches.length} new ranked match${allNewMatches.length > 1 ? 'es' : ''} imported!${recoveredMsg}`);
       } else {
         setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
+      }
+
+      // Automatically backfill any existing matches missing ranked points
+      const allCurrentMatches = [...matches, ...allNewMatches];
+      const needsBackfill = allCurrentMatches.some(
+        (m) => m.matchId && (m.rankedDelta === undefined || m.rankedDelta === null)
+      );
+      if (needsBackfill) {
+        const { updatedMatches, updatedCount } = await backfillRankedDataForMatches(
+          allCurrentMatches,
+          targetProfile.accountId
+        );
+        if (updatedCount > 0) {
+          await persistMatches(updatedMatches);
+          onMatchesUpdated(() => updatedMatches);
+        }
       }
 
       // Update lastSyncedAt and trigger 2-minute cooldown (120s)

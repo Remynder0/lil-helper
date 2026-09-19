@@ -40,6 +40,17 @@ export interface RawMatchPlayerTimelineStat {
   gold_boss?: number;
 }
 
+export interface RawPlayerMatchRankData {
+  initial_display_rank?: number;
+  initial_flat_progress?: number;
+  final_flat_progress?: number;
+  desired_progress_change?: number;
+  initial_calibration_games?: number;
+  initial_demotion_protection_games?: number;
+  consumed_demotion_protection?: boolean;
+  initial_win_streak?: number;
+}
+
 export interface RawMatchPlayerMetadata {
   account_id: number;
   hero_id: number;
@@ -51,6 +62,7 @@ export interface RawMatchPlayerMetadata {
   player_match_outcome?: number;
   abandon_match_time_s?: number;
   stats?: RawMatchPlayerTimelineStat[];
+  player_rank_data?: RawPlayerMatchRankData;
 }
 
 export interface RawMatchObjective {
@@ -442,6 +454,12 @@ export function convertToAppMatch(
   let laneAllyId: number | undefined;
   let laneOpponents: number[] | undefined;
   let laneOutcome: LaneOutcome | undefined;
+  let rankedBadge: number | null = null;
+  let rankedRank: number | null = null;
+  let rankedSubrank: number | null = null;
+  let rankedDelta: number | null = null;
+  let rankedProgress: number | null = null;
+  let rankedInitialProgress: number | null = null;
 
   if (metadata?.match_info?.players) {
     const players = metadata.match_info.players;
@@ -477,6 +495,28 @@ export function convertToAppMatch(
         myTeam
       );
     }
+
+    // Extract ranked points and badge progression
+    const rankData = myPlayerMeta?.player_rank_data;
+    if (rankData) {
+      rankedBadge = rankData.initial_display_rank ?? historyEntry.ranked_display_badge ?? null;
+      if (rankedBadge) {
+        rankedRank = Math.floor(rankedBadge / 10);
+        rankedSubrank = rankedBadge % 10;
+      }
+      rankedDelta = rankData.desired_progress_change ?? historyEntry.ranked_delta ?? null;
+      rankedProgress = rankData.final_flat_progress ?? null;
+      rankedInitialProgress = rankData.initial_flat_progress ?? null;
+    }
+  }
+
+  if (rankedBadge === null && historyEntry.ranked_display_badge) {
+    rankedBadge = historyEntry.ranked_display_badge;
+    rankedRank = Math.floor(rankedBadge / 10);
+    rankedSubrank = rankedBadge % 10;
+  }
+  if (rankedDelta === null && historyEntry.ranked_delta !== undefined && historyEntry.ranked_delta !== null) {
+    rankedDelta = historyEntry.ranked_delta;
   }
 
   // Ensure minimum array length
@@ -501,6 +541,12 @@ export function convertToAppMatch(
     laneAllyId,
     laneOpponents,
     laneOutcome,
+    rankedBadge,
+    rankedRank,
+    rankedSubrank,
+    rankedDelta,
+    rankedProgress,
+    rankedInitialProgress,
     notes: `Ranked Match #${historyEntry.match_id} (Auto-imported from Deadlock API)`,
   };
 }
@@ -548,6 +594,76 @@ export async function syncRankedMatchesForAccount(
   }
 
   return { addedMatches, totalRankedFound };
+}
+
+/**
+ * Re-traverses all existing matches that have a matchId but are missing ranked points/progress data.
+ * Fetches match metadata from the Deadlock API in polite batches of 4 and populates:
+ * - rankedDelta (points won/lost, e.g. +300, -300)
+ * - rankedBadge, rankedRank, rankedSubrank
+ * - rankedProgress, rankedInitialProgress
+ */
+export async function backfillRankedDataForMatches(
+  matches: Match[],
+  targetAccountId?: number,
+  onProgress?: (processed: number, total: number) => void
+): Promise<{ updatedMatches: Match[]; updatedCount: number }> {
+  const matchesToUpdate = matches.filter(
+    (m) => m.matchId && (m.rankedDelta === undefined || m.rankedDelta === null)
+  );
+
+  if (matchesToUpdate.length === 0) {
+    return { updatedMatches: matches, updatedCount: 0 };
+  }
+
+  const updatedMap = new Map<string, Match>();
+  const chunkSize = 4;
+  let processedCount = 0;
+
+  for (let i = 0; i < matchesToUpdate.length; i += chunkSize) {
+    const chunk = matchesToUpdate.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(async (m) => {
+        try {
+          const metadata = await fetchMatchMetadata(m.matchId!);
+          if (!metadata?.match_info?.players) return;
+
+          const players = metadata.match_info.players;
+          const myPlayerMeta = players.find(
+            (p) => (targetAccountId && p.account_id === targetAccountId) || p.hero_id === m.myHeroId
+          );
+
+          const rankData = myPlayerMeta?.player_rank_data;
+          if (rankData) {
+            const badge = rankData.initial_display_rank ?? null;
+            const rank = badge ? Math.floor(badge / 10) : null;
+            const subrank = badge ? badge % 10 : null;
+
+            const updated: Match = {
+              ...m,
+              rankedBadge: badge,
+              rankedRank: rank,
+              rankedSubrank: subrank,
+              rankedDelta: rankData.desired_progress_change ?? null,
+              rankedProgress: rankData.final_flat_progress ?? null,
+              rankedInitialProgress: rankData.initial_flat_progress ?? null,
+            };
+            updatedMap.set(m.id, updated);
+          }
+        } catch (err) {
+          console.warn(`Failed to backfill ranked data for match #${m.matchId}:`, err);
+        }
+      })
+    );
+
+    processedCount += chunk.length;
+    if (onProgress) {
+      onProgress(processedCount, matchesToUpdate.length);
+    }
+  }
+
+  const updatedMatches = matches.map((m) => updatedMap.get(m.id) || m);
+  return { updatedMatches, updatedCount: updatedMap.size };
 }
 
 /**

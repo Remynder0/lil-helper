@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import artDecoCorner from '../assets/art-deco/corner.svg';
-import { Match } from '../types/match';
+import { Match, ConnectedProfile } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import { HeroMatchupsAndSynergiesView } from './HeroMatchupsAndSynergiesView';
 import { LanePerformanceView } from './LanePerformanceView';
+import { RankedProgressionView } from './RankedProgressionView';
 import {
   calculateGlobalStats,
   calculatePatronStats,
@@ -27,17 +28,19 @@ import {
   Eye,
   Shield,
   Search,
+  Trophy,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
   matches: Match[];
+  profile?: ConnectedProfile | null;
   onNavigateToStreak?: (matchIds: string[], type: 'win' | 'loss') => void;
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
-type AnalyticsSubTab = 'overview' | 'relations' | 'lanes';
+type AnalyticsSubTab = 'overview' | 'relations' | 'lanes' | 'ranked';
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigateToStreak }) => {
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, onNavigateToStreak }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
@@ -101,7 +104,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
   return (
     <div className="relative">
       {/* Art Déco corner ornaments adapting dynamically to window width */}
-      <div className="fixed top-[74px] left-0 right-0 pointer-events-none z-20 flex justify-between overflow-hidden">
+      <div className="fixed top-18.5 left-0 right-0 pointer-events-none z-20 flex justify-between overflow-hidden">
         <img
           src={artDecoCorner}
           alt=""
@@ -170,6 +173,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
             <Compass className="w-3.5 h-3.5" />
             <span>Lane Matchups</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('ranked')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-semibold text-xs transition-all ${
+              subTab === 'ranked'
+                ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm steam-card'
+                : 'text-deadlock-muted hover:text-deadlock-steam'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>Ranked Progression</span>
+          </button>
         </div>
 
         <span className="text-xs text-deadlock-muted hidden sm:inline">
@@ -179,6 +194,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, onNavigat
 
       {subTab === 'relations' && <HeroMatchupsAndSynergiesView matches={matches} />}
       {subTab === 'lanes' && <LanePerformanceView matches={matches} />}
+      {subTab === 'ranked' && <RankedProgressionView matches={matches} profile={profile} />}
       {subTab === 'overview' && (
         <div className="flex flex-col lg:flex-row items-start gap-6">
           {/* LEFT LATERAL PANEL: HERO PERFORMANCE */}

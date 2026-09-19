@@ -321,6 +321,7 @@ export const App: React.FC = () => {
         {activeTab === 'analytics' && (
           <AnalyticsView
             matches={matches}
+            profile={profile}
             onNavigateToStreak={handleNavigateToStreak}
           />
         )}

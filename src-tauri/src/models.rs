@@ -99,4 +99,18 @@ pub struct MatchRecord {
     pub lane_ally_id: Option<u32>,
     pub lane_opponents: Option<Vec<u32>>,
     pub lane_outcome: Option<LaneOutcome>,
+
+    // Ranked progression tracking - Optional for backwards compatibility
+    #[serde(default)]
+    pub ranked_badge: Option<u32>,
+    #[serde(default)]
+    pub ranked_rank: Option<u32>,
+    #[serde(default)]
+    pub ranked_subrank: Option<u32>,
+    #[serde(default)]
+    pub ranked_delta: Option<i32>,
+    #[serde(default)]
+    pub ranked_progress: Option<u32>,
+    #[serde(default)]
+    pub ranked_initial_progress: Option<u32>,
 }

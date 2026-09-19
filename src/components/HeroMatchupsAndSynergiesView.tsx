@@ -35,8 +35,6 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  // 5/10 rule threshold
-  const minGamesThreshold = matches.length < 100 ? 5 : 10;
 
   // Find all distinct heroes piloted by the player
   const playedHeroes = useMemo(() => {
@@ -453,15 +451,10 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
               {relationMode === 'against'
                 ? sortedEnemyMatchups.map((matchup: EnemyMatchupStat) => {
                     const decided = matchup.wins + matchup.losses;
-                    const isNonRepresentative = decided < minGamesThreshold;
                     return (
                       <tr
                         key={matchup.enemyHeroId}
-                        className={`hover:bg-deadlock-card/40 transition-colors ${
-                          isNonRepresentative
-                            ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100 transition-all'
-                            : ''
-                        }`}
+                        className={`hover:bg-deadlock-card/40 transition-colors`}
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
@@ -515,15 +508,10 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
                   })
                 : sortedAllySynergies.map((synergy: AllySynergyStat) => {
                     const decided = synergy.wins + synergy.losses;
-                    const isNonRepresentative = decided < minGamesThreshold;
                     return (
                       <tr
                         key={synergy.allyHeroId}
-                        className={`hover:bg-deadlock-card/40 transition-colors ${
-                          isNonRepresentative
-                            ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100 transition-all'
-                            : ''
-                        }`}
+                        className={`hover:bg-deadlock-card/40 transition-colors`}
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">

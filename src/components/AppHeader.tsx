@@ -51,7 +51,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   return (
     <header className="border-b-2 border-deadlock-brass/40 bg-deadlock-panel/80 backdrop-blur-lg px-6 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 w-full z-40 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
-r from-transparent via-deadlock-accent/60 to-transparent" />
+      {/* Decorative background brass conduit line */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-deadlock-accent/60 to-transparent" />
 
       {/* Brand & Steampunk Apparatus Emblem */}
       <div className="flex items-center gap-3 relative z-10">
@@ -136,7 +137,7 @@ r from-transparent via-deadlock-accent/60 to-transparent" />
             onClick={() => onTabChange('assistant')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
               activeTab === 'assistant'
-                ? 'bg-gradient-to-b from-[#8b5da8] via-[#6b4c8a] to-[#45285c] text-white border border-[#b388eb] shadow-md shadow-purple-900/50'
+                ? 'bg-linear-to-b from-[#8b5da8] via-deadlock-arcane to-[#45285c] text-white border border-[#b388eb] shadow-md shadow-purple-900/50'
                 : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
