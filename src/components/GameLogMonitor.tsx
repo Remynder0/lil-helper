@@ -156,7 +156,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
   return (
     <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12">
       {/* Header Info */}
-      <div className="bg-deadlock-card border border-deadlock-border rounded-xl p-5 shadow-lg relative overflow-hidden">
+      <div className="steam-glass steam-panel rounded-xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
@@ -218,7 +218,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
       </div>
 
       {/* Log File Path & Stream Controls Bar */}
-      <div className="bg-deadlock-card border border-deadlock-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex-1 flex items-center gap-2">
           <span className="text-xs font-semibold text-deadlock-muted whitespace-nowrap">
             Log Path:
@@ -384,7 +384,7 @@ export const GameLogMonitor: React.FC<GameLogMonitorProps> = ({ onMatchDetected 
       </div>
 
       {/* Terminal Screen */}
-      <div className="bg-[#0c0a08] border-x border-b border-deadlock-border rounded-b-xl p-4 font-mono text-xs overflow-y-auto h-[480px] shadow-inner flex flex-col select-text">
+      <div className="bg-[#0c0a08] border-x border-b border-deadlock-border rounded-b-xl p-4 font-mono text-xs overflow-y-auto h-[480px] 2xl:h-[650px] shadow-inner flex flex-col select-text">
         {filteredEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-deadlock-muted gap-2">
             <Terminal className="w-8 h-8 opacity-40" />

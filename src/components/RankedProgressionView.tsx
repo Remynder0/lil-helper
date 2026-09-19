@@ -465,7 +465,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
 
         {/* SVG Interactive Chart */}
         {chartData && (
-          <div className="relative w-full h-[320px] bg-deadlock-dark/60 rounded-xl border border-deadlock-border/60 p-2 overflow-visible select-none z-20">
+          <div className="relative w-full h-[320px] 2xl:h-[420px] bg-deadlock-dark/60 rounded-xl border border-deadlock-border/60 p-2 overflow-visible select-none z-20">
             <svg
               viewBox={`0 0 ${chartData.width} ${chartData.height}`}
               className="w-full h-full overflow-visible"
@@ -884,7 +884,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
             {rankedHeroes.map((item) => {
               const isSelected = selectedHeroId === item.heroId;
               const isPositive = item.totalDelta > 0;

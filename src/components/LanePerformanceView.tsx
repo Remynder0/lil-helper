@@ -37,7 +37,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
   if (laneStats.totalLaneTrackedMatches === 0) {
     return (
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
         <Compass className="w-12 h-12 text-deadlock-muted opacity-40" />
         <h2 className="text-lg font-bold text-deadlock-steam">No lane data tracked yet</h2>
         <p className="text-sm text-deadlock-muted max-w-md">
@@ -50,7 +50,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
   return (
     <div className="flex flex-col gap-6">
       {/* FILTER HEADER: Choose "All My Heroes" or a specific hero piloted */}
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-deadlock-accent" />
@@ -166,7 +166,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                 return (
                   <div
                     key={key}
-                    className={`bg-deadlock-panel/80 backdrop-blur-sm steam-card border ${borderClass} rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden transition-all`}
+                    className={`steam-glass steam-panel border ${borderClass} rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden transition-all`}
                   >
                     <div className={`absolute top-0 right-0 w-28 h-28 ${glowClass} rounded-full blur-xl pointer-events-none`} />
 
@@ -256,7 +256,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
       </div>
 
       {/* SECTION 2: LANE RESULT CONVERSION (Win rate when winning vs losing lane) */}
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-5">
+      <div className="steam-glass steam-panel rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-deadlock-win" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
@@ -317,7 +317,7 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
       {/* SECTION 3: DIRECT LANE OPPONENTS TABLE */}
       {laneStats.opponents.length > 0 && (
-        <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
+        <div className="steam-glass steam-panel rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-deadlock-border/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-deadlock-hidden-king" />

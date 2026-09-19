@@ -78,12 +78,12 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
   };
 
   return (
-    <div className={`steam-card bg-deadlock-panel/80 backdrop-blur border border-deadlock-border rounded-xl p-4 flex flex-col gap-3 ${className}`}>
+    <div className={`steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 ${className}`}>
       {/* Header with Title & Search Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-deadlock-border/60">
         <div>
-          {title && <h3 className="text-sm font-semibold tracking-wide text-gray-100 uppercase">{title}</h3>}
-          {subtitle && <p className="text-xs text-deadlock-muted">{subtitle}</p>}
+          {title && <h3 className="text-sm font-semibold tracking-wide text-deadlock-steam uppercase">{title}</h3>}
+          {subtitle && <p className="text-xs text-deadlock-subtext">{subtitle}</p>}
         </div>
 
         {/* Search input */}
@@ -135,7 +135,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
       </div>
 
       {/* Hero Icon Grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-9 gap-2 max-h-[380px] overflow-y-auto p-1 pr-2">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-9 2xl:grid-cols-10 gap-2 max-h-[380px] 2xl:max-h-[520px] overflow-y-auto p-1 pr-2">
         {filteredHeroes.map((hero: Hero) => {
           const isSelected = selectedHeroIds.includes(hero.id);
           const isDisabled = disabledHeroIds.includes(hero.id) && !isSelected;

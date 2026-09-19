@@ -294,7 +294,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col gap-6 relative z-10">
+      <main className="flex-1 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto p-6 2xl:p-8 flex flex-col gap-6 relative z-10 transition-all duration-300">
         {activeTab === 'log_match' && (
           <MatchForm
             key={editingMatch ? editingMatch.id : 'new_match'}

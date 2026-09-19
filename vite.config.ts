@@ -30,4 +30,9 @@ export default defineConfig(() => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : ["es2021", "chrome105", "safari13"],
+    minify: !process.env.TAURI_ENV_DEBUG,
+    sourcemap: !!process.env.TAURI_ENV_DEBUG,
+  },
 }));

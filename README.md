@@ -165,6 +165,23 @@ npm install
 npm run tauri dev
 ```
 
+### ⚠️ Common Issues & Troubleshooting
+
+- **`cargo metadata ... program not found`**:
+  If you recently installed Rust, your current PowerShell / terminal session does not have the updated `PATH` yet.
+  - **Quick Fix (PowerShell)**: Reload environment variables in your current session:
+    ```powershell
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    ```
+  - **Alternative**: Close and reopen your terminal or IDE (VS Code, etc.) so it reloads the system `PATH`.
+  - Check that Cargo is recognized by running `cargo --version`.
+- **Frontend-only Mode (Browser preview)**:
+  To run the React application in your browser without compiling the Tauri / Rust backend:
+  ```bash
+  npm run dev
+  ```
+  *(Note: Storage automatically falls back to browser `localStorage` in web-only mode).*
+
 ### Deadlock Game Integration (Optional)
 To enable live game state detection and log monitoring, launch Deadlock with the `-condebug` Steam launch option:
 1. Open Steam → Library → Right-click **Deadlock** → Properties.

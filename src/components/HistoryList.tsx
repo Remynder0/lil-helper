@@ -596,13 +596,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-deadlock-muted mt-0.5 flex-wrap">
+                      <div className="flex items-center gap-2 text-[11px] text-gray-200 mt-0.5 flex-wrap">
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                          <Calendar className="w-3 h-3 text-deadlock-accent" />
                           {dateStr} at {timeStr}
                         </span>
                         {m.durationSeconds !== undefined && m.durationSeconds > 0 && (
-                          <span className="flex items-center gap-1 font-mono text-gray-400 bg-deadlock-dark px-1.5 py-0.2 rounded border border-deadlock-border/60">
+                          <span className="flex items-center gap-1 font-mono text-gray-200 bg-deadlock-dark px-1.5 py-0.2 rounded border border-deadlock-border/60">
                             <Clock className="w-3 h-3 text-deadlock-accent" />
                             {Math.floor(m.durationSeconds / 60)}m {m.durationSeconds % 60}s
                           </span>

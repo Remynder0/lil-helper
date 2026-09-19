@@ -4,8 +4,8 @@
 @theme {
   --color-deadlock-dark: #110f0c;
   --color-deadlock-panel: #1c1814;
-  --color-deadlock-border: #3d3428;
-  --color-deadlock-muted: #8a7e6b;
+  --color-deadlock-border: #4d4233;
+  --color-deadlock-muted: #d5ccbe;
   
   --color-deadlock-hidden-king: #f59e0b;
   --color-deadlock-hidden-king-light: #fbbf24;
@@ -18,14 +18,17 @@
   --color-deadlock-win: #5f8f7a;
   --color-deadlock-loss: #a94442;
   
-  --color-deadlock-accent: #c4956a;
+  --color-deadlock-accent: #e5be90;
   --color-deadlock-brass: #b87333;
   --color-deadlock-rivet: #5a4e3c;
-  --color-deadlock-steam: #d4c9a8;
+  --color-deadlock-steam: #f7f3ea;
   --color-deadlock-card: #211d17;
   --color-deadlock-arcane: #6b4c8a;
   --color-deadlock-ritual: #8b3a3a;
   --color-deadlock-rune: #4a6741;
+
+  --color-deadlock-subtext: #e2dacd;
+  --color-deadlock-dim: #b8ad9c;
 
   --font-display: 'Cinzel', serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -33,6 +36,11 @@
 
 :root {
   color-scheme: dark;
+}
+
+html {
+  /* Échelle fluide : 100% à 900px, ~115% en 1080p, ~125% en 2K (2560px) */
+  font-size: clamp(100%, 0.865rem + 0.24vw, 130%);
 }
 
 html,
@@ -44,7 +52,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: #110f0c;
-  color: #d4c9a8;
+  color: #f7f3ea;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   user-select: none;
 }
@@ -130,35 +138,35 @@ h1, h2 {
 .steam-glass {
   background: linear-gradient(
     145deg,
-    rgba(38, 29, 20, 0.42) 0%,
-    rgba(16, 13, 10, 0.22) 45%,
-    rgba(46, 35, 23, 0.32) 100%
+    rgba(32, 24, 16, 0.78) 0%,
+    rgba(18, 14, 10, 0.65) 45%,
+    rgba(38, 28, 18, 0.73) 100%
   );
-  backdrop-filter: blur(10px) saturate(200%) brightness(1.08);
-  -webkit-backdrop-filter: blur(10px) saturate(200%) brightness(1.08);
-  border: 1px solid rgba(232, 192, 106, 0.38);
+  -webkit-backdrop-filter: blur(12px) saturate(200%) brightness(1.08);
+  backdrop-filter: blur(12px) saturate(200%) brightness(1.08);
+  border: 1px solid rgba(232, 192, 106, 0.42);
   box-shadow: 
     inset 0 1.5px 1px rgba(255, 238, 198, 0.45),
     inset 0 0 20px rgba(232, 192, 106, 0.08),
     inset 0 -1.5px 1px rgba(0, 0, 0, 0.55),
-    0 16px 42px rgba(0, 0, 0, 0.65),
+    0 16px 42px rgba(0, 0, 0, 0.75),
     0 0 30px rgba(232, 192, 106, 0.12);
 }
 
 .steam-glass-subtle {
   background: linear-gradient(
     145deg,
-    rgba(30, 23, 16, 0.30) 0%,
-    rgba(14, 11, 8, 0.16) 50%,
-    rgba(36, 27, 18, 0.25) 100%
+    rgba(26, 20, 14, 0.72) 0%,
+    rgba(14, 11, 8, 0.58) 50%,
+    rgba(30, 22, 15, 0.66) 100%
   );
-  backdrop-filter: blur(6px) saturate(185%);
-  -webkit-backdrop-filter: blur(6px) saturate(185%);
-  border: 1px solid rgba(212, 163, 115, 0.28);
+  -webkit-backdrop-filter: blur(8px) saturate(185%);
+  backdrop-filter: blur(8px) saturate(185%);
+  border: 1px solid rgba(212, 163, 115, 0.32);
   box-shadow: 
     inset 0 1px 0 rgba(232, 192, 106, 0.28),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 8px 24px rgba(0, 0, 0, 0.45);
+    0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 /* Liquid Glass Modal Window (as featured in Dribbble Liquid Glass UI) */
@@ -169,8 +177,8 @@ h1, h2 {
     rgba(18, 14, 10, 0.28) 45%,
     rgba(54, 40, 27, 0.40) 100%
   );
-  backdrop-filter: blur(14px) saturate(210%) brightness(1.10);
   -webkit-backdrop-filter: blur(14px) saturate(210%) brightness(1.10);
+  backdrop-filter: blur(14px) saturate(210%) brightness(1.10);
   border: 1.5px solid rgba(232, 192, 106, 0.48);
   box-shadow: 
     inset 0 2px 1.5px rgba(255, 245, 215, 0.55),
@@ -229,11 +237,19 @@ h1, h2 {
 }
 
 .steam-card {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  background: linear-gradient(
+    145deg,
+    rgba(32, 24, 16, 0.75) 0%,
+    rgba(18, 14, 10, 0.62) 45%,
+    rgba(38, 28, 18, 0.70) 100%
+  );
   box-shadow: 
     inset 0 1px 0 rgba(196, 149, 106, 0.12), 
     inset 0 -1px 0 rgba(0, 0, 0, 0.4), 
     0 4px 16px rgba(0, 0, 0, 0.6);
-  border: 1px solid #3d3428;
+  border: 1px solid #4d4233;
 }
 
 .steam-pipe {

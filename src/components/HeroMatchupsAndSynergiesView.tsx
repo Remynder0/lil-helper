@@ -134,7 +134,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
   return (
     <div className="flex flex-col gap-6">
       {/* 1. SHARED FILTER HEADER: Choose "All My Heroes" or a specific hero */}
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-deadlock-accent" />
@@ -248,7 +248,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
       {relationMode === 'against' && enemyQualified.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Nemeses Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-loss/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="steam-glass steam-panel border border-deadlock-loss/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-loss/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -282,7 +282,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
           </div>
 
           {/* Favorable Matchups Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="steam-glass steam-panel border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-win/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
       {relationMode === 'with' && allyQualified.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Best Synergies Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="steam-glass steam-panel border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-win/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -354,7 +354,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
           </div>
 
           {/* Anti-Synergies Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="steam-glass steam-panel border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
       )}
 
       {/* 4. DETAILED BREAKDOWN TABLE */}
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
+      <div className="steam-glass steam-panel rounded-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             {relationMode === 'against' ? (

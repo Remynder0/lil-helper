@@ -344,27 +344,33 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
           onSetAssignedLane={handleSetAssignedLane}
         />
 
-      {/* 3. OPTIMAL ACTIONS VISUAL DECISION TREE */}
-      <DraftDecisionTree
-        bestActionsAdvisor={bestActionsAdvisor}
-        myHeroId={myHeroId}
-      />
+        {/* 3. OPTIMAL ACTIONS VISUAL DECISION TREE & 4. FAST HERO PICKER */}
+        {/* Stacks vertically on base/small screens, splits side-by-side on wide/2K screens */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div className="xl:col-span-7 flex flex-col gap-6">
+            <DraftDecisionTree
+              bestActionsAdvisor={bestActionsAdvisor}
+              myHeroId={myHeroId}
+            />
+          </div>
 
-      {/* 4. FAST HERO PICKER */}
-      <HeroPicker
-        title={
-          activeSlot?.type === 'ban'
-            ? `Select Hero to Ban #${activeSlot.index + 1}`
-            : activeSlot
-            ? `Pick Hero for ${activeSlot.team === 'allies' ? 'Allied Duo' : 'Enemy Duo'} (${LANE_LABELS[activeSlot.lane]} Slot #${activeSlot.index + 1})`
-            : 'Select a hero'
-        }
-        subtitle="Only 1 copy per hero allowed in the match. Banned heroes and already picked heroes are disabled."
-        selectedHeroIds={allUnavailableHeroIds}
-        disabledHeroIds={allUnavailableHeroIds}
-        onSelectHero={handleSelectHero}
-        accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
-      />
+          <div className="xl:col-span-5 xl:sticky xl:top-[90px]">
+            <HeroPicker
+              title={
+                activeSlot?.type === 'ban'
+                  ? `Select Hero to Ban #${activeSlot.index + 1}`
+                  : activeSlot
+                  ? `Pick Hero for ${activeSlot.team === 'allies' ? 'Allied Duo' : 'Enemy Duo'} (${LANE_LABELS[activeSlot.lane]} Slot #${activeSlot.index + 1})`
+                  : 'Select a hero'
+              }
+              subtitle="Only 1 copy per hero allowed in the match. Banned heroes and already picked heroes are disabled."
+              selectedHeroIds={allUnavailableHeroIds}
+              disabledHeroIds={allUnavailableHeroIds}
+              onSelectHero={handleSelectHero}
+              accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
+            />
+          </div>
+        </div>
 
       {/* 5. OCR JOURNAL & DIAGNOSTIC MODAL */}
       <OcrInspectorModal

@@ -91,10 +91,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
 
   if (matches.length === 0) {
     return (
-      <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
+      <div className="steam-glass steam-panel rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
         <Gamepad2 className="w-12 h-12 text-deadlock-muted opacity-40" />
         <h2 className="text-lg font-bold text-deadlock-steam">No match data available yet</h2>
-        <p className="text-sm text-deadlock-muted max-w-md">
+        <p className="text-sm text-deadlock-subtext max-w-md">
           Start recording your matches in the <strong>Log Match</strong> tab to unlock comprehensive stats, patron win rates, and hero performance tracking.
         </p>
       </div>
@@ -136,7 +136,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
     <div className="flex flex-col gap-6">
       {/* Subtab Navigation */}
       <div className="flex items-center justify-between border-b border-deadlock-border pb-3">
-        <div className="flex items-center gap-2 bg-deadlock-panel/80 backdrop-blur-sm steam-card p-1 rounded-lg border border-deadlock-border flex-wrap">
+        <div className="flex items-center gap-2 steam-glass steam-panel p-1 rounded-lg flex-wrap">
           <button
             type="button"
             onClick={() => setSubTab('overview')}
@@ -198,8 +198,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
       {subTab === 'overview' && (
         <div className="flex flex-col lg:flex-row items-start gap-6">
           {/* LEFT LATERAL PANEL: HERO PERFORMANCE */}
-          <div className="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-20">
-            <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl p-4 flex flex-col gap-3">
+          <div className="w-full lg:w-80 xl:w-96 2xl:w-[420px] shrink-0 lg:sticky lg:top-20">
+            <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3">
               {/* Panel Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
             <span className="font-semibold text-deadlock-steam">Win Streak</span>
             <div className="flex items-center gap-1.5">
               {globalStats.bestWinStreak.count > 0 && (
-                <span className="text-[10px] text-amber-400/80 group-hover:text-amber-300 font-medium transition-colors hidden sm:inline">
+                <span className="text-[0.65rem] text-amber-400/80 group-hover:text-amber-300 font-medium transition-colors hidden sm:inline">
                   View in history →
                 </span>
               )}
@@ -399,7 +399,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 {globalStats.bestWinStreak.count === 1 ? 'win' : 'wins in a row'}
               </span>
             </div>
-            <span className="text-xs text-deadlock-muted truncate">
+            <span className="text-xs text-deadlock-subtext font-medium truncate">
               {globalStats.bestWinStreak.count > 0
                 ? formatStreakDateRange(
                     globalStats.bestWinStreak.startDate,
@@ -439,7 +439,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
             <span className="font-semibold text-deadlock-steam">Lose Streak</span>
             <div className="flex items-center gap-1.5">
               {globalStats.worstLoseStreak.count > 0 && (
-                <span className="text-[10px] text-red-400/80 group-hover:text-red-300 font-medium transition-colors hidden sm:inline">
+                <span className="text-[0.65rem] text-red-400/80 group-hover:text-red-300 font-medium transition-colors hidden sm:inline">
                   View in history →
                 </span>
               )}
@@ -455,7 +455,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 {globalStats.worstLoseStreak.count === 1 ? 'loss' : 'losses in a row'}
               </span>
             </div>
-            <span className="text-xs text-deadlock-muted truncate">
+            <span className="text-xs text-deadlock-subtext font-medium truncate">
               {globalStats.worstLoseStreak.count > 0
                 ? formatStreakDateRange(
                     globalStats.worstLoseStreak.startDate,
@@ -485,7 +485,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 <span className="w-3 h-3 rounded-full bg-deadlock-hidden-king shadow-sm shadow-deadlock-hidden-king" />
                 <span className="font-bold text-sm text-yellow-300">The Hidden King</span>
               </div>
-              <span className="text-xs text-deadlock-muted font-mono">
+              <span className="text-xs text-deadlock-steam font-mono">
                 {patronStats.hiddenKing.matches} match{patronStats.hiddenKing.matches !== 1 ? 'es' : ''}
               </span>
             </div>
@@ -497,7 +497,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                     ? `${patronStats.hiddenKing.winRate}%`
                     : 'N/A'}
                 </div>
-                <div className="text-xs text-deadlock-muted mt-0.5">
+                <div className="text-xs text-deadlock-subtext font-medium mt-0.5">
                   {patronStats.hiddenKing.wins}W - {patronStats.hiddenKing.losses}L
                   {patronStats.hiddenKing.cancels > 0 && ` (${patronStats.hiddenKing.cancels} Cancel)`}
                 </div>
@@ -511,7 +511,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                     style={{ width: `${patronStats.hiddenKing.winRate}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-deadlock-muted font-mono">
+                <span className="text-[0.625rem] text-deadlock-muted font-mono">
                   {patronStats.hiddenKing.wins} wins / {patronStats.hiddenKing.wins + patronStats.hiddenKing.losses} decided
                 </span>
               </div>
@@ -526,7 +526,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 <span className="w-3 h-3 rounded-full bg-deadlock-archmother shadow-sm shadow-deadlock-archmother" />
                 <span className="font-bold text-sm text-blue-300">The Archmother</span>
               </div>
-              <span className="text-xs text-deadlock-muted font-mono">
+              <span className="text-xs text-deadlock-steam font-mono">
                 {patronStats.archmother.matches} match{patronStats.archmother.matches !== 1 ? 'es' : ''}
               </span>
             </div>
@@ -538,7 +538,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                     ? `${patronStats.archmother.winRate}%`
                     : 'N/A'}
                 </div>
-                <div className="text-xs text-deadlock-muted mt-0.5">
+                <div className="text-xs text-deadlock-subtext font-medium mt-0.5">
                   {patronStats.archmother.wins}W - {patronStats.archmother.losses}L
                   {patronStats.archmother.cancels > 0 && ` (${patronStats.archmother.cancels} Cancel)`}
                 </div>
@@ -552,7 +552,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                     style={{ width: `${patronStats.archmother.winRate}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-deadlock-muted font-mono">
+                <span className="text-[0.625rem] text-deadlock-muted font-mono">
                   {patronStats.archmother.wins} wins / {patronStats.archmother.wins + patronStats.archmother.losses} decided
                 </span>
               </div>
@@ -573,7 +573,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 Familiar Face
               </h3>
             </div>
-            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+            <span className="text-[0.625rem] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
               Most Encountered
             </span>
           </div>
@@ -591,11 +591,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                   <span className="text-lg font-black text-cyan-400">
                     {familiarFace.appearances}
                   </span>
-                  <span className="text-xs text-deadlock-muted">
+                  <span className="text-xs text-deadlock-subtext font-medium">
                     matches ({familiarFace.presenceRate}%)
                   </span>
                 </div>
-                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                <span className="text-[0.6875rem] text-deadlock-muted mt-0.5 font-mono">
                   Win Rate: <strong className={familiarFace.winRate >= 50 ? 'text-deadlock-win' : 'text-deadlock-loss'}>{familiarFace.winRate}%</strong> ({familiarFace.wins}W - {familiarFace.losses}L)
                 </span>
               </div>
@@ -627,7 +627,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 Lane Partner
               </h3>
             </div>
-            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+            <span className="text-[0.625rem] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
               Most Duo Lanes
             </span>
           </div>
@@ -645,11 +645,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                   <span className="text-lg font-black text-emerald-400">
                     {topLanePartner.lanesTogether}
                   </span>
-                  <span className="text-xs text-deadlock-muted">
+                  <span className="text-xs text-deadlock-subtext font-medium">
                     duo lane{topLanePartner.lanesTogether > 1 ? 's' : ''}
                   </span>
                 </div>
-                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                <span className="text-[0.6875rem] text-deadlock-muted mt-0.5 font-mono">
                   Lane Win Rate: <strong className="text-deadlock-steam">{topLanePartner.laneWinRate}%</strong> ({topLanePartner.laneWins}W - {topLanePartner.laneLosses}L)
                 </span>
               </div>
@@ -681,7 +681,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                 Rival
               </h3>
             </div>
-            <span className="text-[10px] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
+            <span className="text-[0.625rem] text-deadlock-muted font-medium bg-deadlock-card/60 px-2 py-0.5 rounded-full border border-deadlock-border/60">
               Most Faced on Lane
             </span>
           </div>
@@ -699,11 +699,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                   <span className="text-lg font-black text-red-400">
                     {topRival.lanesFaced}
                   </span>
-                  <span className="text-xs text-deadlock-muted">
+                  <span className="text-xs text-deadlock-subtext font-medium">
                     lane duel{topRival.lanesFaced > 1 ? 's' : ''}
                   </span>
                 </div>
-                <span className="text-[11px] text-deadlock-muted mt-0.5 font-mono">
+                <span className="text-[0.6875rem] text-deadlock-muted mt-0.5 font-mono">
                   Lane Win Rate: <strong className="text-deadlock-steam">{topRival.laneWinRate}%</strong> ({topRival.laneWins}W - {topRival.laneLosses}L)
                 </span>
               </div>

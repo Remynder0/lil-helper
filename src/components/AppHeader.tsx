@@ -50,21 +50,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenConnectModal,
 }) => {
   return (
-    <header className="border-b-2 border-deadlock-brass/40 bg-deadlock-panel/80 backdrop-blur-lg px-6 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 w-full z-40 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
+    <header className="steam-glass border-b-2 border-deadlock-brass/40 px-4 sm:px-6 py-3.5 fixed top-0 left-0 right-0 w-full z-40 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
       {/* Decorative background brass conduit line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-deadlock-accent/60 to-transparent" />
 
-      {/* Brand & Steampunk Apparatus Emblem */}
-      <div className="flex items-center gap-3 relative z-10">
-        <div className="flex items-center gap-2"> 
-          {/* Prominent mechanical turning gears */}
-          <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
+      <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto flex items-center justify-between">
+        {/* Brand & Steampunk Apparatus Emblem */}
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="flex items-center gap-2"> 
+            {/* Prominent mechanical turning gears */}
+            <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
+          </div>
+
         </div>
 
-      </div>
-
-      {/* Global Quick Stats & Navigation */}
-      <div className="flex items-center gap-4 text-xs relative z-10">
+        {/* Global Quick Stats & Navigation */}
+        <div className="flex items-center gap-2.5 sm:gap-4 text-xs relative z-10">
         {/* Art Deco Cartouche Stats: Matches & Winrate with preserved 160:50 ratio */}
         <div className="flex items-center gap-2.5">
           {/* Matches Cartouche */}
@@ -182,6 +183,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           )}
         </div>
+      </div>
       </div>
 
       {/* Heavy Steampunk Steam Pipe along bottom edge of header */}
