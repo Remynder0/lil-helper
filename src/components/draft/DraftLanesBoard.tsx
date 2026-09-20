@@ -28,7 +28,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
   onSetAssignedLane,
 }) => {
   return (
-    <div className="bg-gradient-to-b from-[#181124]/95 via-[#120d1c]/95 to-[#160e22]/95 steam-panel steam-card border border-deadlock-arcane/45 shadow-[0_0_30px_rgba(107,76,138,0.2)] rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden">
+    <div className="occult-panel arcane-glow rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden">
       {/* Alchemical Solomon Seal Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden z-0">
         <img

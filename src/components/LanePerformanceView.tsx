@@ -342,8 +342,18 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                 </tr>
               </thead>
               <tbody className="divide-y divide-deadlock-border/40">
-                {laneStats.opponents.map((opp) => (
-                  <tr key={opp.opponentHeroId} className="hover:bg-deadlock-card/40 transition-colors">
+                {laneStats.opponents.map((opp) => {
+                  const isRep = opp.isRepresentative;
+                  return (
+                    <tr
+                      key={opp.opponentHeroId}
+                      className={`transition-all duration-200 ${
+                        !isRep
+                          ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                          : 'hover:bg-deadlock-card/40'
+                      }`}
+                      title={!isRep ? `Low sample (< ${opp.threshold} matches)` : undefined}
+                    >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
                         <HeroAvatar heroId={opp.opponentHeroId} size="xs" />
@@ -371,7 +381,8 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
                       </span>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>

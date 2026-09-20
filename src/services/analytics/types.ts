@@ -46,6 +46,8 @@ export interface HeroPerformance {
   losses: number;
   cancels: number;
   winRate: number; // 0-100 percentage
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 export interface FamiliarFaceStat {
@@ -58,6 +60,8 @@ export interface FamiliarFaceStat {
   wins: number;
   losses: number;
   winRate: number; // 0-100 percentage
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 /* ==========================================================================
@@ -72,6 +76,8 @@ export interface EnemyMatchupStat {
   losses: number;
   cancels: number;
   winRate: number; // 0-100 percentage
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 export interface AllySynergyStat {
@@ -82,6 +88,8 @@ export interface AllySynergyStat {
   losses: number;
   cancels: number;
   winRate: number; // 0-100 percentage
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 /* ==========================================================================
@@ -96,6 +104,8 @@ export interface HeroDraftRecommendation {
   /** Historical baseline win rate when piloting this hero (0-100) */
   baselineWinRate: number;
   totalGamesPiloted: number;
+  isRepresentative?: boolean;
+  threshold?: number;
   /** Average win rate against the current selected enemy draft */
   enemyMatchupScore: number | null;
   /** Explanations of matchups against picked enemies */
@@ -105,6 +115,7 @@ export interface HeroDraftRecommendation {
     winRate: number;
     matches: number;
     advantage: number; // positive = counters enemy, negative = countered by enemy
+    isRepresentative?: boolean;
   }[];
   /** Average win rate alongside the current selected ally draft */
   allySynergyScore: number | null;
@@ -114,7 +125,8 @@ export interface HeroDraftRecommendation {
     allyHeroName: string;
     winRate: number;
     matches: number;
-    synergy: number; // positive = strong synergy, negative = weak synergy
+    synergy: number; // positive = strong combo with ally, negative = poor combo
+    isRepresentative?: boolean;
   }[];
   /** Main reason summary (e.g. "Counters Bebop & Haze (+15% WR), strong with Dynamo") */
   primaryReason: string;
@@ -155,6 +167,8 @@ export interface DirectLaneOpponentStat {
   gameWins: number;
   gameLosses: number;
   gameWinRate: number; // match winrate against this lane opponent
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 export interface DirectLaneAllyStat {
@@ -164,10 +178,12 @@ export interface DirectLaneAllyStat {
   laneWins: number;
   laneLosses: number;
   laneEvens: number;
-  laneWinRate: number;
+  laneWinRate: number; // (laneWins / (laneWins + laneLosses)) * 100
   gameWins: number;
   gameLosses: number;
-  gameWinRate: number;
+  gameWinRate: number; // match winrate with this lane partner
+  isRepresentative?: boolean;
+  threshold?: number;
 }
 
 export interface LaneAnalyticsSummary {
@@ -194,6 +210,8 @@ export interface DraftAction {
   projectedWinRate: number; // 0-100 %
   deltaVsCurrent: number; // +/- difference compared to doing nothing
   isSwapRequested: boolean; // true if this requires a teammate to accept a lane swap
+  isRepresentative?: boolean;
+  threshold?: number;
   title: string;
   description: string;
 }

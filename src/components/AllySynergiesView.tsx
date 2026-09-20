@@ -4,6 +4,7 @@ import { HeroAvatar } from './HeroAvatar';
 import {
   calculateAllySynergies,
   AllySynergyStat,
+  getSampleThreshold,
 } from '../services/analytics';
 import { getHeroById } from '../data/heroes';
 import {
@@ -25,6 +26,8 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
   const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
   // Find all distinct heroes piloted by the player
   const playedHeroes = useMemo(() => {
@@ -50,10 +53,12 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
     });
   }, [synergies, sortField, sortAsc]);
 
-  // Calculate Highlights (at least 1 match played together)
+  // Calculate Highlights (prioritize representative synergies with at least threshold games)
   const qualifiedForHighlights = useMemo(() => {
+    const repSynergies = synergies.filter((s) => s.matchesWith >= threshold);
+    if (repSynergies.length >= 2) return repSynergies;
     return synergies.filter((s) => s.wins + s.losses >= 1);
-  }, [synergies]);
+  }, [synergies, threshold]);
 
   const bestSynergies = useMemo(() => {
     return [...qualifiedForHighlights]
@@ -151,23 +156,29 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {bestSynergies.map((syn) => (
-                <div
-                  key={syn.allyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={syn.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {syn.allyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-win">
-                    {syn.winRate}% WR
+              {bestSynergies.map((syn) => {
+                const isRep = syn.matchesWith >= threshold;
+                return (
+                  <div
+                    key={syn.allyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={syn.allyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {syn.allyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
+                      {syn.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {syn.wins}W - {syn.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {syn.wins}W - {syn.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -185,29 +196,35 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {antiSynergies.map((anti) => (
-                <div
-                  key={anti.allyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={anti.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {anti.allyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-amber-400">
-                    {anti.winRate}% WR
+              {antiSynergies.map((anti) => {
+                const isRep = anti.matchesWith >= threshold;
+                return (
+                  <div
+                    key={anti.allyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={anti.allyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {anti.allyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-amber-400">
+                      {anti.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {anti.wins}W - {anti.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {anti.wins}W - {anti.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* FULL ALLY SYNERGY TABLE */}
+      {/* FULL SYNERGY TABLE */}
       <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -269,10 +286,16 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
               <tbody className="divide-y divide-deadlock-border/40">
                 {sortedSynergies.map((s: AllySynergyStat) => {
                   const decided = s.wins + s.losses;
+                  const isRep = s.matchesWith >= threshold;
                   return (
                     <tr
                       key={s.allyHeroId}
-                      className="hover:bg-deadlock-card/40 transition-colors"
+                      className={`transition-all duration-200 ${
+                        !isRep
+                          ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100'
+                          : 'hover:bg-deadlock-card/40'
+                      }`}
+                      title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                     >
                       {/* Ally Hero info */}
                       <td className="py-3 px-4">

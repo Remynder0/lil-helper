@@ -17,6 +17,8 @@ export interface HeroPickerProps {
   subtitle?: string;
   /** Custom extra CSS classes */
   className?: string;
+  /** Visual theme aesthetic: standard steampunk or occult violet */
+  variant?: 'steampunk' | 'occult';
 }
 
 type HeroTypeFilter = 'all' | 'brawler' | 'marksman' | 'mystic' | 'assassin';
@@ -36,6 +38,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
   accentColor = 'default',
   title,
   subtitle,
+  variant = 'steampunk',
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,29 +81,61 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
   };
 
   return (
-    <div className={`steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 ${className}`}>
+    <div
+      className={
+        variant === 'occult'
+          ? `occult-panel arcane-glow rounded-xl p-4 flex flex-col gap-3 ${className}`
+          : `steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 ${className}`
+      }
+    >
       {/* Header with Title & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b border-deadlock-border/60">
+      <div
+        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2 border-b ${
+          variant === 'occult' ? 'border-deadlock-arcane/40' : 'border-deadlock-border/60'
+        }`}
+      >
         <div>
-          {title && <h3 className="text-sm font-semibold tracking-wide text-deadlock-steam uppercase">{title}</h3>}
-          {subtitle && <p className="text-xs text-deadlock-subtext">{subtitle}</p>}
+          {title && (
+            <h3
+              className={`text-sm font-semibold tracking-wide uppercase ${
+                variant === 'occult' ? 'text-purple-100 font-mono' : 'text-deadlock-steam'
+              }`}
+            >
+              {title}
+            </h3>
+          )}
+          {subtitle && (
+            <p className={`text-xs ${variant === 'occult' ? 'text-purple-300/70' : 'text-deadlock-subtext'}`}>
+              {subtitle}
+            </p>
+          )}
         </div>
 
         {/* Search input */}
         <div className="relative w-full sm:w-56">
-          <Search className="w-4 h-4 text-deadlock-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search
+            className={`w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 ${
+              variant === 'occult' ? 'text-purple-400/60' : 'text-deadlock-muted'
+            }`}
+          />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search hero..."
-            className="w-full bg-deadlock-card border border-deadlock-border rounded-lg pl-8 pr-7 py-1.5 text-xs text-deadlock-steam placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent transition-colors"
+            className={`w-full rounded-lg pl-8 pr-7 py-1.5 text-xs transition-colors focus:outline-none ${
+              variant === 'occult'
+                ? 'bg-[#130d1e]/90 border border-deadlock-arcane/40 text-purple-100 placeholder-purple-300/40 focus:border-purple-400'
+                : 'bg-deadlock-card border border-deadlock-border text-deadlock-steam placeholder-deadlock-muted/60 focus:border-deadlock-accent'
+            }`}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-deadlock-muted hover:text-deadlock-steam"
+              className={`absolute right-2 top-1/2 -translate-y-1/2 ${
+                variant === 'occult' ? 'text-purple-400/70 hover:text-purple-200' : 'text-deadlock-muted hover:text-deadlock-steam'
+              }`}
               title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -120,7 +155,11 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm'
+                  ? variant === 'occult'
+                    ? 'bg-purple-900/50 text-purple-200 border border-deadlock-arcane shadow-sm'
+                    : 'bg-deadlock-accent/20 text-deadlock-accent border border-deadlock-accent/40 shadow-sm'
+                  : variant === 'occult'
+                  ? 'text-purple-300/70 hover:text-purple-100 hover:bg-purple-900/30'
                   : 'text-deadlock-muted hover:text-gray-300 hover:bg-deadlock-border/40'
               }`}
             >
@@ -129,7 +168,7 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
             </button>
           );
         })}
-        <span className="ml-auto text-[11px] text-deadlock-muted/70">
+        <span className={`ml-auto text-[11px] ${variant === 'occult' ? 'text-purple-300/60' : 'text-deadlock-muted/70'}`}>
           {filteredHeroes.length} hero{filteredHeroes.length !== 1 ? 'es' : ''}
         </span>
       </div>
@@ -151,12 +190,14 @@ export const HeroPicker: React.FC<HeroPickerProps> = ({
                 isDisabled
                   ? 'opacity-25 grayscale cursor-not-allowed border-transparent'
                   : isSelected
-                  ? `${getSelectedStyles()} bg-deadlock-dark/80 z-10`
+                  ? `${getSelectedStyles()} ${variant === 'occult' ? 'bg-[#1a1228]/95' : 'bg-deadlock-dark/80'} z-10`
+                  : variant === 'occult'
+                  ? 'border-deadlock-arcane/30 hover:border-deadlock-arcane bg-[#130d1e]/60 hover:bg-[#1a1228]/90 hover:scale-105'
                   : 'border-deadlock-border/40 hover:border-deadlock-brass bg-deadlock-dark/40 hover:bg-deadlock-dark/90 hover:scale-105'
               }`}
             >
               {/* Hero Portrait */}
-              <div className="w-12 h-12 rounded-md overflow-hidden bg-deadlock-panel">
+              <div className={`w-12 h-12 rounded-md overflow-hidden ${variant === 'occult' ? 'bg-[#181024]' : 'bg-deadlock-panel'}`}>
                 <img
                   src={hero.iconUrl}
                   alt={hero.name}

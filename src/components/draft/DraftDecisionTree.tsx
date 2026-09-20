@@ -16,7 +16,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
   myHeroId,
 }) => {
   return (
-    <div className="bg-gradient-to-b from-[#181124]/95 via-[#120d1c]/95 to-[#160e22]/95 steam-panel steam-card border border-deadlock-arcane/45 shadow-[0_0_30px_rgba(107,76,138,0.2)] rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
+    <div className="occult-panel arcane-glow rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
       {/* Alchemical Solomon Seal Watermark */}
       <img
         src={occultSeal}
@@ -25,7 +25,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
         className="absolute -right-20 -bottom-20 w-80 h-80 pointer-events-none opacity-[0.05] filter drop-shadow-[0_0_20px_rgba(107,76,138,0.5)]"
       />
 
-      <div className="flex items-center justify-between pb-3 border-b border-deadlock-arcane/30 relative z-10">
+      <div className="flex items-center justify-between pb-3 border-b border-deadlock-arcane/30 relative z-10 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-deadlock-arcane" />
           <h3 className="font-bold text-sm uppercase tracking-wide text-purple-100 font-mono">
@@ -62,19 +62,19 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
             <div className="w-full overflow-x-auto py-2">
               <div className="min-w-[700px] flex items-center">
                 {/* ROOT NODE: Current Hero + Current Lane + Current Projected WR */}
-                <div className="flex flex-col items-center p-3 rounded-xl bg-deadlock-card border-2 border-deadlock-border shrink-0 w-[140px] shadow-md z-10">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-deadlock-muted mb-1.5 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-deadlock-accent animate-pulse" />
+                <div className="flex flex-col items-center p-3 rounded-xl bg-[#1a1228]/95 border-2 border-deadlock-arcane/50 shrink-0 w-[140px] shadow-md z-10">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-purple-300/80 mb-1.5 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-deadlock-arcane animate-pulse shadow-[0_0_8px_rgba(107,76,138,0.8)]" />
                     Current
                   </div>
                   <HeroAvatar heroId={myHeroId} size="md" />
                   <span className="text-xs font-black text-gray-100 mt-1 text-center truncate max-w-full">
                     {currentHero?.name || 'Unknown'}
                   </span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-deadlock-panel border border-deadlock-border text-gray-300 mt-0.5">
+                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#130d1e] border border-deadlock-arcane/30 text-purple-200 mt-0.5">
                     {LANE_LABELS[currentLane]}
                   </span>
-                  <div className="text-sm font-black font-mono text-gray-300 mt-1.5">
+                  <div className="text-sm font-black font-mono text-purple-200 mt-1.5">
                     {bestActionsAdvisor.currentProjectedWinRate}% WR
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                     </div>
 
                     {/* TARGET NODE */}
-                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-card to-deadlock-card border-2 border-deadlock-win/50 flex-1 shadow-md">
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-deadlock-win/20 via-[#1a1228]/95 to-[#160e22]/95 border-2 border-deadlock-win/60 flex-1 shadow-md">
                       <div className="flex items-center gap-3">
                         <HeroAvatar heroId={bestOverall.heroId} size="md" isHighlighted />
                         <div>
@@ -106,7 +106,7 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                             <span className="text-sm font-black text-deadlock-steam">
                               {bestOverall.hero?.name}
                             </span>
-                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
+                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#130d1e] border border-deadlock-arcane/40 text-purple-200">
                               {LANE_LABELS[bestOverall.lane]}
                             </span>
                           </div>
@@ -124,12 +124,20 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                       </div>
 
                       <div className="text-right font-mono shrink-0">
-                        <div className="text-2xl font-black text-deadlock-win">
+                        <div className={`text-2xl font-black text-deadlock-win ${!bestOverall.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                           {bestOverall.projectedWinRate}%
                         </div>
                         <span className="text-[11px] text-deadlock-muted font-sans font-semibold">
                           Projected WR
                         </span>
+                        {!bestOverall.isRepresentative && (
+                          <span
+                            className="text-[9px] font-sans font-semibold text-amber-300 block"
+                            title={`Low sample (< ${bestOverall.threshold} games).`}
+                          >
+                            Low sample (&lt;{bestOverall.threshold} games)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -179,19 +187,19 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                     {/* BRANCH CARDS */}
                     <div className="flex flex-col gap-3.5 flex-1">
                       {/* BRANCH 1: OPTION 1 (MAX WR WITH LANE SWAP) */}
-                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-deadlock-win/15 via-deadlock-card to-deadlock-card border-2 border-deadlock-win/50 shadow-md">
+                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-deadlock-win/20 via-[#1a1228]/95 to-[#160e22]/95 border-2 border-deadlock-win/60 shadow-md">
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col min-w-[80px]">
                             <span className="text-[10px] font-black uppercase tracking-wider text-deadlock-win flex items-center gap-1">
                               Option 1
                             </span>
-                            <span className="text-[10px] text-deadlock-muted font-medium">
+                            <span className="text-[10px] text-purple-300/60 font-medium">
                               With lane swap
                             </span>
                           </div>
 
                           {/* Swap Visual: [Current Hero] ⇄ [Ally Hero] */}
-                          <div className="flex items-center gap-2 p-1.5 rounded-lg bg-deadlock-panel/90 border border-deadlock-border">
+                          <div className="flex items-center gap-2 p-1.5 rounded-lg bg-[#130d1e]/90 border border-deadlock-arcane/40">
                             <div className="flex flex-col items-center">
                               <HeroAvatar heroId={myHeroId} size="sm" />
                               <span className="text-[10px] font-semibold text-gray-300 mt-0.5">
@@ -225,38 +233,46 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                             </div>
                           )}
 
-                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#130d1e] border border-deadlock-arcane/40 text-purple-200">
                             {LANE_LABELS[bestOverall.lane]}
                           </span>
                         </div>
 
                         <div className="text-right font-mono shrink-0 pl-2">
-                          <div className="text-2xl font-black text-deadlock-win">
+                          <div className={`text-2xl font-black text-deadlock-win ${!bestOverall.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                             {bestOverall.projectedWinRate}%
                           </div>
+                          {!bestOverall.isRepresentative && (
+                            <span
+                              className="text-[9px] font-sans font-semibold text-amber-300 block"
+                              title={`Low sample (< ${bestOverall.threshold} games).`}
+                            >
+                              Low sample (&lt;{bestOverall.threshold} games)
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* BRANCH 2: OPTION 2 (WITHOUT SWAP / IF REFUSED) */}
-                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-blue-500/15 via-deadlock-card to-deadlock-card border-2 border-blue-500/40 shadow-md">
+                      <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-gradient-to-r from-blue-500/20 via-[#1a1228]/95 to-[#160e22]/95 border-2 border-blue-500/50 shadow-md">
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col min-w-[80px]">
                             <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
                               Option 2
                             </span>
-                            <span className="text-[10px] text-deadlock-muted font-medium">
+                            <span className="text-[10px] text-purple-300/60 font-medium">
                               If swap denied
                             </span>
                           </div>
 
                           {/* Hero to pick or keep */}
-                          <div className="flex items-center gap-2.5 p-1.5 rounded-lg bg-deadlock-panel/90 border border-deadlock-border">
+                          <div className="flex items-center gap-2.5 p-1.5 rounded-lg bg-[#130d1e]/90 border border-deadlock-arcane/40">
                             <HeroAvatar heroId={bestSafe.heroId} size="sm" />
                             <div className="flex flex-col">
                               <span className="text-xs font-bold text-gray-100">
                                 {bestSafe.hero?.name}
                               </span>
-                              <span className="text-[10px] text-deadlock-muted">
+                              <span className="text-[10px] text-purple-300/70">
                                 {bestSafe.heroId === myHeroId
                                   ? 'Keep your current hero'
                                   : `Switch to ${bestSafe.hero?.name}`}
@@ -264,15 +280,23 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
                             </div>
                           </div>
 
-                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-deadlock-dark border border-deadlock-border text-gray-300">
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#130d1e] border border-deadlock-arcane/40 text-purple-200">
                             {LANE_LABELS[bestSafe.lane]}
                           </span>
                         </div>
 
                         <div className="text-right font-mono shrink-0 pl-2">
-                          <div className="text-2xl font-black text-blue-300">
+                          <div className={`text-2xl font-black text-blue-300 ${!bestSafe.isRepresentative ? 'opacity-50 blur-[0.5px] hover:blur-none hover:opacity-100 transition-all' : ''}`}>
                             {bestSafe.projectedWinRate}%
                           </div>
+                          {!bestSafe.isRepresentative && (
+                            <span
+                              className="text-[9px] font-sans font-semibold text-amber-300 block"
+                              title={`Low sample (< ${bestSafe.threshold} games).`}
+                            >
+                              Low sample (&lt;{bestSafe.threshold} games)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

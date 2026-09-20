@@ -368,6 +368,7 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
               disabledHeroIds={allUnavailableHeroIds}
               onSelectHero={handleSelectHero}
               accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
+              variant="occult"
             />
           </div>
         </div>

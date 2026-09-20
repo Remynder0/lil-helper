@@ -13,6 +13,7 @@ import {
   calculateLaneAnalytics,
   formatStreakDateRange,
   HeroPerformance,
+  getSampleThreshold,
 } from '../services/analytics';
 import {
   Flame,
@@ -45,6 +46,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [heroSearch, setHeroSearch] = useState<string>('');
+
+  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
   const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
   const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
@@ -292,7 +295,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                   const decided = hp.wins + hp.losses;
                   const isPositive = hp.winRate >= 50;
                   return (
-                    <div key={hp.heroId} className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      key={hp.heroId}
+                      className="flex items-center justify-between gap-2.5 min-w-0"
+                    >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <HeroAvatar heroId={hp.heroId} size="sm" />
                         <div className="flex flex-col min-w-0">
@@ -579,7 +585,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
           </div>
 
           {familiarFace && familiarFace.hero ? (
-            <div className="mt-4 flex items-center gap-3.5">
+            <div
+              className={`mt-4 flex items-center gap-3.5 transition-all duration-200 ${
+                !familiarFace.isRepresentative
+                  ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                  : ''
+              }`}
+              title={!familiarFace.isRepresentative ? `Low sample (< ${threshold} matches)` : undefined}
+            >
               <div className="relative shrink-0">
                 <HeroAvatar heroId={familiarFace.heroId} size="md" />
               </div>

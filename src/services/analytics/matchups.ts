@@ -1,6 +1,7 @@
-﻿import { Match } from '../../types/match';
+import { Match } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
 import { EnemyMatchupStat, AllySynergyStat } from './types';
+import { getSampleThreshold } from './global';
 
 /**
  * Computes matchup statistics against enemy heroes.
@@ -11,6 +12,7 @@ export function calculateEnemyMatchups(
   matches: Match[],
   playerHeroId: number | null = null
 ): EnemyMatchupStat[] {
+  const threshold = getSampleThreshold(matches.length);
   const filtered = playerHeroId !== null
     ? matches.filter((m) => m.myHeroId === playerHeroId)
     : matches;
@@ -40,6 +42,8 @@ export function calculateEnemyMatchups(
       losses: stat.losses,
       cancels: stat.cancels,
       winRate,
+      isRepresentative: stat.matchesAgainst >= threshold,
+      threshold,
     });
   }
 
@@ -55,6 +59,7 @@ export function calculateAllySynergies(
   matches: Match[],
   playerHeroId: number | null = null
 ): AllySynergyStat[] {
+  const threshold = getSampleThreshold(matches.length);
   const filtered = playerHeroId !== null
     ? matches.filter((m) => m.myHeroId === playerHeroId)
     : matches;
@@ -84,6 +89,8 @@ export function calculateAllySynergies(
       losses: stat.losses,
       cancels: stat.cancels,
       winRate,
+      isRepresentative: stat.matchesWith >= threshold,
+      threshold,
     });
   }
 

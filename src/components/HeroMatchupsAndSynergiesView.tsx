@@ -6,6 +6,7 @@ import {
   calculateAllySynergies,
   EnemyMatchupStat,
   AllySynergyStat,
+  getSampleThreshold,
 } from '../services/analytics';
 import { getHeroById } from '../data/heroes';
 import {
@@ -34,6 +35,8 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
 
   // Find all distinct heroes piloted by the player
@@ -88,8 +91,10 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
 
   // Enemy Highlights (Nemeses & Favorable)
   const enemyQualified = useMemo(() => {
+    const repMatchups = enemyMatchups.filter((m) => m.matchesAgainst >= threshold);
+    if (repMatchups.length >= 2) return repMatchups;
     return enemyMatchups.filter((m) => m.wins + m.losses >= 1);
-  }, [enemyMatchups]);
+  }, [enemyMatchups, threshold]);
 
   const nemeses = useMemo(() => {
     return [...enemyQualified]
@@ -105,8 +110,10 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
 
   // Ally Highlights (Best Synergies & Anti-Synergies)
   const allyQualified = useMemo(() => {
+    const repSynergies = allySynergies.filter((s) => s.matchesWith >= threshold);
+    if (repSynergies.length >= 2) return repSynergies;
     return allySynergies.filter((s) => s.wins + s.losses >= 1);
-  }, [allySynergies]);
+  }, [allySynergies, threshold]);
 
   const bestSynergies = useMemo(() => {
     return [...allyQualified]
@@ -261,23 +268,29 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {nemeses.map((nemesis) => (
-                <div
-                  key={nemesis.enemyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={nemesis.enemyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {nemesis.enemyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-loss">
-                    {nemesis.winRate}% WR
+              {nemeses.map((nemesis) => {
+                const isRep = nemesis.matchesAgainst >= threshold;
+                return (
+                  <div
+                    key={nemesis.enemyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={nemesis.enemyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {nemesis.enemyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-loss">
+                      {nemesis.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {nemesis.wins}W - {nemesis.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {nemesis.wins}W - {nemesis.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -295,23 +308,29 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {favorable.map((fav) => (
-                <div
-                  key={fav.enemyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={fav.enemyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {fav.enemyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-win">
-                    {fav.winRate}% WR
+              {favorable.map((fav) => {
+                const isRep = fav.matchesAgainst >= threshold;
+                return (
+                  <div
+                    key={fav.enemyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={fav.enemyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {fav.enemyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
+                      {fav.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {fav.wins}W - {fav.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {fav.wins}W - {fav.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -333,23 +352,29 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {bestSynergies.map((syn) => (
-                <div
-                  key={syn.allyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={syn.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {syn.allyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-deadlock-win">
-                    {syn.winRate}% WR
+              {bestSynergies.map((syn) => {
+                const isRep = syn.matchesWith >= threshold;
+                return (
+                  <div
+                    key={syn.allyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={syn.allyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {syn.allyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
+                      {syn.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {syn.wins}W - {syn.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {syn.wins}W - {syn.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -367,23 +392,29 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {antiSynergies.map((syn) => (
-                <div
-                  key={syn.allyHeroId}
-                  className="bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5"
-                >
-                  <HeroAvatar heroId={syn.allyHeroId} size="sm" />
-                  <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                    {syn.allyHero?.name}
-                  </span>
-                  <div className="text-[11px] font-mono font-bold text-amber-400">
-                    {syn.winRate}% WR
+              {antiSynergies.map((syn) => {
+                const isRep = syn.matchesWith >= threshold;
+                return (
+                  <div
+                    key={syn.allyHeroId}
+                    className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
+                      !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
+                    }`}
+                    title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
+                  >
+                    <HeroAvatar heroId={syn.allyHeroId} size="sm" />
+                    <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
+                      {syn.allyHero?.name}
+                    </span>
+                    <div className="text-[11px] font-mono font-bold text-amber-400">
+                      {syn.winRate}% WR
+                    </div>
+                    <div className="text-[10px] text-deadlock-muted font-mono">
+                      {syn.wins}W - {syn.losses}L
+                    </div>
                   </div>
-                  <div className="text-[10px] text-deadlock-muted font-mono">
-                    {syn.wins}W - {syn.losses}L
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -451,10 +482,16 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
               {relationMode === 'against'
                 ? sortedEnemyMatchups.map((matchup: EnemyMatchupStat) => {
                     const decided = matchup.wins + matchup.losses;
+                    const isRep = matchup.matchesAgainst >= threshold;
                     return (
                       <tr
                         key={matchup.enemyHeroId}
-                        className={`hover:bg-deadlock-card/40 transition-colors`}
+                        className={`transition-all duration-200 ${
+                          !isRep
+                            ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                            : 'hover:bg-deadlock-card/40'
+                        }`}
+                        title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
@@ -508,10 +545,16 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
                   })
                 : sortedAllySynergies.map((synergy: AllySynergyStat) => {
                     const decided = synergy.wins + synergy.losses;
+                    const isRep = synergy.matchesWith >= threshold;
                     return (
                       <tr
                         key={synergy.allyHeroId}
-                        className={`hover:bg-deadlock-card/40 transition-colors`}
+                        className={`transition-all duration-200 ${
+                          !isRep
+                            ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                            : 'hover:bg-deadlock-card/40'
+                        }`}
+                        title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">

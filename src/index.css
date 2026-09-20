@@ -263,6 +263,42 @@ h1, h2 {
   box-shadow: 0 0 20px rgba(107, 76, 138, 0.25), inset 0 0 25px rgba(107, 76, 138, 0.08);
 }
 
+.occult-panel {
+  position: relative;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  background: linear-gradient(
+    180deg,
+    rgba(24, 17, 36, 0.96) 0%,
+    rgba(18, 13, 28, 0.96) 45%,
+    rgba(22, 14, 34, 0.96) 100%
+  ) !important;
+  border: 1px solid rgba(107, 76, 138, 0.45) !important;
+  box-shadow: 0 0 30px rgba(107, 76, 138, 0.22), inset 0 1px 0 rgba(168, 85, 247, 0.2) !important;
+}
+
+.occult-panel::before,
+.occult-panel::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d8b4fe 0%, #9a6abf 45%, #4a2868 100%);
+  box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.4), 0 0 8px rgba(168, 85, 247, 0.6);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.occult-panel::before {
+  left: 8px;
+}
+
+.occult-panel::after {
+  right: 8px;
+}
+
 .ritual-border {
   border: 1px solid;
   border-image: linear-gradient(45deg, var(--color-deadlock-arcane), var(--color-deadlock-ritual), var(--color-deadlock-arcane)) 1;

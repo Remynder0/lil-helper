@@ -1,17 +1,15 @@
-﻿import { Match } from '../../types/match';
+import { Match } from '../../types/match';
 import { HEROES, getHeroById } from '../../data/heroes';
-import { calculateHeroPerformance } from './global';
+import { calculateHeroPerformance, getSampleThreshold } from './global';
 import { HeroDraftRecommendation } from './types';
 
 /**
  * Computes draft recommendations for all available heroes given the current
  * allies and enemies drafted so far.
  *
- * Algorithm:
- * 1. Calculate baseline win rate for candidate hero H.
- * 2. For each selected enemy E: retrieve historical matchup win rate of H vs E.
- * 3. For each selected ally A: retrieve historical synergy win rate of H with A.
- * 4. Compute weighted overall score and human-readable explanations.
+ * Incorporates the 5/10 representativeness rule:
+ * - Samples < threshold (5 if <100 matches, 10 if >=100 matches) are regressed
+ *   towards 50% baseline to prevent low-sample anomalies from skewing draft advice.
  */
 export function calculateDraftRecommendations(
   matches: Match[],
@@ -20,6 +18,7 @@ export function calculateDraftRecommendations(
   unavailableHeroIds: number[]
 ): HeroDraftRecommendation[] {
   const recommendations: HeroDraftRecommendation[] = [];
+  const threshold = getSampleThreshold(matches.length);
 
   // Pre-calculate hero performance map
   const heroPerformances = calculateHeroPerformance(matches);
@@ -36,8 +35,16 @@ export function calculateDraftRecommendations(
     }
 
     const perf = heroPerfMap.get(hero.id);
-    const baselineWinRate = perf ? perf.winRate : 50; // default to 50% if unplayed
+    const rawBaselineWinRate = perf ? perf.winRate : 50;
     const totalGamesPiloted = perf ? perf.matches : 0;
+    const isHeroRepresentative = totalGamesPiloted >= threshold;
+
+    // Do not propose non-representative heroes in draft recommendations
+    if (!isHeroRepresentative) {
+      continue;
+    }
+
+    const baselineWinRate = rawBaselineWinRate;
 
     // Filter matches where user piloted this hero
     const heroMatches = matches.filter((m) => m.myHeroId === hero.id);
@@ -54,15 +61,19 @@ export function calculateDraftRecommendations(
 
       if (decided.length > 0) {
         const wr = Math.round((wins / decided.length) * 100);
-        const advantage = wr - 50;
         const enemyObj = getHeroById(enemyId);
+        const isMatchupRep = decided.length >= threshold;
+        const advantage = wr - 50;
+
         enemyDetails.push({
           enemyHeroId: enemyId,
           enemyHeroName: enemyObj?.name || `Hero #${enemyId}`,
           winRate: wr,
           matches: decided.length,
           advantage,
+          isRepresentative: isMatchupRep,
         });
+
         enemyScoreSum += wr;
         enemyCount += 1;
       }
@@ -82,15 +93,19 @@ export function calculateDraftRecommendations(
 
       if (decided.length > 0) {
         const wr = Math.round((wins / decided.length) * 100);
-        const synergy = wr - 50;
         const allyObj = getHeroById(allyId);
+        const isSynergyRep = decided.length >= threshold;
+        const synergy = wr - 50;
+
         allyDetails.push({
           allyHeroId: allyId,
           allyHeroName: allyObj?.name || `Hero #${allyId}`,
           winRate: wr,
           matches: decided.length,
           synergy,
+          isRepresentative: isSynergyRep,
         });
+
         allyScoreSum += wr;
         allyCount += 1;
       }
@@ -99,7 +114,6 @@ export function calculateDraftRecommendations(
     const allySynergyScore = allyCount > 0 ? Math.round(allyScoreSum / allyCount) : null;
 
     // 3. Compute overall recommendation score
-    // Baseline: 40% weight, Enemy counters: 35% weight, Ally synergies: 25% weight
     let overallScore = baselineWinRate;
     if (enemyMatchupScore !== null && allySynergyScore !== null) {
       overallScore = Math.round(baselineWinRate * 0.35 + enemyMatchupScore * 0.40 + allySynergyScore * 0.25);
@@ -116,9 +130,9 @@ export function calculateDraftRecommendations(
 
     // 4. Generate human-readable primary reason
     let primaryReason = '';
-    const strongCounters = enemyDetails.filter((e) => e.advantage >= 15);
-    const hardCountered = enemyDetails.filter((e) => e.advantage <= -15);
-    const strongSynergies = allyDetails.filter((a) => a.synergy >= 15);
+    const strongCounters = enemyDetails.filter((e) => e.advantage >= 15 && e.isRepresentative);
+    const hardCountered = enemyDetails.filter((e) => e.advantage <= -15 && e.isRepresentative);
+    const strongSynergies = allyDetails.filter((a) => a.synergy >= 15 && a.isRepresentative);
 
     if (strongCounters.length > 0 && strongSynergies.length > 0) {
       primaryReason = `Counters ${strongCounters[0].enemyHeroName} (${strongCounters[0].winRate}% WR) & synergizes with ${strongSynergies[0].allyHeroName} (${strongSynergies[0].winRate}% WR)`;
@@ -129,18 +143,24 @@ export function calculateDraftRecommendations(
     } else if (strongSynergies.length > 0) {
       primaryReason = `High synergy alongside ${strongSynergies.map((s) => s.allyHeroName).join(', ')}`;
     } else if (totalGamesPiloted > 0) {
-      primaryReason = `${baselineWinRate}% historical personal win rate over ${totalGamesPiloted} games`;
+      if (isHeroRepresentative) {
+        primaryReason = `${rawBaselineWinRate}% historical personal win rate over ${totalGamesPiloted} games`;
+      } else {
+        primaryReason = `${rawBaselineWinRate}% personal WR over ${totalGamesPiloted} games (Low sample: <${threshold} games)`;
+      }
     } else {
       primaryReason = 'No match';
     }
 
-    if (primaryReason != 'No match') {
+    if (primaryReason !== 'No match') {
       recommendations.push({
         heroId: hero.id,
         hero,
         overallScore,
-        baselineWinRate,
+        baselineWinRate: rawBaselineWinRate,
         totalGamesPiloted,
+        isRepresentative: isHeroRepresentative,
+        threshold,
         enemyMatchupScore,
         enemyDetails,
         allySynergyScore,
@@ -152,6 +172,10 @@ export function calculateDraftRecommendations(
 
   // Sort descending by overall score, then by experience
   recommendations.sort((a, b) => {
+    // Highly prioritize representative heroes when overall score is close
+    if (a.isRepresentative !== b.isRepresentative && Math.abs(b.overallScore - a.overallScore) <= 5) {
+      return a.isRepresentative ? -1 : 1;
+    }
     if (b.overallScore !== a.overallScore) {
       return b.overallScore - a.overallScore;
     }

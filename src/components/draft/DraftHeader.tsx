@@ -53,7 +53,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
   return (
     <>
       {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET */}
-      <div className="bg-gradient-to-b from-[#181124]/95 via-[#120d1c]/95 to-[#160e22]/95 steam-panel steam-card border border-deadlock-arcane/45 shadow-[0_0_25px_rgba(107,76,138,0.16)] rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="occult-panel arcane-glow rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         {/* Left: Title & Patron Side Selection */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div>
@@ -111,7 +111,7 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
                     className={`cursor-pointer p-1 rounded-lg border transition-all ${
                       isActive
                         ? 'border-red-500 bg-red-950/40 ring-1 ring-red-500'
-                        : 'border-deadlock-border/80 bg-deadlock-card hover:border-gray-500'
+                        : 'border-deadlock-arcane/40 bg-[#1a1226]/80 hover:border-purple-400'
                     }`}
                   >
                     <HeroAvatar
@@ -145,9 +145,9 @@ export const DraftHeader: React.FC<DraftHeaderProps> = ({
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-border bg-deadlock-card hover:bg-deadlock-border text-xs font-semibold text-deadlock-muted hover:text-deadlock-steam transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-arcane/40 bg-[#1a1226]/80 hover:bg-[#231834] text-xs font-semibold text-purple-200 hover:text-white transition-all shadow-sm"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 text-deadlock-arcane" />
             <span>Reset</span>
           </button>
         </div>
