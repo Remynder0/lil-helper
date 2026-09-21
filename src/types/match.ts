@@ -63,6 +63,8 @@ export interface Match {
   rankedDelta?: number | null; // e.g. +300, -300 points gained/lost
   rankedProgress?: number | null; // final flat progress (1000 pts per subrank)
   rankedInitialProgress?: number | null; // initial flat progress before match
+  rankedDemotionProtection?: number | null; // number of demotion protection shields remaining
+  rankedConsumedDemotionProtection?: boolean | null; // true if demotion protection shield was consumed this match
 }
 
 export interface MatchDraftInput {

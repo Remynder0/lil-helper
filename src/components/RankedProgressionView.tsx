@@ -31,11 +31,135 @@ interface RankedProgressionViewProps {
 
 const ROMAN_NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
+export interface RankedShieldEvent {
+  matchId: string;
+  type: 'gained' | 'used';
+  count: number; // +1 or -1
+  reason: string;
+  subrankLabel: string;
+  shieldsRemaining?: number;
+}
+
+export interface RankedShieldAnalysis {
+  events: Map<string, RankedShieldEvent>;
+  activeShields: number;
+}
+
+/**
+ * Computes demotion protection shield events (earned / consumed) across chronological matches.
+ * Uses both explicit API flags (consumed_demotion_protection, initial_demotion_protection_games)
+ * and the Deadlock ranked rule: each subrank starts and resets with 2 demotion protection shields.
+ */
+export function computeRankedShieldEvents(matches: Match[]): RankedShieldAnalysis {
+  const events = new Map<string, RankedShieldEvent>();
+  let runningShields = 2; // Each subrank starts/resets with 2 shields
+
+  for (let i = 0; i < matches.length; i++) {
+    const curr = matches[i];
+    const prev = i > 0 ? matches[i - 1] : null;
+
+    const currProgress = curr.rankedProgress ?? 0;
+    const currRank = curr.rankedRank || (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : 1);
+    const currSubrank = Math.min(6, Math.max(1, Math.floor((currProgress % 6000) / 1000) + 1));
+    const currTierName = DEADLOCK_RANK_NAMES[currRank] || `Tier ${currRank}`;
+    const currSubrankRoman = ROMAN_NUMERALS[currSubrank] || String(currSubrank);
+    const currSubrankLabel = `${currTierName} ${currSubrankRoman}`;
+
+    const prevProgress = prev ? (prev.rankedProgress ?? 0) : null;
+    const prevRank = prev ? (prev.rankedRank || (prev.rankedBadge ? Math.floor(prev.rankedBadge / 10) : 1)) : null;
+    const prevSubrank = prevProgress !== null ? Math.min(6, Math.max(1, Math.floor((prevProgress % 6000) / 1000) + 1)) : null;
+
+    // Detect rank/subrank changes
+    const isPromotion =
+      prev !== null &&
+      (currRank > (prevRank ?? 0) ||
+        (currRank === prevRank && currSubrank > (prevSubrank ?? 0)) ||
+        (prevProgress !== null && currProgress >= Math.floor(prevProgress / 1000) * 1000 + 1000));
+
+    const isDemotion =
+      prev !== null &&
+      (currRank < (prevRank ?? 0) ||
+        (currRank === prevRank && currSubrank < (prevSubrank ?? 0)) ||
+        (prevProgress !== null && currProgress < Math.floor(prevProgress / 1000) * 1000));
+
+    // Rule: each subrank resets shields (5 for subrank I, 2 for subranks II-VI)
+    if (isPromotion) {
+      const resetCount = currSubrank === 1 ? 5 : 2;
+      runningShields = curr.rankedDemotionProtection ?? resetCount;
+      events.set(curr.id, {
+        matchId: curr.id,
+        type: 'gained',
+        count: resetCount,
+        reason: `Promotion to ${currSubrankLabel} (${resetCount} shields reset)`,
+        subrankLabel: currSubrankLabel,
+        shieldsRemaining: runningShields,
+      });
+      continue;
+    }
+
+    if (isDemotion) {
+      // Demoted into a new subrank: shields also reset
+      const resetCount = currSubrank === 1 ? 5 : 2;
+      runningShields = curr.rankedDemotionProtection ?? resetCount;
+      events.set(curr.id, {
+        matchId: curr.id,
+        type: 'gained',
+        count: resetCount,
+        reason: `Demotion to ${currSubrankLabel} (${resetCount} shields reset)`,
+        subrankLabel: currSubrankLabel,
+        shieldsRemaining: runningShields,
+      });
+      continue;
+    }
+
+    // Inside the same subrank: check if demotion protection was used
+    const explicitConsumed = curr.rankedConsumedDemotionProtection === true;
+    const isLoss = curr.result === 'loss' || (curr.rankedDelta || 0) < 0;
+
+    const inferredConsumed =
+      !explicitConsumed &&
+      isLoss &&
+      prevProgress !== null &&
+      ((prevProgress % 1000 === 0 && currProgress % 1000 === 0 && (curr.rankedDelta || 0) !== 0) ||
+        (prevProgress % 1000 < Math.abs(curr.rankedDelta || 0)));
+
+    const explicitProtectionDecreased =
+      isLoss &&
+      prev?.rankedDemotionProtection !== undefined &&
+      prev?.rankedDemotionProtection !== null &&
+      curr.rankedDemotionProtection !== undefined &&
+      curr.rankedDemotionProtection !== null &&
+      curr.rankedDemotionProtection < prev.rankedDemotionProtection;
+
+    const shieldUsed = explicitConsumed || inferredConsumed || explicitProtectionDecreased;
+
+    if (shieldUsed) {
+      if (curr.rankedDemotionProtection !== undefined && curr.rankedDemotionProtection !== null) {
+        runningShields = curr.rankedDemotionProtection;
+      } else {
+        runningShields = Math.max(0, runningShields - 1);
+      }
+      events.set(curr.id, {
+        matchId: curr.id,
+        type: 'used',
+        count: -1,
+        reason: 'Demotion protection activated (subrank floor preserved)',
+        subrankLabel: currSubrankLabel,
+        shieldsRemaining: runningShields,
+      });
+    } else if (curr.rankedDemotionProtection !== undefined && curr.rankedDemotionProtection !== null) {
+      runningShields = curr.rankedDemotionProtection;
+    }
+  }
+
+  return { events, activeShields: Math.min(5, Math.max(0, runningShields)) };
+}
+
 export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
   matches,
   profile,
 }) => {
-  // Filter range: 'all' | 'last10' | 'last20'
+  // Filter range: 'all' | 'last10' | 'last20' | 'shields'
   const [rangeFilter, setRangeFilter] = useState<'all' | 'last10' | 'last20'>('all');
   // Selected hero filter: highlights corresponding sections and grays out others
   const [selectedHeroId, setSelectedHeroId] = useState<number | null>(null);
@@ -47,6 +171,15 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     x: number;
     y: number;
     index: number;
+    startProgress?: number;
+    endProgress?: number;
+    effectiveDelta?: number;
+  } | null>(null);
+  // Hovered final endpoint (current standing)
+  const [hoveredFinalPoint, setHoveredFinalPoint] = useState<{
+    x: number;
+    y: number;
+    progress: number;
   } | null>(null);
 
   // Filter matches that have ranked data, strictly excluding Obscurus (unranked / calibration badge 0)
@@ -65,6 +198,59 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [matches]);
 
+  // Shield events map: determines for each match if a shield was gained or used
+  const shieldAnalysis = useMemo(() => {
+    return computeRankedShieldEvents(rankedMatchesChronological);
+  }, [rankedMatchesChronological]);
+
+  const shieldEventsMap = shieldAnalysis.events;
+
+  // Effective points delta per match, correctly reflecting points absorbed by demotion protection
+  const matchDeltasMap = useMemo(() => {
+    const deltas = new Map<string, number>();
+
+    for (let i = 0; i < rankedMatchesChronological.length; i++) {
+      const m = rankedMatchesChronological[i];
+      const prev = i > 0 ? rankedMatchesChronological[i - 1] : null;
+      const shieldEvent = shieldEventsMap.get(m.id);
+      const isShieldUsed = shieldEvent?.type === 'used' || m.rankedConsumedDemotionProtection === true;
+
+      if (isShieldUsed) {
+        if (
+          m.rankedProgress !== undefined &&
+          m.rankedProgress !== null &&
+          m.rankedInitialProgress !== undefined &&
+          m.rankedInitialProgress !== null
+        ) {
+          deltas.set(m.id, m.rankedProgress - m.rankedInitialProgress);
+        } else if (
+          m.rankedProgress !== undefined &&
+          m.rankedProgress !== null &&
+          prev?.rankedProgress !== undefined &&
+          prev?.rankedProgress !== null
+        ) {
+          deltas.set(m.id, m.rankedProgress - prev.rankedProgress);
+        } else {
+          // Protected at subrank floor -> 0 points lost
+          deltas.set(m.id, 0);
+        }
+      } else {
+        if (
+          m.rankedProgress !== undefined &&
+          m.rankedProgress !== null &&
+          m.rankedInitialProgress !== undefined &&
+          m.rankedInitialProgress !== null
+        ) {
+          deltas.set(m.id, m.rankedProgress - m.rankedInitialProgress);
+        } else {
+          deltas.set(m.id, m.rankedDelta || 0);
+        }
+      }
+    }
+
+    return deltas;
+  }, [rankedMatchesChronological, shieldEventsMap]);
+
   // Played heroes in ranked with total points won/lost
   const rankedHeroes = useMemo(() => {
     const heroMap = new Map<
@@ -82,7 +268,8 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       current.count += 1;
       if (m.result === 'win') current.wins += 1;
       else if (m.result === 'loss') current.losses += 1;
-      current.totalDelta += m.rankedDelta || 0;
+      const effectiveDelta = matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0);
+      current.totalDelta += effectiveDelta;
       heroMap.set(m.myHeroId, current);
     });
 
@@ -98,7 +285,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
         avgDelta: data.count > 0 ? Math.round(data.totalDelta / data.count) : 0,
       }))
       .sort((a, b) => b.totalDelta - a.totalDelta);
-  }, [rankedMatchesChronological]);
+  }, [rankedMatchesChronological, matchDeltasMap]);
 
   // Apply range filter to full data series (all matches kept in timeline, hero selection will gray out unselected)
   const filteredMatches = useMemo(() => {
@@ -133,15 +320,18 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     const subrankPercent = Math.min(100, Math.round((progressInSubrank / progressMaxSubrank) * 100));
 
     // Net delta across all matches
-    const totalDelta = rankedMatchesChronological.reduce((sum, m) => sum + (m.rankedDelta || 0), 0);
+    const totalDelta = rankedMatchesChronological.reduce(
+      (sum, m) => sum + (matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0)),
+      0
+    );
 
     // Wins and losses deltas
     const winDeltas = rankedMatchesChronological
-      .filter((m) => (m.rankedDelta || 0) > 0)
-      .map((m) => m.rankedDelta || 0);
+      .map((m) => matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0))
+      .filter((d) => d > 0);
     const lossDeltas = rankedMatchesChronological
-      .filter((m) => (m.rankedDelta || 0) < 0)
-      .map((m) => m.rankedDelta || 0);
+      .map((m) => matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0))
+      .filter((d) => d < 0);
 
     const avgWin = winDeltas.length > 0 ? Math.round(winDeltas.reduce((a, b) => a + b, 0) / winDeltas.length) : 0;
     const avgLoss = lossDeltas.length > 0 ? Math.round(lossDeltas.reduce((a, b) => a + b, 0) / lossDeltas.length) : 0;
@@ -156,6 +346,11 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     const totalWins = rankedMatchesChronological.filter((m) => m.result === 'win').length;
     const totalLosses = rankedMatchesChronological.filter((m) => m.result === 'loss').length;
     const winRate = totalWins + totalLosses > 0 ? Math.round((totalWins / (totalWins + totalLosses)) * 100) : 0;
+
+    // Shields stats
+    const totalShieldsGained = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'gained').length;
+    const totalShieldsUsed = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'used').length;
+    const activeShields = latest.rankedDemotionProtection ?? shieldAnalysis.activeShields;
 
     return {
       currentProgress,
@@ -177,16 +372,45 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       totalLosses,
       winRate,
       totalRanked: rankedMatchesChronological.length,
+      totalShieldsGained,
+      totalShieldsUsed,
+      activeShields,
     };
-  }, [rankedMatchesChronological]);
+  }, [rankedMatchesChronological, shieldEventsMap, shieldAnalysis, matchDeltasMap]);
 
   // SVG Chart Geometry calculations
   const chartData = useMemo(() => {
     if (filteredMatches.length === 0) return null;
 
-    const values = filteredMatches.map((m) => m.rankedProgress || 0);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+    const allProgressValues: number[] = [];
+    const matchPointsData = filteredMatches.map((m, idx) => {
+      const effectiveDelta = matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0);
+      const startProgress =
+        m.rankedInitialProgress !== null && m.rankedInitialProgress !== undefined
+          ? m.rankedInitialProgress
+          : m.rankedProgress !== null && m.rankedProgress !== undefined
+          ? m.rankedProgress - effectiveDelta
+          : 0;
+      const endProgress =
+        m.rankedProgress !== null && m.rankedProgress !== undefined
+          ? m.rankedProgress
+          : startProgress + effectiveDelta;
+
+      allProgressValues.push(startProgress, endProgress);
+
+      const shieldEvent = shieldEventsMap.get(m.id);
+      return {
+        match: m,
+        index: idx,
+        startProgress,
+        endProgress,
+        effectiveDelta,
+        shieldEvent,
+      };
+    });
+
+    const minVal = Math.min(...allProgressValues);
+    const maxVal = Math.max(...allProgressValues);
 
     // Boundaries snapped to subrank boundaries
     const yMin = Math.max(0, Math.floor((minVal - 200) / 1000) * 1000);
@@ -200,24 +424,48 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
 
-    const points = filteredMatches.map((m, idx) => {
-      const x =
-        filteredMatches.length === 1
-          ? padding.left + chartW / 2
-          : padding.left + (idx / (filteredMatches.length - 1)) * chartW;
-      const progress = m.rankedProgress || 0;
-      const y = padding.top + chartH - ((progress - yMin) / yRange) * chartH;
-      return { x, y, match: m, index: idx };
+    const n = filteredMatches.length;
+
+    const points = matchPointsData.map((item, idx) => {
+      const startX = n === 1 ? padding.left + 0.15 * chartW : padding.left + (idx / n) * chartW;
+      const endX = n === 1 ? padding.left + 0.85 * chartW : padding.left + ((idx + 1) / n) * chartW;
+      const startY = padding.top + chartH - ((item.startProgress - yMin) / yRange) * chartH;
+      const endY = padding.top + chartH - ((item.endProgress - yMin) / yRange) * chartH;
+
+      return {
+        ...item,
+        x: startX,
+        y: startY,
+        startX,
+        startY,
+        endX,
+        endY,
+      };
     });
 
-    // Filled area path with direct lines
-    const pathD = points.reduce((acc, pt, i) => {
-      return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
-    }, '');
+    const finalEndpoint =
+      points.length > 0
+        ? {
+            x: points[points.length - 1].endX,
+            y: points[points.length - 1].endY,
+            progress: points[points.length - 1].endProgress,
+          }
+        : null;
 
-    const areaD = points.length > 0
-      ? `${pathD} L ${points[points.length - 1].x} ${padding.top + chartH} L ${points[0].x} ${padding.top + chartH} Z`
-      : '';
+    // Filled area path with direct lines
+    let areaD = '';
+    if (points.length > 0 && finalEndpoint) {
+      let d = `M ${points[0].startX} ${points[0].startY}`;
+      for (let i = 0; i < points.length; i++) {
+        d += ` L ${points[i].endX} ${points[i].endY}`;
+        if (i < points.length - 1 && points[i].endY !== points[i + 1].startY) {
+          d += ` L ${points[i + 1].startX} ${points[i + 1].startY}`;
+        }
+      }
+      d += ` L ${finalEndpoint.x} ${padding.top + chartH}`;
+      d += ` L ${points[0].startX} ${padding.top + chartH} Z`;
+      areaD = d;
+    }
 
     // Generate horizontal subrank threshold grid lines displaying ONLY the subrank names
     const thresholdLines: { y: number; val: number; label: string }[] = [];
@@ -239,13 +487,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       height,
       padding,
       points,
-      pathD,
+      finalEndpoint,
       areaD,
       thresholdLines,
       yMin,
       yMax,
     };
-  }, [filteredMatches, stats?.currentTierName]);
+  }, [filteredMatches, stats?.currentTierName, shieldEventsMap, matchDeltasMap]);
 
   if (rankedMatchesChronological.length === 0) {
     return (
@@ -321,16 +569,16 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               )}
             </div>
 
-            <div className="my-2">
+            <div className="my-auto py-2 flex flex-col items-center justify-center text-center">
               <div
-                className={`text-2xl font-black font-mono tracking-tight flex items-baseline gap-1 ${
+                className={`text-2xl font-black font-mono tracking-tight flex items-baseline justify-center gap-1 ${
                   stats.totalDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 <span>{stats.totalDelta > 0 ? `+${stats.totalDelta.toLocaleString()}` : stats.totalDelta.toLocaleString()}</span>
                 <span className="text-xs font-normal text-deadlock-muted">pts</span>
               </div>
-              <p className="text-[11px] text-deadlock-muted mt-0.5">
+              <p className="text-[11px] text-deadlock-muted mt-0.5 text-center">
                 Over {stats.totalRanked} recorded ranked matches
               </p>
             </div>
@@ -370,12 +618,12 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               <Shield className="w-4 h-4 text-deadlock-brass group-hover:scale-110 transition-transform" />
             </div>
 
-            <div className="my-2">
-              <div className="text-lg font-bold font-display text-deadlock-steam flex items-center gap-1.5 leading-tight">
+            <div className="my-auto py-2 flex flex-col items-center justify-center text-center">
+              <div className="text-lg font-bold font-display text-deadlock-steam flex items-center justify-center gap-1.5 leading-tight">
                 <span>{stats.peakTierName}</span>
                 <span className="text-deadlock-accent font-serif">{stats.peakSubrankRoman}</span>
               </div>
-              <div className="text-xs font-mono font-bold text-deadlock-accent mt-0.5">
+              <div className="text-xs font-mono font-bold text-deadlock-accent mt-0.5 text-center">
                 {stats.peakProgress % 1000} / 1,000 pts
               </div>
             </div>
@@ -470,7 +718,10 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               viewBox={`0 0 ${chartData.width} ${chartData.height}`}
               className="w-full h-full overflow-visible"
               preserveAspectRatio="none"
-              onMouseLeave={() => setHoveredPoint(null)}
+              onMouseLeave={() => {
+                setHoveredPoint(null);
+                setHoveredFinalPoint(null);
+              }}
             >
               <defs>
                 {/* Luminous brass area gradient */}
@@ -521,28 +772,61 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 />
               )}
 
-              {/* Evolution Curve Segments: direct lines (horizontal when points have same value, diagonal otherwise) */}
+              {/* Evolution Curve Segments: each trait represents the gain/loss of the match */}
               {chartData.points.map((pt, idx) => {
-                if (idx === 0) return null;
-                const prevPt = chartData.points[idx - 1];
                 const isHeroMatch =
-                  selectedHeroId === null ||
-                  pt.match.myHeroId === selectedHeroId ||
-                  prevPt.match.myHeroId === selectedHeroId;
+                  selectedHeroId === null || pt.match.myHeroId === selectedHeroId;
+                const isWin = pt.effectiveDelta > 0 || pt.match.result === 'win';
+                const isLoss = pt.effectiveDelta < 0 || pt.match.result === 'loss';
 
                 return (
-                  <path
-                    key={`seg-${idx}`}
-                    d={`M ${prevPt.x} ${prevPt.y} L ${pt.x} ${pt.y}`}
-                    fill="none"
-                    stroke={isHeroMatch ? '#e8c06a' : '#5a4e3c'}
-                    strokeWidth={isHeroMatch ? (selectedHeroId ? 3.2 : 2.5) : 1.5}
-                    strokeOpacity={isHeroMatch ? 1 : 0.3}
-                    strokeDasharray={!isHeroMatch ? '3 3' : undefined}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={isHeroMatch ? { filter: 'drop-shadow(0 2px 6px rgba(232,192,106,0.4))' } : undefined}
-                  />
+                  <g key={`seg-group-${idx}`}>
+                    {/* Inter-match connector if rank changed outside of matches */}
+                    {idx > 0 && chartData.points[idx - 1].endY !== pt.startY && (
+                      <line
+                        x1={chartData.points[idx - 1].endX}
+                        y1={chartData.points[idx - 1].endY}
+                        x2={pt.startX}
+                        y2={pt.startY}
+                        stroke="#71717a"
+                        strokeWidth={1}
+                        strokeDasharray="2 2"
+                        strokeOpacity={0.4}
+                      />
+                    )}
+
+                    {/* Match Gain / Loss Trait */}
+                    <line
+                      x1={pt.startX}
+                      y1={pt.startY}
+                      x2={pt.endX}
+                      y2={pt.endY}
+                      stroke={
+                        !isHeroMatch
+                          ? '#5a4e3c'
+                          : isWin
+                          ? '#5f8f7a'
+                          : isLoss
+                          ? '#a94442'
+                          : '#e8c06a'
+                      }
+                      strokeWidth={isHeroMatch ? (selectedHeroId ? 3.5 : 2.5) : 1.5}
+                      strokeOpacity={isHeroMatch ? 1 : 0.3}
+                      strokeDasharray={!isHeroMatch ? '3 3' : undefined}
+                      strokeLinecap="round"
+                      style={
+                        isHeroMatch
+                          ? {
+                              filter: isWin
+                                ? 'drop-shadow(0 2px 6px rgba(95,143,122,0.45))'
+                                : isLoss
+                                ? 'drop-shadow(0 2px 6px rgba(169,68,66,0.45))'
+                                : 'drop-shadow(0 2px 6px rgba(232,192,106,0.4))',
+                            }
+                          : undefined
+                      }
+                    />
+                  </g>
                 );
               })}
 
@@ -556,13 +840,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                   stroke="#e8c06a"
                   strokeWidth="1"
                   strokeDasharray="3 3"
-                  strokeOpacity="0.7"
+                  strokeOpacity={0.7}
                 />
               )}
 
-              {/* Interactive Match Points on Curve */}
+              {/* Interactive Match Points on Curve (at start of match: "au moment de la game") */}
               {chartData.points.map((pt) => {
-                const isWin = (pt.match.rankedDelta || 0) > 0;
+                const isWin = pt.effectiveDelta > 0 || pt.match.result === 'win';
                 const isSelectedHero = selectedHeroId === null || pt.match.myHeroId === selectedHeroId;
                 const isHovered = hoveredPoint?.index === pt.index;
                 const isSelectedMatch = selectedMatch?.id === pt.match.id;
@@ -593,11 +877,15 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                         setSelectedMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
                       }}
                       onMouseEnter={() => {
+                        setHoveredFinalPoint(null);
                         setHoveredPoint({
                           match: pt.match,
                           x: pt.x,
                           y: pt.y,
                           index: pt.index,
+                          startProgress: pt.startProgress,
+                          endProgress: pt.endProgress,
+                          effectiveDelta: pt.effectiveDelta,
                         });
                       }}
                     />
@@ -614,13 +902,55 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                             : '#a94442'
                           : '#5a4e3c'
                       }
-                      stroke={isSelectedMatch ? '#fff' : isHovered ? '#e8c06a' : isSelectedHero && selectedHeroId ? '#e8c06a' : '#110f0c'}
+                      stroke={
+                        isSelectedMatch
+                          ? '#fff'
+                          : isHovered && pt.shieldEvent
+                          ? pt.shieldEvent.type === 'gained'
+                            ? '#22d3ee'
+                            : '#f43f5e'
+                          : isHovered
+                          ? '#e8c06a'
+                          : isSelectedHero && selectedHeroId
+                          ? '#e8c06a'
+                          : '#110f0c'
+                      }
                       strokeWidth={isSelectedMatch ? 2.5 : isHovered ? 2 : isSelectedHero && selectedHeroId ? 2 : 1.5}
                       className="transition-all duration-150 pointer-events-none drop-shadow-[0_0_6px_rgba(0,0,0,0.8)]"
                     />
                   </g>
                 );
               })}
+
+              {/* Final Endpoint: Current Standing at the end of the last match */}
+              {chartData.finalEndpoint && (
+                <g>
+                  <circle
+                    cx={chartData.finalEndpoint.x}
+                    cy={chartData.finalEndpoint.y}
+                    r="12"
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onMouseEnter={() => {
+                      setHoveredPoint(null);
+                      setHoveredFinalPoint({
+                        x: chartData.finalEndpoint!.x,
+                        y: chartData.finalEndpoint!.y,
+                        progress: chartData.finalEndpoint!.progress,
+                      });
+                    }}
+                  />
+                  <circle
+                    cx={chartData.finalEndpoint.x}
+                    cy={chartData.finalEndpoint.y}
+                    r={hoveredFinalPoint ? 6 : 4.5}
+                    fill="#e8c06a"
+                    stroke="#110f0c"
+                    strokeWidth={1.5}
+                    className="transition-all duration-150 pointer-events-none drop-shadow-[0_0_8px_rgba(232,192,106,0.9)]"
+                  />
+                </g>
+              )}
             </svg>
 
             {/* Steampunk Minimalist Tooltip on Hover */}
@@ -636,15 +966,25 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
 
               const verticalClass = showBelow ? 'translate-y-3' : '-translate-y-full -translate-y-3';
 
-              const delta = hoveredPoint.match.rankedDelta || 0;
+              const delta =
+                hoveredPoint.effectiveDelta ??
+                (matchDeltasMap.get(hoveredPoint.match.id) ?? (hoveredPoint.match.rankedDelta || 0));
               const isPositive = delta > 0;
-              const progress = hoveredPoint.match.rankedProgress || 0;
-              const rankTier = hoveredPoint.match.rankedRank || 1;
-              const subrank = Math.min(6, Math.max(1, Math.floor((progress % 6000) / 1000) + 1));
+              const startProg =
+                hoveredPoint.startProgress ?? (hoveredPoint.match.rankedInitialProgress ?? 0);
+              const endProg =
+                hoveredPoint.endProgress ?? (hoveredPoint.match.rankedProgress ?? 0);
+              const rankTier =
+                hoveredPoint.match.rankedRank ||
+                (hoveredPoint.match.rankedBadge ? Math.floor(hoveredPoint.match.rankedBadge / 10) : 1);
+              const subrank =
+                hoveredPoint.match.rankedSubrank ||
+                Math.min(6, Math.max(1, Math.floor((startProg % 6000) / 1000) + 1));
               const subrankRoman = ROMAN_NUMERALS[subrank] || String(subrank);
               const tierName = DEADLOCK_RANK_NAMES[rankTier] || 'Initiate';
-              const progressInSub = progress % 1000;
-              const standingText = `${tierName} ${subrankRoman} ${progressInSub}`;
+              const progressInSub = startProg % 1000;
+              const standingText = `${tierName} ${subrankRoman} · ${progressInSub} pts`;
+              const hoveredShield = shieldEventsMap.get(hoveredPoint.match.id);
 
               return (
                 <div
@@ -657,7 +997,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                   <div className="bg-deadlock-dark/95 backdrop-blur-md border border-deadlock-brass/80 shadow-2xl rounded-lg px-2.5 py-1.5 flex flex-col items-center gap-0.5 text-center drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] whitespace-nowrap">
                     <span
                       className={`font-mono text-xs font-black leading-tight ${
-                        isPositive ? 'text-emerald-400' : 'text-rose-400'
+                        isPositive ? 'text-emerald-400' : delta < 0 ? 'text-rose-400' : 'text-deadlock-muted'
                       }`}
                     >
                       {isPositive ? `+${delta} pts` : `${delta} pts`}
@@ -665,28 +1005,117 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                     <span className="font-mono text-[11px] font-bold text-deadlock-steam leading-tight">
                       {standingText}
                     </span>
+
+                    {/* Shield event badge in tooltip */}
+                    {hoveredShield && (
+                      <div
+                        className={`mt-1 px-2 py-0.5 rounded flex items-center gap-1.5 text-[10px] font-bold font-mono ${
+                          hoveredShield.type === 'gained'
+                            ? 'bg-cyan-950/90 border border-cyan-400/60 text-cyan-200'
+                            : 'bg-rose-950/90 border border-rose-400/60 text-rose-200'
+                        }`}
+                      >
+                        <Shield
+                          className={`w-3 h-3 shrink-0 ${
+                            hoveredShield.type === 'gained'
+                              ? 'fill-cyan-400 text-cyan-300'
+                              : 'fill-rose-500 text-rose-300'
+                          }`}
+                        />
+                        <span>
+                          {hoveredShield.type === 'gained'
+                            ? 'Shields Reset'
+                            : '-1 Shield'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Current Standing Tooltip on Hovering Final Endpoint */}
+            {hoveredFinalPoint && (() => {
+              const xPercent = (hoveredFinalPoint.x / chartData.width) * 100;
+              const showBelow = hoveredFinalPoint.y < chartData.height * 0.45;
+              const verticalClass = showBelow ? 'translate-y-3' : '-translate-y-full -translate-y-3';
+
+              return (
+                <div
+                  className={`absolute z-50 pointer-events-none transition-all duration-75 transform -translate-x-full ${verticalClass}`}
+                  style={{
+                    left: `${xPercent}%`,
+                    top: `${(hoveredFinalPoint.y / chartData.height) * 100}%`,
+                  }}
+                >
+                  <div className="bg-deadlock-dark/95 backdrop-blur-md border border-deadlock-brass/80 shadow-2xl rounded-lg px-2.5 py-1.5 flex flex-col items-center gap-0.5 text-center drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] whitespace-nowrap">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-accent">
+                      Current Standing
+                    </span>
+                    <span className="font-mono text-xs font-bold text-deadlock-steam leading-tight">
+                      {stats?.currentTierName} {stats?.currentSubrankRoman} · {stats?.progressInSubrank} / 1,000 pts
+                    </span>
+                    <span className="font-mono text-[9px] text-deadlock-muted leading-tight">
+                      {hoveredFinalPoint.progress.toLocaleString()} ladder points
+                    </span>
                   </div>
                 </div>
               );
             })()}
           </div>
         )}
+
+        {/* Chart Legend */}
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-3 px-1 text-[11px] font-mono text-deadlock-muted border-t border-deadlock-border/40 relative z-10">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="flex items-center gap-1.5" title="Point shows player rank standing at match start">
+              <span className="w-2.5 h-2.5 rounded-full border border-deadlock-accent bg-deadlock-dark" />
+              <span>Point: Standing at Game</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3.5 h-1 rounded bg-[#5f8f7a]" />
+              <span>Victory Trait (+pts)</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3.5 h-1 rounded bg-[#a94442]" />
+              <span>Defeat Trait (-pts)</span>
+            </span>
+            {chartData?.finalEndpoint && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#e8c06a] border border-[#110f0c]" />
+                <span>Current Standing</span>
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] text-deadlock-muted/70 italic">
+            Click any point to view match details
+          </span>
+        </div>
       </div>
 
       {/* 3. SELECTED GAME DETAILS (displayed on graph point click) */}
       {selectedMatch && (() => {
         const myHero = getHeroById(selectedMatch.myHeroId);
+        const duoPartnerHero = selectedMatch.laneAllyId ? getHeroById(selectedMatch.laneAllyId) : null;
         const isWin = selectedMatch.result === 'win';
         const durationM = selectedMatch.durationSeconds ? Math.floor(selectedMatch.durationSeconds / 60) : 0;
         const durationS = selectedMatch.durationSeconds ? selectedMatch.durationSeconds % 60 : 0;
-        const delta = selectedMatch.rankedDelta || 0;
+        const delta = matchDeltasMap.get(selectedMatch.id) ?? (selectedMatch.rankedDelta || 0);
         const isPositive = delta > 0;
         const progress = selectedMatch.rankedProgress || 0;
-        const rankTier = selectedMatch.rankedRank || 1;
-        const subrank = Math.min(6, Math.max(1, Math.floor((progress % 6000) / 1000) + 1));
+        const initialProgress =
+          selectedMatch.rankedInitialProgress !== null && selectedMatch.rankedInitialProgress !== undefined
+            ? selectedMatch.rankedInitialProgress
+            : progress - delta;
+        const rankTier =
+          selectedMatch.rankedRank ||
+          (selectedMatch.rankedBadge ? Math.floor(selectedMatch.rankedBadge / 10) : 1);
+        const subrank =
+          selectedMatch.rankedSubrank ||
+          Math.min(6, Math.max(1, Math.floor((initialProgress % 6000) / 1000) + 1));
         const subrankRoman = ROMAN_NUMERALS[subrank] || '';
         const tierName = DEADLOCK_RANK_NAMES[rankTier] || 'Initiate';
-        const progressInSub = progress % 1000;
+        const progressInSub = initialProgress % 1000;
         const enemySide = selectedMatch.side === 'hidden_king' ? 'archmother' : 'hidden_king';
 
         return (
@@ -719,6 +1148,33 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                     <span className="text-[11px] font-mono text-deadlock-muted bg-deadlock-dark/60 px-2 py-0.5 rounded border border-deadlock-border/50">
                       {SIDE_LABELS[selectedMatch.side]}
                     </span>
+                    {(() => {
+                      const matchShield = shieldEventsMap.get(selectedMatch.id);
+                      if (!matchShield) return null;
+                      const isGained = matchShield.type === 'gained';
+                      return (
+                        <span
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded border font-mono text-[10px] font-black uppercase tracking-wider ${
+                            isGained
+                              ? 'bg-cyan-950/70 border-cyan-400/80 text-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.25)]'
+                              : 'bg-rose-950/70 border-rose-400/80 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.25)]'
+                          }`}
+                        >
+                          {isGained ? (
+                            <>
+                              <Shield className="w-3 h-3 fill-cyan-400 text-cyan-300" />
+                              <Shield className="w-3 h-3 fill-cyan-400 text-cyan-300" />
+                              <span className="ml-0.5">Shields Reset</span>
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="w-3 h-3 fill-rose-500 text-rose-300" />
+                              <span className="ml-0.5">-1 Shield</span>
+                            </>
+                          )}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-deadlock-muted mt-1 font-mono">
@@ -752,15 +1208,15 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <div className="flex flex-col items-end">
                   <span
                     className={`font-mono text-lg font-black tracking-tight ${
-                      isPositive ? 'text-emerald-400' : 'text-rose-400'
+                      isPositive ? 'text-emerald-400' : delta < 0 ? 'text-rose-400' : 'text-deadlock-muted'
                     }`}
                   >
                     {isPositive ? `+${delta}` : delta} pts
                   </span>
                   <span className="text-xs font-mono text-deadlock-steam font-semibold">
-                    {tierName} {subrankRoman} {progressInSub}
+                    {tierName} {subrankRoman} · {progressInSub} pts
                     <span className="text-deadlock-muted font-normal text-[10px] ml-1">
-                      ({progress.toLocaleString()} ladder)
+                      → {progress % 1000} pts ({progress.toLocaleString()} ladder)
                     </span>
                   </span>
                 </div>
@@ -786,7 +1242,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                     Your Team ({SIDE_LABELS[selectedMatch.side]})
                   </span>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <div title={`You: ${myHero?.name}`}>
                     <HeroAvatar
                       heroId={selectedMatch.myHeroId}
@@ -796,11 +1252,29 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                     />
                   </div>
                   <span className="w-px h-8 bg-deadlock-border/70 mx-1" />
-                  {selectedMatch.allies.map((allyId, idx) => (
-                    <div key={idx} title={getHeroById(allyId)?.name}>
-                      <HeroAvatar heroId={allyId} size="xs" accentColor={selectedMatch.side} />
-                    </div>
-                  ))}
+                  {selectedMatch.allies.map((allyId, idx) => {
+                    const isDuo = allyId === selectedMatch.laneAllyId;
+                    const allyHero = getHeroById(allyId);
+                    return (
+                      <div
+                        key={idx}
+                        className="relative flex flex-col items-center"
+                        title={isDuo ? `Duo Partner: ${allyHero?.name}` : allyHero?.name}
+                      >
+                        <HeroAvatar
+                          heroId={allyId}
+                          size="xs"
+                          accentColor={selectedMatch.side}
+                          isHighlighted={isDuo}
+                        />
+                        {isDuo && (
+                          <span className="absolute -bottom-1 px-1 py-0.2 bg-cyan-500 text-black font-black text-[7px] rounded uppercase tracking-wider font-mono shadow-[0_0_6px_rgba(6,182,212,0.8)]">
+                            Duo
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -822,12 +1296,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               </div>
             </div>
 
-            {/* Lane Details & Notes (if available) */}
-            {(selectedMatch.lane || selectedMatch.notes) && (
-              <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-deadlock-border/40 text-xs">
-                {selectedMatch.lane && (
+            {/* Lane & Duo Details */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-deadlock-dark/50 border border-deadlock-border/60 text-xs font-mono">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Lane Color & Outcome */}
+                {selectedMatch.lane ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-deadlock-muted font-mono text-[11px]">Lane:</span>
+                    <span className="text-deadlock-muted text-[11px]">Lane:</span>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                         selectedMatch.lane === 'yellow'
@@ -853,15 +1328,55 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                       </span>
                     )}
                   </div>
+                ) : (
+                  <span className="text-deadlock-muted text-[11px]">Lane not recorded</span>
                 )}
-                {selectedMatch.notes && (
-                  <div className="flex items-center gap-1.5 text-deadlock-muted italic">
-                    <span className="font-mono not-italic text-[11px]">Note:</span>
-                    <span>&quot;{selectedMatch.notes}&quot;</span>
+
+                {/* Duo Partner Indicator */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-deadlock-border/50">
+                  <span className="text-deadlock-muted text-[11px]">Duo:</span>
+                  {duoPartnerHero ? (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-950/50 border border-cyan-500/50 text-cyan-200">
+                      <HeroAvatar heroId={selectedMatch.laneAllyId!} size="xs" />
+                      <span className="font-bold text-xs font-sans text-cyan-100">
+                        {duoPartnerHero.name}
+                      </span>
+                    </div>
+                  ) : selectedMatch.lane ? (
+                    <span className="text-[11px] text-deadlock-muted px-2 py-0.5 rounded bg-deadlock-card/60 border border-deadlock-border/40">
+                      Solo Lane
+                    </span>
+                  ) : (
+                    <span className="text-deadlock-muted/60 text-[11px]">—</span>
+                  )}
+                </div>
+
+                {/* Lane Opponents (if recorded) */}
+                {selectedMatch.laneOpponents && selectedMatch.laneOpponents.length > 0 && (
+                  <div className="flex items-center gap-1.5 pl-2 border-l border-deadlock-border/50">
+                    <span className="text-deadlock-muted text-[11px]">vs:</span>
+                    <div className="flex items-center gap-1">
+                      {selectedMatch.laneOpponents.map((oppId) => {
+                        const oppHero = getHeroById(oppId);
+                        return (
+                          <div key={oppId} title={oppHero?.name}>
+                            <HeroAvatar heroId={oppId} size="xs" accentColor={enemySide} />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
+
+              {/* Notes */}
+              {selectedMatch.notes && (
+                <div className="flex items-center gap-1.5 text-deadlock-muted italic text-[11px]">
+                  <span className="not-italic font-bold text-deadlock-steam">Note:</span>
+                  <span>&quot;{selectedMatch.notes}&quot;</span>
+                </div>
+              )}
+            </div>
           </div>
         );
       })()}
@@ -878,88 +1393,129 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               <span className="text-[11px] font-mono text-deadlock-muted px-2 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60">
                 {rankedHeroes.length} heroes played
               </span>
+              {selectedHeroId !== null && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedHeroId(null)}
+                  className="flex items-center gap-1 text-[11px] font-mono text-deadlock-accent hover:text-white px-2 py-0.5 rounded bg-deadlock-accent/15 border border-deadlock-accent/40 transition-colors ml-1"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Reset filter</span>
+                </button>
+              )}
             </div>
             <span className="text-[11px] text-deadlock-muted">
               Click a hero to highlight their trajectory on the curve
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
-            {rankedHeroes.map((item) => {
-              const isSelected = selectedHeroId === item.heroId;
-              const isPositive = item.totalDelta > 0;
-              const isNegative = item.totalDelta < 0;
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-deadlock-card/60 text-deadlock-muted border-b border-deadlock-border/60 uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="py-2.5 px-4 font-semibold">Hero</th>
+                  <th className="py-2.5 px-4 font-semibold">Matches</th>
+                  <th className="py-2.5 px-4 font-semibold">Record (W - L)</th>
+                  <th className="py-2.5 px-4 font-semibold">Win Rate</th>
+                  <th className="py-2.5 px-4 font-semibold">Avg Delta</th>
+                  <th className="py-2.5 px-4 font-semibold text-right">Points Balance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-deadlock-border/30 font-mono">
+                {rankedHeroes.map((item) => {
+                  const isSelected = selectedHeroId === item.heroId;
+                  const isPositive = item.totalDelta > 0;
+                  const isNegative = item.totalDelta < 0;
 
-              return (
-                <button
-                  key={item.heroId}
-                  type="button"
-                  onClick={() => setSelectedHeroId(isSelected ? null : item.heroId)}
-                  className={`relative text-left rounded-xl p-3 flex flex-col justify-between gap-2 transition-all duration-200 border cursor-pointer group ${
-                    isSelected
-                      ? 'bg-deadlock-accent/15 border-deadlock-accent shadow-[0_0_15px_rgba(232,192,106,0.25)] ring-1 ring-deadlock-accent/60 scale-[1.02]'
-                      : selectedHeroId !== null
-                      ? 'bg-deadlock-dark/40 border-deadlock-border/40 opacity-50 hover:opacity-90 hover:border-deadlock-border/80'
-                      : 'bg-deadlock-dark/70 border-deadlock-border/70 hover:border-deadlock-brass/60 hover:bg-deadlock-dark/90'
-                  }`}
-                >
-                  {/* Hero Header */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-deadlock-border/70 bg-deadlock-card flex items-center justify-center">
-                      {item.hero?.iconUrl ? (
-                        <img
-                          src={item.hero.iconUrl}
-                          alt={item.hero.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <span className="text-xs font-bold text-deadlock-muted">?</span>
-                      )}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold text-deadlock-steam truncate">
-                        {item.hero?.name || `Hero #${item.heroId}`}
-                      </span>
-                      <span className="text-[10px] text-deadlock-muted font-mono">
-                        {item.count} {item.count === 1 ? 'game' : 'games'} ({item.winRate}% WR)
-                      </span>
-                    </div>
-                  </div>
+                  return (
+                    <tr
+                      key={item.heroId}
+                      onClick={() => setSelectedHeroId(isSelected ? null : item.heroId)}
+                      className={`cursor-pointer transition-all duration-150 ${
+                        isSelected
+                          ? 'bg-deadlock-accent/20 border-l-4 border-l-deadlock-accent text-deadlock-steam shadow-inner'
+                          : selectedHeroId !== null
+                          ? 'opacity-40 hover:opacity-100 hover:bg-deadlock-card/30'
+                          : 'hover:bg-deadlock-card/50'
+                      }`}
+                    >
+                      {/* Hero Avatar & Name */}
+                      <td className="py-2.5 px-4 font-sans font-bold">
+                        <div className="flex items-center gap-2.5">
+                          <HeroAvatar heroId={item.heroId} size="xs" />
+                          <span className={isSelected ? 'text-deadlock-accent font-black' : 'text-deadlock-steam'}>
+                            {item.hero?.name || `Hero #${item.heroId}`}
+                          </span>
+                        </div>
+                      </td>
 
-                  {/* Net Points Delta */}
-                  <div className="pt-1.5 border-t border-deadlock-border/40 flex flex-col">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[10px] uppercase font-mono text-deadlock-muted">Balance</span>
-                      <span
-                        className={`text-sm font-mono font-black ${
-                          isPositive
-                            ? 'text-emerald-400'
-                            : isNegative
-                            ? 'text-rose-400'
-                            : 'text-deadlock-muted'
-                        }`}
-                      >
-                        {isPositive ? `+${item.totalDelta.toLocaleString()}` : item.totalDelta.toLocaleString()} pts
-                      </span>
-                    </div>
+                      {/* Games count */}
+                      <td className="py-2.5 px-4 text-deadlock-steam">
+                        {item.count} {item.count === 1 ? 'game' : 'games'}
+                      </td>
 
-                    <div className="flex items-center justify-between text-[10px] font-mono mt-0.5 text-deadlock-muted">
-                      <span>
-                        {item.wins}W - {item.losses}L
-                      </span>
-                      <span>
-                        {item.avgDelta > 0 ? `+${item.avgDelta}` : item.avgDelta} /g
-                      </span>
-                    </div>
-                  </div>
+                      {/* Win - Loss Record */}
+                      <td className="py-2.5 px-4">
+                        <span className="text-emerald-400 font-bold">{item.wins}W</span>
+                        <span className="text-deadlock-muted mx-1">-</span>
+                        <span className="text-rose-400 font-bold">{item.losses}L</span>
+                      </td>
 
-                  {/* Active indicator dot if selected */}
-                  {isSelected && (
-                    <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-deadlock-accent animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
+                      {/* Winrate with mini progress bar */}
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-bold w-9 text-right ${
+                              item.winRate >= 50 ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {item.winRate}%
+                          </span>
+                          <div className="w-16 h-1.5 bg-deadlock-dark/80 rounded-full overflow-hidden border border-deadlock-border/40">
+                            <div
+                              className={`h-full rounded-full ${
+                                item.winRate >= 50 ? 'bg-emerald-500' : 'bg-rose-500'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(0, item.winRate))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Average Delta per game */}
+                      <td className="py-2.5 px-4">
+                        <span
+                          className={`font-semibold ${
+                            item.avgDelta > 0
+                              ? 'text-emerald-400'
+                              : item.avgDelta < 0
+                              ? 'text-rose-400'
+                              : 'text-deadlock-muted'
+                          }`}
+                        >
+                          {item.avgDelta > 0 ? `+${item.avgDelta}` : item.avgDelta} pts
+                        </span>
+                      </td>
+
+                      {/* Net Points Balance */}
+                      <td className="py-2.5 px-4 text-right">
+                        <span
+                          className={`text-sm font-black ${
+                            isPositive
+                              ? 'text-emerald-400'
+                              : isNegative
+                              ? 'text-rose-400'
+                              : 'text-deadlock-muted'
+                          }`}
+                        >
+                          {isPositive ? `+${item.totalDelta.toLocaleString()}` : item.totalDelta.toLocaleString()} pts
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

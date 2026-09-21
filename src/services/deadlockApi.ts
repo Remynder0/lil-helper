@@ -460,6 +460,8 @@ export function convertToAppMatch(
   let rankedDelta: number | null = null;
   let rankedProgress: number | null = null;
   let rankedInitialProgress: number | null = null;
+  let rankedDemotionProtection: number | null = null;
+  let rankedConsumedDemotionProtection: boolean | null = null;
 
   if (metadata?.match_info?.players) {
     const players = metadata.match_info.players;
@@ -504,9 +506,21 @@ export function convertToAppMatch(
         rankedRank = Math.floor(rankedBadge / 10);
         rankedSubrank = rankedBadge % 10;
       }
-      rankedDelta = rankData.desired_progress_change ?? historyEntry.ranked_delta ?? null;
+      if (
+        rankData.consumed_demotion_protection &&
+        rankData.final_flat_progress !== undefined &&
+        rankData.final_flat_progress !== null &&
+        rankData.initial_flat_progress !== undefined &&
+        rankData.initial_flat_progress !== null
+      ) {
+        rankedDelta = rankData.final_flat_progress - rankData.initial_flat_progress;
+      } else {
+        rankedDelta = rankData.desired_progress_change ?? historyEntry.ranked_delta ?? null;
+      }
       rankedProgress = rankData.final_flat_progress ?? null;
       rankedInitialProgress = rankData.initial_flat_progress ?? null;
+      rankedDemotionProtection = rankData.initial_demotion_protection_games ?? null;
+      rankedConsumedDemotionProtection = rankData.consumed_demotion_protection ?? false;
     }
   }
 
@@ -547,6 +561,8 @@ export function convertToAppMatch(
     rankedDelta,
     rankedProgress,
     rankedInitialProgress,
+    rankedDemotionProtection,
+    rankedConsumedDemotionProtection,
     notes: `Ranked Match #${historyEntry.match_id} (Auto-imported from Deadlock API)`,
   };
 }
@@ -644,9 +660,18 @@ export async function backfillRankedDataForMatches(
               rankedBadge: badge,
               rankedRank: rank,
               rankedSubrank: subrank,
-              rankedDelta: rankData.desired_progress_change ?? null,
+              rankedDelta:
+                rankData.consumed_demotion_protection &&
+                rankData.final_flat_progress !== undefined &&
+                rankData.final_flat_progress !== null &&
+                rankData.initial_flat_progress !== undefined &&
+                rankData.initial_flat_progress !== null
+                  ? rankData.final_flat_progress - rankData.initial_flat_progress
+                  : rankData.desired_progress_change ?? null,
               rankedProgress: rankData.final_flat_progress ?? null,
               rankedInitialProgress: rankData.initial_flat_progress ?? null,
+              rankedDemotionProtection: rankData.initial_demotion_protection_games ?? null,
+              rankedConsumedDemotionProtection: rankData.consumed_demotion_protection ?? false,
             };
             updatedMap.set(m.id, updated);
           }
@@ -805,6 +830,7 @@ export interface PlayerRankStanding {
   badgeImageUrl: string;
   progress: number;
   progressMax: number;
+  flatProgress?: number;
   progressChange: number;
   demotionProtectionGames: number;
   maxDemotionProtectionGames: number;
@@ -887,11 +913,13 @@ export async function fetchPlayerRankStanding(accountId: number): Promise<Player
   const badgeImageUrl = `https://api.deadlock-api.com/v1/assets/ranks/${rank}/${subrank}/image`;
 
   const lastMatch = rankData.last_match;
-  const progress =
+  const rawFlatProgress =
     lastMatch?.player_rank_final_flat_progress ??
     lastMatch?.player_rank_initial_flat_progress ??
     0;
-  const progressMax = 3000;
+  // Progress within subrank (each subrank has 1,000 points in Deadlock)
+  const progress = rawFlatProgress % 1000;
+  const progressMax = 1000;
   const progressChange = lastMatch?.player_rank_desired_progress_change ?? 0;
 
   const rawProtection = lastMatch?.player_rank_initial_demotion_protection_games ?? 0;
@@ -930,6 +958,7 @@ export async function fetchPlayerRankStanding(accountId: number): Promise<Player
     badgeImageUrl,
     progress,
     progressMax,
+    flatProgress: rawFlatProgress,
     progressChange,
     demotionProtectionGames,
     maxDemotionProtectionGames,

@@ -83,6 +83,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const [heroFilter, setHeroFilter] = useState<number | 'all'>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<MatchResult | 'all'>('all');
   const [sideFilter, setSideFilter] = useState<Side | 'all'>('all');
+  const [matchTypeFilter, setMatchTypeFilter] = useState<'all' | 'ranked' | 'casual'>('all');
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   // Distinct heroes that the user has played in history
@@ -115,10 +116,25 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           return false;
         }
 
+        // Match type filter (Ranked vs Casual)
+        if (matchTypeFilter === 'ranked') {
+          const isRanked =
+            (match.rankedRank !== null && match.rankedRank !== undefined && match.rankedRank > 0) ||
+            (match.rankedBadge !== null && match.rankedBadge !== undefined && match.rankedBadge > 0) ||
+            (match.rankedDelta !== null && match.rankedDelta !== undefined);
+          if (!isRanked) return false;
+        } else if (matchTypeFilter === 'casual') {
+          const isRanked =
+            (match.rankedRank !== null && match.rankedRank !== undefined && match.rankedRank > 0) ||
+            (match.rankedBadge !== null && match.rankedBadge !== undefined && match.rankedBadge > 0) ||
+            (match.rankedDelta !== null && match.rankedDelta !== undefined);
+          if (isRanked) return false;
+        }
+
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [matches, heroFilter, outcomeFilter, sideFilter]);
+  }, [matches, heroFilter, outcomeFilter, sideFilter, matchTypeFilter]);
 
   // Filtered stats
   const filteredWins = filteredMatches.filter((m) => m.result === 'win').length;
@@ -132,11 +148,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     setHeroFilter('all');
     setOutcomeFilter('all');
     setSideFilter('all');
+    setMatchTypeFilter('all');
     onHeroFilterChange?.(null);
   };
 
   const hasActiveFilters =
-    heroFilter !== 'all' || outcomeFilter !== 'all' || sideFilter !== 'all';
+    heroFilter !== 'all' || outcomeFilter !== 'all' || sideFilter !== 'all' || matchTypeFilter !== 'all';
 
   const toggleExpand = (id: string) => {
     setExpandedMatchId((prev) => (prev === id ? null : id));
@@ -204,10 +221,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               {/* Subrank progress bar */}
               {rankStanding.progressMax > 0 && (
                 <div className="flex flex-col gap-1 mt-1 w-48 sm:w-56">
-                  <div className="flex items-center justify-between text-[10px] font-mono">
+                  <div
+                    className="flex items-center justify-between text-[10px] font-mono"
+                    title={rankStanding.flatProgress !== undefined ? `${rankStanding.flatProgress.toLocaleString()} ladder points` : undefined}
+                  >
                     <span className="text-deadlock-muted">Progress</span>
                     <span className="text-deadlock-accent font-bold">
-                      {rankStanding.progress.toLocaleString()} / {rankStanding.progressMax.toLocaleString()}
+                      {rankStanding.progress.toLocaleString()} / {rankStanding.progressMax.toLocaleString()} pts
                     </span>
                   </div>
                   <div className="w-full h-1.5 rounded-full bg-deadlock-dark/80 overflow-hidden border border-deadlock-border/40">
@@ -425,8 +445,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           </div>
         </div>
 
-        {/* Outcome and Patron Faction Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-deadlock-border/40">
+        {/* Outcome, Patron Faction, and Match Mode Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-deadlock-border/40">
           {/* Outcome Filter */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-deadlock-muted font-medium shrink-0">Outcome:</span>
@@ -453,6 +473,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               <option value="all">Both Patrons</option>
               <option value="hidden_king">{SIDE_LABELS.hidden_king}</option>
               <option value="archmother">{SIDE_LABELS.archmother}</option>
+            </select>
+          </div>
+
+          {/* Mode Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-deadlock-muted font-medium shrink-0">Mode:</span>
+            <select
+              value={matchTypeFilter}
+              onChange={(e) => setMatchTypeFilter(e.target.value as 'all' | 'ranked' | 'casual')}
+              className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-deadlock-muted transition-colors"
+            >
+              <option value="all">All Match Modes</option>
+              <option value="ranked">Ranked Matches Only</option>
+              <option value="casual">Casual / Unranked Only</option>
             </select>
           </div>
         </div>
@@ -515,7 +549,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             const enemySide: Side = m.side === 'hidden_king' ? 'archmother' : 'hidden_king';
             const isExpanded = expandedMatchId === m.id;
             const myHero = getHeroById(m.myHeroId);
-
             const dateObj = new Date(m.date);
             const dateStr = dateObj.toLocaleDateString([], {
               month: 'short',
@@ -644,7 +677,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       )}
                     </div>
                   </div>
-
                   {/* Middle: 6v6 Team Draft Visuals */}
                   <div className="flex-1 flex flex-wrap items-center justify-center gap-3">
                     {/* Your Team */}
@@ -744,7 +776,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     ) : (
                       <span className="text-deadlock-muted italic">No notes recorded for this match.</span>
                     )}
-
                     {/* Lane Details (Issue #11) */}
                     {m.lane && (
                       <div className="bg-deadlock-panel/80 p-3 rounded-lg border border-deadlock-border/50 flex flex-col gap-2">
