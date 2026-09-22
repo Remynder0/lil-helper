@@ -1,6 +1,61 @@
 import { Match, Side, MatchResult, LaneColor, LaneOutcome } from '../types/match';
+import { logApiRequest } from './apiLogger';
 
 const BASE_API_URL = 'https://api.deadlock-api.com/v1';
+
+async function apiFetch(
+  url: string,
+  init?: RequestInit,
+  customSummary?: string
+): Promise<Response> {
+  const start = performance.now();
+  const method = init?.method || 'GET';
+  const endpoint = url.startsWith(BASE_API_URL) ? url.slice(BASE_API_URL.length) : url;
+
+  try {
+    const res = await fetch(url, init);
+    const durationMs = Math.round(performance.now() - start);
+
+    let summary = customSummary || `HTTP ${res.status}`;
+    if (res.status === 200) {
+      summary = customSummary || 'OK (200)';
+    } else if (res.status === 429) {
+      summary = 'Rate Limited (429)';
+    } else if (res.status === 404) {
+      summary = 'Not Found (404)';
+    } else if (res.status === 503) {
+      summary = 'Steam Unavailable (503)';
+    }
+
+    logApiRequest({
+      method,
+      url,
+      endpoint,
+      status: res.status,
+      statusText: res.statusText || String(res.status),
+      durationMs,
+      success: res.ok,
+      summary,
+      error: res.ok ? undefined : `HTTP ${res.status} ${res.statusText}`,
+    });
+
+    return res;
+  } catch (err: any) {
+    const durationMs = Math.round(performance.now() - start);
+    logApiRequest({
+      method,
+      url,
+      endpoint,
+      status: 0,
+      statusText: 'Network Error',
+      durationMs,
+      success: false,
+      summary: 'Connection Error',
+      error: err?.message || String(err),
+    });
+    throw err;
+  }
+}
 
 export interface SteamProfileSearchResult {
   account_id: number;
@@ -97,7 +152,7 @@ export async function searchSteamProfiles(query: string): Promise<SteamProfileSe
     const url = `${BASE_API_URL}/players/steam-search?search_query=${encodeURIComponent(
       trimmed
     )}&limit=10&min_matches_played_last_30d=0`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     if (!res.ok) {
       if (isDigits) {
         return [{ account_id: Number(trimmed), personaname: `Account #${trimmed}` }];
@@ -135,7 +190,7 @@ export async function fetchPlayerRankedMatches(
   accountId: number
 ): Promise<RawPlayerMatchHistoryEntry[]> {
   const url = `${BASE_API_URL}/players/${accountId}/match-history`;
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       Pragma: 'no-cache',
@@ -209,7 +264,7 @@ export async function fetchMatchMetadataWithStatus(
 
   for (let attempt = 0; attempt <= retryCount; attempt++) {
     try {
-      const res = await fetch(url, { headers });
+      const res = await apiFetch(url, { headers });
 
       if (res.ok) {
         const data = (await res.json()) as RawMatchMetadata;
@@ -867,7 +922,7 @@ export async function fetchBadgeDistribution(): Promise<RawBadgeDistributionEntr
     return cachedBadgeDistribution.data;
   }
   try {
-    const res = await fetch(`${BASE_API_URL}/analytics/badge-distribution`);
+    const res = await apiFetch(`${BASE_API_URL}/analytics/badge-distribution`);
     if (!res.ok) {
       if (cachedBadgeDistribution) return cachedBadgeDistribution.data;
       return [];
@@ -883,7 +938,7 @@ export async function fetchBadgeDistribution(): Promise<RawBadgeDistributionEntr
 
 export async function fetchPlayerRank(accountId: number): Promise<RawPlayerRankResponse | null> {
   try {
-    const res = await fetch(`${BASE_API_URL}/players/${accountId}/rank`);
+    const res = await apiFetch(`${BASE_API_URL}/players/${accountId}/rank`);
     if (!res.ok) {
       return null;
     }

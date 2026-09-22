@@ -4,7 +4,7 @@ import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
 import { DraftAssistantView } from './components/DraftAssistantView';
 import { ProfileConnectModal } from './components/ProfileConnectModal';
-import { GameLogMonitor } from './components/GameLogMonitor';
+import { LogDashboardView } from './components/LogDashboardView';
 import { AppHeader, AppTab } from './components/AppHeader';
 import { ImportMatchByIdModal } from './components/ImportMatchByIdModal';
 import { useProfileSync } from './hooks/useProfileSync';
@@ -16,6 +16,7 @@ import {
   exportMatchesJson,
   importMatchesJson,
 } from './services/storage';
+import { addMatchToQueue } from './services/matchQueue';
 import { Match } from './types/match';
 import { calculateHeroPerformance } from './services/analytics';
 import { getHeroById } from './data/heroes';
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
     setHighlightedStreakType(type);
     setActiveTab('history');
   };
+
 
   const {
     profile,
@@ -79,6 +81,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (gameContext.matchId && gameContext.matchId > 100000) {
       saveTrackedPendingMatch(gameContext.matchId);
+      addMatchToQueue(gameContext.matchId);
     }
   }, [gameContext.matchId]);
 
@@ -155,6 +158,7 @@ export const App: React.FC = () => {
       }
     }
   };
+
 
   // Quick stats memoization (cancelled matches are excluded from winrate calculation)
   const totalMatches = matches.length;
@@ -245,9 +249,9 @@ export const App: React.FC = () => {
         isSyncing={isSyncing}
         cooldownRemaining={cooldownRemaining}
         onSync={() => handleSyncMatches(matches, setMatches)}
-        onOpenAddMatch={() => {
+        onOpenLogDashboard={() => {
           setEditingMatch(null);
-          setActiveTab('log_match');
+          setActiveTab('logs');
         }}
         onOpenImportById={() => {
           setImportMatchIdInput('');
@@ -296,12 +300,21 @@ export const App: React.FC = () => {
       {/* Main Container */}
       <main className="flex-1 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto p-6 2xl:p-8 flex flex-col gap-6 relative z-10 transition-all duration-300">
         {activeTab === 'log_match' && (
-          <MatchForm
-            key={editingMatch ? editingMatch.id : 'new_match'}
-            editingMatch={editingMatch}
-            onMatchSaved={handleMatchSaved}
-            onCancel={editingMatch ? handleCancelEdit : undefined}
-          />
+          editingMatch ? (
+            <MatchForm
+              key={editingMatch.id}
+              editingMatch={editingMatch}
+              onMatchSaved={handleMatchSaved}
+              onCancel={handleCancelEdit}
+            />
+          ) : (
+            <LogDashboardView
+              profile={profile}
+              gameContext={gameContext}
+              matches={matches}
+              onMatchesUpdated={setMatches}
+            />
+          )
         )}
         {activeTab === 'history' && (
           <HistoryList
@@ -329,7 +342,12 @@ export const App: React.FC = () => {
           <DraftAssistantView matches={matches} gameContext={gameContext} />
         )}
         {activeTab === 'logs' && (
-          <GameLogMonitor />
+          <LogDashboardView
+            profile={profile}
+            gameContext={gameContext}
+            matches={matches}
+            onMatchesUpdated={setMatches}
+          />
         )}
       </main>
 
@@ -352,7 +370,7 @@ export const App: React.FC = () => {
         error={importByIdError}
         onSubmit={() => handleImportMatchById(importMatchIdInput, setMatches)}
       />
-    </div>
+</div>
   );
 };
 

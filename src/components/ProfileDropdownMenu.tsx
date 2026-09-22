@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ConnectedProfile } from '../types/match';
 import {
-  PlusCircle,
+  Activity,
   Download,
   Upload,
   RefreshCw,
@@ -17,7 +17,7 @@ interface ProfileDropdownMenuProps {
   isSyncing: boolean;
   cooldownRemaining: number;
   onSync: () => void;
-  onOpenAddMatch: () => void;
+  onOpenLogDashboard: () => void;
   onOpenImportById: () => void;
   onOpenDebugConsole: () => void;
   onSwitchProfile: () => void;
@@ -31,7 +31,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
   isSyncing,
   cooldownRemaining,
   onSync,
-  onOpenAddMatch,
+  onOpenLogDashboard,
   onOpenImportById,
   onOpenDebugConsole,
   onSwitchProfile,
@@ -97,17 +97,17 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
               </span>
             </div>
 
-            {/* Add Match Option */}
+            {/* Log Dashboard Option */}
             <button
               type="button"
               onClick={() => {
-                onOpenAddMatch();
+                onOpenLogDashboard();
                 setIsOpen(false);
               }}
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
-              <PlusCircle className="w-4 h-4 text-deadlock-accent shrink-0" />
-              <span>Add Match (Manual)</span>
+              <Activity className="w-4 h-4 text-deadlock-accent shrink-0" />
+              <span>Log Dashboard</span>
             </button>
 
             {/* Import Match by ID */}

@@ -20,7 +20,7 @@ interface AppHeaderProps {
   isSyncing: boolean;
   cooldownRemaining: number;
   onSync: () => void;
-  onOpenAddMatch: () => void;
+  onOpenLogDashboard: () => void;
   onOpenImportById: () => void;
   onOpenDebugConsole: () => void;
   onSwitchProfile: () => void;
@@ -40,7 +40,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   isSyncing,
   cooldownRemaining,
   onSync,
-  onOpenAddMatch,
+  onOpenLogDashboard,
   onOpenImportById,
   onOpenDebugConsole,
   onSwitchProfile,
@@ -164,7 +164,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               isSyncing={isSyncing}
               cooldownRemaining={cooldownRemaining}
               onSync={onSync}
-              onOpenAddMatch={onOpenAddMatch}
+              onOpenLogDashboard={onOpenLogDashboard}
               onOpenImportById={onOpenImportById}
               onOpenDebugConsole={onOpenDebugConsole}
               onSwitchProfile={onSwitchProfile}

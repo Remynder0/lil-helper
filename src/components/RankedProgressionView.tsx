@@ -972,8 +972,6 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               const isPositive = delta > 0;
               const startProg =
                 hoveredPoint.startProgress ?? (hoveredPoint.match.rankedInitialProgress ?? 0);
-              const endProg =
-                hoveredPoint.endProgress ?? (hoveredPoint.match.rankedProgress ?? 0);
               const rankTier =
                 hoveredPoint.match.rankedRank ||
                 (hoveredPoint.match.rankedBadge ? Math.floor(hoveredPoint.match.rankedBadge / 10) : 1);
