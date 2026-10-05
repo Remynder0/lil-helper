@@ -14,6 +14,7 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Gamepad2,
   ExternalLink,
   ChevronDown,
@@ -26,9 +27,9 @@ import {
   subscribeToMatchQueue,
   addMatchToQueue,
   removeMatchFromQueue,
-  clearFinishedMatches,
-  clearEntireMatchQueue,
   updateQueuedMatchStatus,
+  formatDurationDHM,
+  isMatchBlocked,
 } from '../services/matchQueue';
 import {
   OcrCaptureEntry,
@@ -52,6 +53,7 @@ import { HeroAvatar } from './HeroAvatar';
 import { getHeroById } from '../data/heroes';
 import { ConnectedProfile, Match, SIDE_LABELS } from '../types/match';
 import { OcrInspectorModal } from './draft/OcrInspectorModal';
+import { BlockedMatchesRecoveryModal } from './BlockedMatchesRecoveryModal';
 import artDecoCorner from '../assets/art-deco/corner.svg';
 
 interface LogDashboardViewProps {
@@ -75,7 +77,15 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
   // 2. Match Queue State
   const [matchQueue, setMatchQueue] = useState<QueuedMatch[]>([]);
   const [manualMatchIdInput, setManualMatchIdInput] = useState<string>('');
+  const [manualMatchDate, setManualMatchDate] = useState<string>(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
   const [checkingMatchId, setCheckingMatchId] = useState<number | null>(null);
+  const [showBlockedModal, setShowBlockedModal] = useState<boolean>(false);
+
+  const blockedMatches = matchQueue.filter((m) => isMatchBlocked(m));
 
   // 3. OCR Captures State
   const [ocrCaptures, setOcrCaptures] = useState<OcrCaptureEntry[]>([]);
@@ -177,7 +187,8 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
     if (e) e.preventDefault();
     const cleanId = parseInt(manualMatchIdInput.trim(), 10);
     if (cleanId > 0) {
-      addMatchToQueue(cleanId);
+      const ts = manualMatchDate ? new Date(manualMatchDate).getTime() : Date.now();
+      addMatchToQueue(cleanId, isNaN(ts) ? Date.now() : ts, undefined, undefined, 'manual');
       setManualMatchIdInput('');
     }
   };
@@ -435,8 +446,8 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
                         <span className="text-[10px] font-mono text-deadlock-accent">
                           {req.durationMs}ms
                         </span>
-                        <span className="text-[10px] font-mono text-deadlock-muted">
-                          {req.timestamp}
+                        <span className="text-[10px] font-mono text-deadlock-muted" title={req.timestamp}>
+                          il y a {formatDurationDHM(req.timeMs)}
                         </span>
                         <ChevronDown
                           className={`w-3.5 h-3.5 text-deadlock-muted transition-transform ${
@@ -492,30 +503,33 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
               </div>
             </div>
 
-            {matchQueue.length > 0 && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={clearFinishedMatches}
-                  className="text-[10px] font-mono text-deadlock-accent hover:underline"
-                  title="Clear completed matches from queue"
-                >
-                  Clear Done
-                </button>
-                <button
-                  type="button"
-                  onClick={clearEntireMatchQueue}
-                  className="text-[10px] font-mono text-rose-400 hover:text-rose-300 hover:underline"
-                  title="Clear entire queue"
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* Manual Match ID Input */}
-          <form onSubmit={handleAddManualMatch} className="flex items-center gap-2">
+          {/* Warning Banner for > 1 Day Unsynced Blocked Matches */}
+          {blockedMatches.length > 0 && (
+            <div
+              onClick={() => setShowBlockedModal(true)}
+              className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 cursor-pointer flex items-center justify-between gap-3 text-amber-200 transition-all shadow-md group"
+            >
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-amber-300">
+                    {blockedMatches.length} match{blockedMatches.length > 1 ? 's en attente' : ' en attente'} depuis plus d'un jour sans sync
+                  </span>
+                  <span className="text-[11px] text-amber-200/70">
+                    L'API Deadlock ne les indexe pas. Cliquez pour parser directement les replays (.dem).
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+                Voir la solution →
+              </span>
+            </div>
+          )}
+
+          {/* Manual Match ID Input with Date */}
+          <form onSubmit={handleAddManualMatch} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input
               type="text"
               placeholder="Queue Match ID (e.g. 106929743)..."
@@ -523,10 +537,17 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
               onChange={(e) => setManualMatchIdInput(e.target.value.replace(/[^0-9]/g, ''))}
               className="flex-1 bg-deadlock-dark/80 border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent font-mono transition-colors"
             />
+            <input
+              type="datetime-local"
+              value={manualMatchDate}
+              onChange={(e) => setManualMatchDate(e.target.value)}
+              title="Date et heure approximative du match (requis pour l'ordre dans l'historique et le calcul de classement)"
+              className="bg-deadlock-dark/80 border border-deadlock-border rounded-lg px-2.5 py-1.5 text-xs text-gray-300 font-mono focus:outline-none focus:border-deadlock-accent [color-scheme:dark]"
+            />
             <button
               type="submit"
               disabled={!manualMatchIdInput.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg btn-steampunk-primary text-black font-bold text-xs shadow-md disabled:opacity-50 transition-all shrink-0"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg btn-steampunk-primary text-black font-bold text-xs shadow-md disabled:opacity-50 transition-all shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Queue Match</span>
@@ -544,7 +565,7 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
           ) : (
             <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
               {matchQueue.map((item) => {
-                const elapsedMin = Math.round((Date.now() - item.detectedAt) / 60000);
+                const elapsedFormatted = formatDurationDHM(item.detectedAt);
                 const isChecking = checkingMatchId === item.matchId;
                 const isImported = matches.some(
                   (m) => m.matchId === item.matchId || m.id === String(item.matchId)
@@ -556,32 +577,67 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
                     key={item.matchId}
                     className="p-3 rounded-lg bg-deadlock-dark/60 border border-deadlock-border/50 flex items-center justify-between gap-3 text-xs"
                   >
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-deadlock-steam">
-                          #{item.matchId}
-                        </span>
-                        <span
-                          className={`text-[10px] font-mono px-1.5 py-0.2 rounded border font-semibold ${
-                            displayStatus === 'synced'
-                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                              : displayStatus === 'syncing'
-                              ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-                              : displayStatus === 'not_ranked'
-                              ? 'bg-zinc-500/20 border-zinc-500/40 text-zinc-300'
-                              : displayStatus === 'failed'
-                              ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                              : 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300'
-                          }`}
-                        >
-                          {displayStatus.toUpperCase()}
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.heroId ? (
+                        <HeroAvatar heroId={item.heroId} size="sm" />
+                      ) : null}
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-deadlock-steam">
+                            #{item.matchId}
+                          </span>
+                          {item.heroName && (
+                            <span className="text-[11px] text-deadlock-accent font-semibold">
+                              {item.heroName}
+                            </span>
+                          )}
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.2 rounded border font-semibold ${
+                              displayStatus === 'synced'
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                                : displayStatus === 'syncing'
+                                ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
+                                : displayStatus === 'not_ranked'
+                                ? 'bg-zinc-500/20 border-zinc-500/40 text-zinc-300'
+                                : displayStatus === 'failed'
+                                ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                                : 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300'
+                            }`}
+                          >
+                            {displayStatus.toUpperCase()}
+                          </span>
+                          <span
+                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded border font-semibold ${
+                              item.source === 'log'
+                                ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                                : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                            }`}
+                            title={
+                              item.source === 'log'
+                                ? 'Automatically detected in console.log'
+                                : 'Manually added by ID'
+                            }
+                          >
+                            {item.source === 'log' ? 'LOG' : 'MANUAL'}
+                          </span>
+                          {(item.attempts || 0) > 0 && (
+                            <span
+                              className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${
+                                (item.attempts || 0) >= 5
+                                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 font-bold'
+                                  : 'bg-deadlock-card border-deadlock-border/60 text-deadlock-muted'
+                              }`}
+                            >
+                              {item.attempts} attempt{(item.attempts || 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-deadlock-muted flex items-center gap-1.5">
+                          <Clock className="w-3 h-3 text-deadlock-brass/70 shrink-0" />
+                          <span>{elapsedFormatted} ago</span>
+                          {item.message && <span className="text-gray-400 truncate">• {item.message}</span>}
                         </span>
                       </div>
-                      <span className="text-[10px] text-deadlock-muted flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" />
-                        Detected {elapsedMin}m ago
-                        {item.message && <span className="text-gray-400 truncate">• {item.message}</span>}
-                      </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -661,7 +717,10 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-gray-200">
-                      {capture.timestamp}
+                      il y a {formatDurationDHM(capture.timeMs)}
+                    </span>
+                    <span className="text-[10px] font-mono text-deadlock-muted">
+                      ({capture.timestamp})
                     </span>
                     <span className="text-[10px] font-mono text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 rounded">
                       {capture.durationMs}ms
@@ -866,7 +925,8 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
                       gameContext.matchId!,
                       Date.now(),
                       gameContext.myHeroId,
-                      gameContext.myHeroName
+                      gameContext.myHeroName,
+                      'log'
                     )
                   }
                   className="text-[10px] text-deadlock-accent hover:underline font-bold"
@@ -995,6 +1055,35 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
           lastScanResult={inspectingScanResult}
         />
       )}
-</div>
+
+      {/* Blocked Matches Recovery Modal */}
+      <BlockedMatchesRecoveryModal
+        isOpen={showBlockedModal}
+        onClose={() => setShowBlockedModal(false)}
+        blockedMatches={blockedMatches}
+        allMatches={matches}
+        accountId={profile?.accountId || 0}
+        onCheckMatch={handleCheckQueuedMatch}
+        onRemoveMatch={removeMatchFromQueue}
+        onMatchImported={(importedMatch) => {
+          if (onMatchesUpdated) {
+            onMatchesUpdated((prev) => {
+              const existingIdx = prev.findIndex((m) => m.id === importedMatch.id);
+              let nextList: Match[];
+              if (existingIdx >= 0) {
+                nextList = [...prev];
+                nextList[existingIdx] = importedMatch;
+              } else {
+                nextList = [importedMatch, ...prev];
+              }
+              return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          }
+          if (importedMatch.matchId) {
+            removeMatchFromQueue(importedMatch.matchId);
+          }
+        }}
+      />
+    </div>
   );
 };

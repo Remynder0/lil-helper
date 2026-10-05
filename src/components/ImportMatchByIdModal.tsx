@@ -8,7 +8,17 @@ interface ImportMatchByIdModalProps {
   onMatchIdInputChange: (val: string) => void;
   isImporting: boolean;
   error: string | null;
-  onSubmit: () => void;
+  onSubmit: (matchDateMs?: number) => void;
+}
+
+function getLocalDateTimeLocalString(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const h = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${h}:${min}`;
 }
 
 export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
@@ -20,7 +30,17 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
   error,
   onSubmit,
 }) => {
+  const [matchDateTime, setMatchDateTime] = React.useState<string>(() =>
+    getLocalDateTimeLocalString()
+  );
+
   if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ts = matchDateTime ? new Date(matchDateTime).getTime() : Date.now();
+    onSubmit(isNaN(ts) ? Date.now() : ts);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-fadeIn">
@@ -43,13 +63,7 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
           If a match was not listed in Valve's match history, enter its <strong>Match ID</strong> (e.g. <code>105073144</code>) to fetch its full metadata directly from the Deadlock API.
         </p>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-          className="flex flex-col gap-3"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-300">Match ID</label>
             <input
@@ -60,6 +74,22 @@ export const ImportMatchByIdModal: React.FC<ImportMatchByIdModalProps> = ({
               className="bg-deadlock-card border border-deadlock-border rounded-lg px-3 py-2 text-sm text-deadlock-steam font-mono placeholder:text-deadlock-muted focus:outline-none focus:border-deadlock-accent"
               autoFocus
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-gray-300">Match Date & Time</label>
+              <span className="text-[10px] text-amber-400 font-medium">Required for history order & rating</span>
+            </div>
+            <input
+              type="datetime-local"
+              value={matchDateTime}
+              onChange={(e) => setMatchDateTime(e.target.value)}
+              className="bg-deadlock-card border border-deadlock-border rounded-lg px-3 py-2 text-xs text-deadlock-steam font-mono focus:outline-none focus:border-deadlock-accent [color-scheme:dark]"
+            />
+            <span className="text-[10px] text-deadlock-muted leading-tight">
+              Inserts the match chronologically in your history and calculates rating progression using the correct preceding matches.
+            </span>
           </div>
 
           {error && (

@@ -147,4 +147,15 @@ pub fn is_deadlock_running() -> bool {
     crate::screen_ocr::find_deadlock_window_bounds().is_some()
 }
 
+/// Parses a Deadlock .dem replay file and returns match data as JSON.
+/// 
+/// # Arguments
+/// * `path` — Absolute path to the .dem file
+/// * `my_account_id` — Steam Account ID (32-bit) of the player to identify
+/// * `match_id` — Match ID (from file name or queue)
+#[tauri::command]
+pub fn parse_dem_file(path: String, my_account_id: u32, match_id: u64) -> Result<serde_json::Value, String> {
+    let result = crate::dem_parser::parse_dem_file(&path, my_account_id, match_id)?;
+    serde_json::to_value(&result).map_err(|e| format!("Erreur de sérialisation : {e}"))
+}
 

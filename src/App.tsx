@@ -16,7 +16,12 @@ import {
   exportMatchesJson,
   importMatchesJson,
 } from './services/storage';
-import { addMatchToQueue } from './services/matchQueue';
+import {
+  addMatchToQueue,
+  subscribeToMatchQueue,
+  removeMatchFromQueue,
+  QueuedMatch,
+} from './services/matchQueue';
 import { Match } from './types/match';
 import { calculateHeroPerformance } from './services/analytics';
 import { getHeroById } from './data/heroes';
@@ -31,6 +36,7 @@ export const App: React.FC = () => {
   const [previewHeroId, setPreviewHeroId] = useState<number | null>(null);
   const [highlightedMatchIds, setHighlightedMatchIds] = useState<string[] | null>(null);
   const [highlightedStreakType, setHighlightedStreakType] = useState<'win' | 'loss' | null>(null);
+  const [matchQueue, setMatchQueue] = useState<QueuedMatch[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNavigateToStreak = (matchIds: string[], type: 'win' | 'loss') => {
@@ -39,6 +45,12 @@ export const App: React.FC = () => {
     setActiveTab('history');
   };
 
+  useEffect(() => {
+    const unsub = subscribeToMatchQueue((queue) => {
+      setMatchQueue(queue);
+    });
+    return () => unsub();
+  }, []);
 
   const {
     profile,
@@ -80,10 +92,22 @@ export const App: React.FC = () => {
   // Automatically record active matchId from live game logs into tracked pending list
   useEffect(() => {
     if (gameContext.matchId && gameContext.matchId > 100000) {
-      saveTrackedPendingMatch(gameContext.matchId);
-      addMatchToQueue(gameContext.matchId);
+      saveTrackedPendingMatch(
+        gameContext.matchId,
+        Date.now(),
+        gameContext.myHeroId,
+        gameContext.myHeroName,
+        'log'
+      );
+      addMatchToQueue(
+        gameContext.matchId,
+        Date.now(),
+        gameContext.myHeroId,
+        gameContext.myHeroName,
+        'log'
+      );
     }
-  }, [gameContext.matchId]);
+  }, [gameContext.matchId, gameContext.myHeroId, gameContext.myHeroName]);
 
   const handleMatchSaved = (savedMatch: Match) => {
     setMatches((prev) => {
@@ -159,7 +183,6 @@ export const App: React.FC = () => {
     }
   };
 
-
   // Quick stats memoization (cancelled matches are excluded from winrate calculation)
   const totalMatches = matches.length;
   const totalWins = useMemo(() => matches.filter((m) => m.result === 'win').length, [matches]);
@@ -200,6 +223,37 @@ export const App: React.FC = () => {
     // 4. Default showcase: Celeste
     return '/heroes/backgrounds/celeste_bg.webp';
   }, [previewHeroId, gameContext.myHeroId, matches]);
+
+  // Combines persisted matches with unsynced queued matches (marked as incomplete)
+  const allHistoryMatches = useMemo(() => {
+    const unsyncedQueued = matchQueue.filter(
+      (q) =>
+        q.status !== 'synced' &&
+        !matches.some(
+          (m) =>
+            m.matchId === q.matchId ||
+            m.id === String(q.matchId) ||
+            m.id === `dem_${q.matchId}`
+        )
+    );
+
+    const placeholders: Match[] = unsyncedQueued.map((q) => ({
+      id: `pending_${q.matchId}`,
+      matchId: q.matchId,
+      date: new Date(q.detectedAt).toISOString(),
+      side: 'hidden_king',
+      myHeroId: q.heroId || 0,
+      allies: [],
+      enemies: [],
+      result: 'cancel',
+      isIncomplete: true,
+      queuedMatch: q,
+    }));
+
+    return [...matches, ...placeholders].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [matches, matchQueue]);
 
   return (
     <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative">
@@ -318,7 +372,7 @@ export const App: React.FC = () => {
         )}
         {activeTab === 'history' && (
           <HistoryList
-            matches={matches}
+            matches={allHistoryMatches}
             profile={profile}
             onEditMatch={handleEditMatch}
             onDeleteMatch={handleDeleteMatch}
@@ -328,6 +382,12 @@ export const App: React.FC = () => {
             onClearHighlight={() => {
               setHighlightedMatchIds(null);
               setHighlightedStreakType(null);
+            }}
+            onMatchImported={(imported) => {
+              handleMatchSaved(imported);
+              if (imported.matchId) {
+                removeMatchFromQueue(imported.matchId);
+              }
             }}
           />
         )}
@@ -368,9 +428,18 @@ export const App: React.FC = () => {
         onMatchIdInputChange={setImportMatchIdInput}
         isImporting={isImportingById}
         error={importByIdError}
-        onSubmit={() => handleImportMatchById(importMatchIdInput, setMatches)}
+        onSubmit={async (customDateMs) => {
+          const rawId = importMatchIdInput.trim();
+          const targetMatchId = parseInt(rawId, 10);
+          const res = await handleImportMatchById(rawId, setMatches, customDateMs);
+          if (res?.added) {
+            setActiveTab('history');
+            const targetId = res.importedMatch ? res.importedMatch.id : `pending_${targetMatchId}`;
+            setHighlightedMatchIds([targetId]);
+          }
+        }}
       />
-</div>
+    </div>
   );
 };
 

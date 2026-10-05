@@ -11,6 +11,11 @@ import {
   fetchSingleMatchResultById,
   backfillRankedDataForMatches,
 } from '../services/deadlockApi';
+import {
+  updateQueuedMatchStatus,
+  removeMatchFromQueue,
+  addMatchToQueue,
+} from '../services/matchQueue';
 
 export const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
@@ -101,23 +106,48 @@ export function useProfileSync() {
           addedMatches.some((m) => m.matchId === item.matchId);
 
         if (isAlreadyImported) {
-          removeTrackedPendingMatch(item.matchId);
+          removeMatchFromQueue(item.matchId);
         } else if (nowMs - item.detectedAt >= twoHoursMs) {
           try {
+            updateQueuedMatchStatus(item.matchId, 'syncing', 'Checking API recovery...', false);
             const directResult = await fetchSingleMatchResultById(item.matchId, targetProfile.accountId);
             if (directResult.success) {
+              if (item.source === 'log') {
+                directResult.match.notes = `Ranked Match #${item.matchId} (Auto-imported from Game Logs)`;
+              } else if (item.source === 'manual') {
+                directResult.match.notes = `Ranked Match #${item.matchId} (Manual ID Import)`;
+              } else {
+                directResult.match.notes = `Ranked Match #${item.matchId} (Auto-imported from Deadlock API)`;
+              }
               recoveredMatches.push(directResult.match);
-              removeTrackedPendingMatch(item.matchId);
-            } else if (
-              directResult.error === 'not_ranked' ||
-              directResult.error === 'not_in_match'
-            ) {
-              // Permanently invalid for this ranked profile; remove from pending list
-              removeTrackedPendingMatch(item.matchId);
+              updateQueuedMatchStatus(item.matchId, 'synced', 'Recovered and synced into matches!', false);
+              removeMatchFromQueue(item.matchId);
+            } else if (directResult.error === 'not_ranked') {
+              updateQueuedMatchStatus(item.matchId, 'not_ranked', 'Match is Casual / Unranked.', false);
+              removeMatchFromQueue(item.matchId);
+            } else if (directResult.error === 'not_in_match') {
+              updateQueuedMatchStatus(item.matchId, 'failed', 'Profile was not part of this match.', false);
+              removeMatchFromQueue(item.matchId);
+            } else if (directResult.error === 'rate_limited') {
+              // Rate limit quota: do not count as a match attempt failure
+              updateQueuedMatchStatus(
+                item.matchId,
+                'failed',
+                directResult.message || 'API rate limit cooldown active (3 requests/hour).',
+                false
+              );
+            } else {
+              // Real match failure (e.g. 503, 404, server error)
+              updateQueuedMatchStatus(
+                item.matchId,
+                'failed',
+                directResult.message || 'Waiting for Valve index or server recovery.',
+                true
+              );
             }
-            // If steam_unavailable, rate_limited, or not_found, keep in pending to retry later
-          } catch (fetchErr) {
+          } catch (fetchErr: any) {
             console.warn(`Could not recover pending match #${item.matchId}:`, fetchErr);
+            updateQueuedMatchStatus(item.matchId, 'failed', fetchErr?.message || 'Network error.', true);
           }
         }
       }
@@ -185,8 +215,9 @@ export function useProfileSync() {
 
   const handleImportMatchById = async (
     targetIdStr: string,
-    onMatchesUpdated: (updater: (prev: Match[]) => Match[]) => void
-  ) => {
+    onMatchesUpdated: (updater: (prev: Match[]) => Match[]) => void,
+    customDateMs?: number
+  ): Promise<{ added: boolean; isIncomplete?: boolean; importedMatch?: Match; matchId?: number } | void> => {
     const trimmed = targetIdStr.trim();
     if (!trimmed || !profile) return;
     const matchId = parseInt(trimmed, 10);
@@ -195,54 +226,36 @@ export function useProfileSync() {
       return;
     }
 
+    const effectiveTimestamp = customDateMs && customDateMs > 0 ? customDateMs : Date.now();
+
     setIsImportingById(true);
     setImportByIdError(null);
     try {
       const result = await fetchSingleMatchResultById(matchId, profile.accountId);
       if (!result.success) {
-        const isPermanentError =
-          result.error === 'not_found' ||
-          result.error === 'not_ranked' ||
-          result.error === 'not_in_match';
-
-        if (!isPermanentError) {
-          // Queue into pending matches with elapsed timestamp so next sync will retry it
-          saveTrackedPendingMatch(matchId, Date.now() - 2 * 60 * 60 * 1000);
+        if (result.error === 'not_in_match') {
+          setImportByIdError(
+            `Match #${matchId} was found on Valve API, but your connected Steam account was not a player in this match.`
+          );
+          return { added: false, matchId };
         }
 
-        if (result.error === 'steam_unavailable') {
-          setImportByIdError(
-            `Steam servers are currently unavailable to retrieve match #${matchId} (HTTP 503). It has been added to your pending queue and will be imported automatically on the next sync once Steam responds.`
-          );
-        } else if (result.error === 'rate_limited') {
-          const waitStr = result.retryAfterSeconds
-            ? `${result.retryAfterSeconds}s`
-            : 'a few minutes';
-          setImportByIdError(
-            `Rate limit reached for direct Steam queries (HTTP 429). The Deadlock API limits direct Steam queries to 3/hour per IP (retry in ${waitStr}). Match #${matchId} has been added to pending queue and will be imported automatically.`
-          );
-        } else if (result.error === 'not_ranked') {
+        if (result.error === 'not_ranked') {
           setImportByIdError(
             `Match #${matchId} exists, but it is not a Ranked match. Only ranked matches are imported.`
           );
-        } else if (result.error === 'not_in_match') {
-          setImportByIdError(
-            `Match #${matchId} was found, but your connected Steam account was not a player in this match.`
-          );
-        } else if (result.error === 'not_found') {
-          setImportByIdError(
-            `Match #${matchId} was not found on Steam or Deadlock API. Please verify the Match ID.`
-          );
-        } else if (result.error === 'network_error') {
-          setImportByIdError(
-            `Network error while contacting Deadlock API. Match #${matchId} has been added to pending queue to retry automatically.`
-          );
-        } else {
-          setImportByIdError(
-            `${result.message || `Failed to fetch match #${matchId} (HTTP ${result.status || 'unknown'}).`} Added to pending queue to retry automatically.`
-          );
+          return { added: false, matchId };
         }
-        return;
+
+        // For all other cases (not_found, rate_limited, steam_unavailable, network_error, server_error):
+        // Add to queue as incomplete match so the user sees it in their history and can sync/parse replay
+        saveTrackedPendingMatch(matchId, effectiveTimestamp, null, null, 'manual');
+        addMatchToQueue(matchId, effectiveTimestamp, null, null, 'manual');
+        setIsImportByIdModalOpen(false);
+        setImportMatchIdInput('');
+        setImportByIdError(null);
+        setSyncStatusText(`Match #${matchId} added to history as incomplete (awaiting sync or replay).`);
+        return { added: true, isIncomplete: true, matchId };
       }
 
       const imported = result.match;
@@ -261,15 +274,21 @@ export function useProfileSync() {
       });
 
       removeTrackedPendingMatch(matchId);
+      removeMatchFromQueue(matchId);
       setIsImportByIdModalOpen(false);
       setImportMatchIdInput('');
+      setImportByIdError(null);
       setSyncStatusText(`Match #${matchId} imported successfully!`);
+      return { added: true, isIncomplete: false, importedMatch: imported, matchId };
     } catch (err) {
       console.error('Failed to import match by ID:', err);
-      saveTrackedPendingMatch(matchId, Date.now() - 2 * 60 * 60 * 1000);
-      setImportByIdError(
-        `Failed to fetch match: ${err instanceof Error ? err.message : String(err)}. Added to pending queue to retry automatically.`
-      );
+      saveTrackedPendingMatch(matchId, effectiveTimestamp, null, null, 'manual');
+      addMatchToQueue(matchId, effectiveTimestamp, null, null, 'manual');
+      setIsImportByIdModalOpen(false);
+      setImportMatchIdInput('');
+      setImportByIdError(null);
+      setSyncStatusText(`Match #${matchId} added to history as incomplete.`);
+      return { added: true, isIncomplete: true, matchId };
     } finally {
       setIsImportingById(false);
     }

@@ -23,7 +23,14 @@ import {
   Flame,
   Shield,
   TrendingUp,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
+import { fetchSingleMatchResultById } from '../services/deadlockApi';
+import { persistMatch } from '../services/storage';
+import { updateQueuedMatchStatus, formatDurationDHM } from '../services/matchQueue';
+import { ReplayRecoveryModal } from './ReplayRecoveryModal';
 
 interface HistoryListProps {
   matches: Match[];
@@ -34,6 +41,7 @@ interface HistoryListProps {
   highlightedMatchIds?: string[] | null;
   highlightedStreakType?: 'win' | 'loss' | null;
   onClearHighlight?: () => void;
+  onMatchImported?: (match: Match) => void;
   className?: string;
 }
 
@@ -46,11 +54,17 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   highlightedMatchIds,
   highlightedStreakType,
   onClearHighlight,
+  onMatchImported,
   className = '',
 }) => {
   // Rank Standing state
   const [rankStanding, setRankStanding] = useState<PlayerRankStanding | null>(null);
   const [isLoadingRank, setIsLoadingRank] = useState<boolean>(false);
+
+  // Incomplete match syncing & replay recovery states
+  const [syncingMatchId, setSyncingMatchId] = useState<number | null>(null);
+  const [waitNoticeMatchId, setWaitNoticeMatchId] = useState<number | null>(null);
+  const [selectedRecoveryMatch, setSelectedRecoveryMatch] = useState<Match | null>(null);
 
   useEffect(() => {
     if (!profile?.accountId) {
@@ -86,10 +100,53 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const [matchTypeFilter, setMatchTypeFilter] = useState<'all' | 'ranked' | 'casual'>('all');
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
+  // Synchronise an incomplete match
+  const handleSyncIncompleteMatch = async (m: Match) => {
+    const matchId = m.matchId || parseInt(m.id.replace(/\D/g, ''), 10);
+    if (!matchId) return;
+
+    setSyncingMatchId(matchId);
+    const matchTimestamp = new Date(m.date).getTime();
+    const elapsedMs = Date.now() - matchTimestamp;
+    const isOlderThan5h = elapsedMs >= 5 * 60 * 60 * 1000;
+
+    try {
+      const result = await fetchSingleMatchResultById(matchId, profile?.accountId || 0);
+      if (result.success && result.match) {
+        await persistMatch(result.match);
+        updateQueuedMatchStatus(matchId, 'synced');
+        onMatchImported?.(result.match);
+        setSyncingMatchId(null);
+        return;
+      }
+
+      // API failed or match is not indexed yet
+      if (isOlderThan5h) {
+        setSelectedRecoveryMatch(m);
+      } else {
+        setWaitNoticeMatchId(matchId);
+        setTimeout(() => {
+          setWaitNoticeMatchId((prev) => (prev === matchId ? null : prev));
+        }, 6000);
+      }
+    } catch (err) {
+      if (isOlderThan5h) {
+        setSelectedRecoveryMatch(m);
+      } else {
+        setWaitNoticeMatchId(matchId);
+        setTimeout(() => {
+          setWaitNoticeMatchId((prev) => (prev === matchId ? null : prev));
+        }, 6000);
+      }
+    } finally {
+      setSyncingMatchId(null);
+    }
+  };
+
   // Distinct heroes that the user has played in history
   const playedHeroIds = useMemo(() => {
     const ids = new Set<number>();
-    matches.forEach((m) => ids.add(m.myHeroId));
+    matches.filter((m) => !m.isIncomplete).forEach((m) => ids.add(m.myHeroId));
     return Array.from(ids).sort((a, b) => {
       const nameA = getHeroById(a)?.name || '';
       const nameB = getHeroById(b)?.name || '';
@@ -101,6 +158,15 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const filteredMatches = useMemo(() => {
     return matches
       .filter((match) => {
+        // Incomplete matches handling in filters
+        if (match.isIncomplete) {
+          if (outcomeFilter !== 'all') return false;
+          if (sideFilter !== 'all') return false;
+          if (heroFilter !== 'all' && match.myHeroId !== 0 && match.myHeroId !== heroFilter) return false;
+          if (matchTypeFilter === 'casual') return false;
+          return true;
+        }
+
         // Outcome filter
         if (outcomeFilter !== 'all' && match.result !== outcomeFilter) {
           return false;
@@ -137,9 +203,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   }, [matches, heroFilter, outcomeFilter, sideFilter, matchTypeFilter]);
 
   // Filtered stats
-  const filteredWins = filteredMatches.filter((m) => m.result === 'win').length;
-  const filteredLosses = filteredMatches.filter((m) => m.result === 'loss').length;
-  const filteredCancelled = filteredMatches.filter((m) => m.result === 'cancel').length;
+  const filteredWins = filteredMatches.filter((m) => !m.isIncomplete && m.result === 'win').length;
+  const filteredLosses = filteredMatches.filter((m) => !m.isIncomplete && m.result === 'loss').length;
+  const filteredCancelled = filteredMatches.filter((m) => !m.isIncomplete && m.result === 'cancel').length;
   const filteredDecided = filteredWins + filteredLosses;
   const filteredWinRate =
     filteredDecided > 0 ? Math.round((filteredWins / filteredDecided) * 100) : 0;
@@ -525,13 +591,19 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               className={`p-3 rounded-xl border flex items-center justify-between text-xs font-semibold animate-fadeIn ${
                 highlightedStreakType === 'win'
                   ? 'bg-amber-500/10 border-amber-500/40 text-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.15)]'
-                  : 'bg-red-500/10 border-red-500/40 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                  : highlightedStreakType === 'loss'
+                  ? 'bg-red-500/10 border-red-500/40 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                  : 'bg-amber-500/15 border-amber-500/50 text-amber-200 shadow-[0_0_20px_rgba(251,191,36,0.2)]'
               }`}
             >
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-amber-400" />
                 <span>
-                  Highlighting {highlightedStreakType === 'win' ? 'Best Win Streak' : 'Worst Lose Streak'} ({highlightedMatchIds.length} matches)
+                  {highlightedStreakType === 'win'
+                    ? `Highlighting Best Win Streak (${highlightedMatchIds.length} matches)`
+                    : highlightedStreakType === 'loss'
+                    ? `Highlighting Worst Lose Streak (${highlightedMatchIds.length} matches)`
+                    : `Focusing Match #${highlightedMatchIds[0].replace(/\D/g, '')}`}
                 </span>
               </div>
               <button
@@ -559,6 +631,92 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               hour: '2-digit',
               minute: '2-digit',
             });
+
+            if (m.isIncomplete) {
+              const currentMatchId = m.matchId || parseInt(m.id.replace(/\D/g, ''), 10) || 0;
+              const isSyncing = syncingMatchId === currentMatchId;
+              const hasWaitNotice = waitNoticeMatchId === currentMatchId;
+
+              return (
+                <div
+                  key={m.id}
+                  id={`match-${m.id}`}
+                  className={`steam-glass rounded-xl overflow-hidden relative group border transition-all duration-200 shadow-md ${
+                    isStreakMatch
+                      ? 'border-amber-400 ring-2 ring-amber-400/80 bg-amber-950/30 shadow-[0_0_20px_rgba(251,191,36,0.35)]'
+                      : 'border-dashed border-amber-500/50 hover:border-amber-400 bg-amber-950/10'
+                  }`}
+                >
+                  {/* Blurred background preview - same blur as AnalyticsView: opacity-40 blur-[1px] */}
+                  <div className="p-3.5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 opacity-40 blur-[1px] select-none pointer-events-none transition-all duration-200">
+                    <div className="flex items-center gap-3.5 min-w-[230px]">
+                      <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-amber-500/40 bg-amber-500/20 text-amber-300">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black uppercase text-amber-400">Match #{currentMatchId}</span>
+                        <span className="text-[11px] text-gray-300">{dateStr} at {timeStr}</span>
+                        <span className="text-xs font-semibold text-gray-200">
+                          Played: <strong className="text-deadlock-steam">{myHero?.name || 'Unknown'}</strong>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-mono text-gray-400">Synchronization required</span>
+                    </div>
+                  </div>
+
+                  {/* Hover / Incomplete overlay - visible only on hover or when syncing/notice active */}
+                  <div
+                    className={`absolute inset-0 z-10 flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-black/80 backdrop-blur-sm gap-3 transition-opacity duration-200 ${
+                      isSyncing || hasWaitNotice
+                        ? 'opacity-100 pointer-events-auto'
+                        : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                        <span className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono">
+                          Incomplete Match #{currentMatchId}
+                        </span>
+                        <span className="text-[10px] text-amber-200/70 font-mono">
+                          ({formatDurationDHM(new Date(m.date).getTime())} ago)
+                        </span>
+                      </div>
+                      {hasWaitNotice ? (
+                        <span className="text-[11px] text-amber-200 font-semibold animate-fadeIn bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded">
+                          ⏳ Valve API data is not ready yet. Please wait a bit before trying again.
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-gray-300 leading-tight">
+                          Match data not yet indexed by Valve API. Click to synchronize.
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSyncIncompleteMatch(m)}
+                      disabled={isSyncing}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs shadow-lg shadow-amber-950/50 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                          <span>Syncing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 text-black" />
+                          <span>Synchronize</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -876,6 +1034,19 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           })}
         </div>
       )}
+
+      {/* Replay Recovery Modal for incomplete matches > 5h */}
+      <ReplayRecoveryModal
+        isOpen={Boolean(selectedRecoveryMatch)}
+        onClose={() => setSelectedRecoveryMatch(null)}
+        match={selectedRecoveryMatch}
+        accountId={profile?.accountId || 0}
+        allMatches={matches}
+        onMatchImported={(imported) => {
+          onMatchImported?.(imported);
+          setSelectedRecoveryMatch(null);
+        }}
+      />
     </div>
   );
 };

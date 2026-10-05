@@ -65,6 +65,19 @@ export interface Match {
   rankedInitialProgress?: number | null; // initial flat progress before match
   rankedDemotionProtection?: number | null; // number of demotion protection shields remaining
   rankedConsumedDemotionProtection?: boolean | null; // true if demotion protection shield was consumed this match
+
+  // Incomplete / pending match state in history
+  isIncomplete?: boolean;
+  queuedMatch?: {
+    matchId: number;
+    detectedAt: number;
+    heroId?: number | null;
+    heroName?: string | null;
+    status: string;
+    attempts: number;
+    source?: 'log' | 'manual';
+    message?: string;
+  };
 }
 
 export interface MatchDraftInput {

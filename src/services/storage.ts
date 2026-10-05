@@ -137,6 +137,9 @@ export async function importMatchesJson(jsonString: string): Promise<number> {
 export interface TrackedPendingMatch {
   matchId: number;
   detectedAt: number; // Unix timestamp in ms
+  heroId?: number | null;
+  heroName?: string | null;
+  source?: 'log' | 'manual';
 }
 
 const PENDING_MATCHES_STORAGE_KEY = 'deadlock_tracked_pending_matches_v1';
@@ -152,12 +155,36 @@ export function getTrackedPendingMatches(): TrackedPendingMatch[] {
   }
 }
 
-export function saveTrackedPendingMatch(matchId: number, detectedAt = Date.now()): void {
+export function saveTrackedPendingMatch(
+  matchId: number,
+  detectedAt = Date.now(),
+  heroId?: number | null,
+  heroName?: string | null,
+  source?: 'log' | 'manual'
+): void {
   const current = getTrackedPendingMatches();
-  if (current.some((item) => item.matchId === matchId)) {
+  const existing = current.find((item) => item.matchId === matchId);
+  if (existing) {
+    let changed = false;
+    if (heroId && !existing.heroId) {
+      existing.heroId = heroId;
+      existing.heroName = heroName;
+      changed = true;
+    }
+    if (detectedAt && existing.detectedAt !== detectedAt) {
+      existing.detectedAt = detectedAt;
+      changed = true;
+    }
+    if (source && existing.source !== source) {
+      existing.source = source;
+      changed = true;
+    }
+    if (changed) {
+      localStorage.setItem(PENDING_MATCHES_STORAGE_KEY, JSON.stringify(current));
+    }
     return;
   }
-  current.push({ matchId, detectedAt });
+  current.push({ matchId, detectedAt, heroId, heroName, source });
   localStorage.setItem(PENDING_MATCHES_STORAGE_KEY, JSON.stringify(current));
 }
 

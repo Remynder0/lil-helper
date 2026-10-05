@@ -353,17 +353,16 @@ export async function fetchMatchMetadata(matchId: number): Promise<RawMatchMetad
 
 /**
  * Maps raw assigned_lane (1, 4, 6 or others) to our 3 duo lanes: 'yellow' | 'blue' | 'green'.
+ * Returns undefined if lane number doesn't match any known lane.
+ * Exported so it can be reused by the .dem parser path.
  */
-function mapRawLaneToLaneColor(rawLane?: number): LaneColor {
+export function mapRawLaneToLaneColor(rawLane?: number): LaneColor | undefined {
   if (rawLane === 1) return 'yellow';
   if (rawLane === 4) return 'blue';
   if (rawLane === 6) return 'green';
-  return 'green';
+  return undefined;
 }
 
-/**
- * Converts a raw ranked match and its metadata into our internal `Match` entity.
- */
 /**
  * Maps Source 2 objective ID to assigned lane:
  * 1 = Yellow, 4 = Blue, 3 = Green
@@ -376,11 +375,61 @@ function mapObjectiveToRawLane(objectiveId: number): number | null {
 }
 
 /**
- * Calculates lane outcome at 12 minutes (time_stamp_s === 720, or fallback to 540 if unavailable):
+ * Source-agnostic input for lane outcome calculation.
+ * Can be populated from API net_worth stats OR from .dem m_unNetWorth at tick ~720s.
+ */
+export interface LaneNWSample {
+  myLaneSouls: number;
+  enemyLaneSouls: number;
+}
+
+export interface GuardianTiming {
+  myGuardianDestroyedAt?: number;
+  enemyGuardianDestroyedAt?: number;
+}
+
+/**
+ * Pure lane outcome calculation — source agnostic (works for API and .dem).
+ * Rules:
  * - Soul difference >= 5000: sufficient on its own (won / lost)
  * - Guardian destroyed >= 4 minutes (240s) before enemy/own: sufficient on its own (won / lost)
  * - Soul difference >= 3000 AND >= 2 minutes (120s) guardian advance: won / lost
  * - Otherwise: even
+ * Returns undefined if no soul data available.
+ */
+export function computeLaneOutcome(
+  nwSample: LaneNWSample,
+  guardians?: GuardianTiming
+): LaneOutcome | undefined {
+  const { myLaneSouls, enemyLaneSouls } = nwSample;
+
+  if (myLaneSouls === 0 && enemyLaneSouls === 0) return undefined;
+
+  const soulDiff = myLaneSouls - enemyLaneSouls;
+
+  const myGuardianDeathTime = guardians?.myGuardianDestroyedAt ?? 99999;
+  const enemyGuardianDeathTime = guardians?.enemyGuardianDestroyedAt ?? 99999;
+  // Positive if enemy guardian died before ours (we took down their guardian earlier)
+  const guardianTimeAdvantage = myGuardianDeathTime - enemyGuardianDeathTime;
+
+  // Rule 1: 5000 soul difference is sufficient on its own
+  if (soulDiff >= 5000) return 'won';
+  if (soulDiff <= -5000) return 'lost';
+
+  // Rule 2: >= 4 minutes (240s) guardian difference is notable on its own
+  if (guardianTimeAdvantage >= 240) return 'won';
+  if (guardianTimeAdvantage <= -240) return 'lost';
+
+  // Rule 3: >= 3000 soul difference AND >= 2 minutes (120s) guardian advantage
+  if (soulDiff >= 3000 && guardianTimeAdvantage >= 120) return 'won';
+  if (soulDiff <= -3000 && guardianTimeAdvantage <= -120) return 'lost';
+
+  return 'even';
+}
+
+/**
+ * Calculates lane outcome at 12 minutes (time_stamp_s === 720, or fallback to 540 if unavailable).
+ * Wraps computeLaneOutcome with API-specific data extraction.
  */
 export function calculateLaneOutcome(
   players: RawMatchPlayerMetadata[],
@@ -388,7 +437,7 @@ export function calculateLaneOutcome(
   myLane: number,
   myTeam: number
 ): LaneOutcome | undefined {
-  const enemyTeam = myTeam === 0 ? 1 : 0;
+  const enemyTeam = myTeam === 0 ? 1 : myTeam === 1 ? 0 : myTeam === 2 ? 3 : 2;
 
   const myDuo = players.filter((p) => p.team === myTeam && p.assigned_lane === myLane);
   const enemyDuo = players.filter((p) => p.team === enemyTeam && p.assigned_lane === myLane);
@@ -417,14 +466,6 @@ export function calculateLaneOutcome(
     );
   }
 
-  // If neither 12-minute nor 9-minute stats are available, don't guess
-  if (myNW === 0 && enemyNW === 0) {
-    return undefined;
-  }
-
-  const soulDiff = myNW - enemyNW;
-
-  // Guardian timing comparison
   const myGuardian = objectives?.find(
     (o) => o.team === myTeam && mapObjectiveToRawLane(o.team_objective_id) === myLane && o.destroyed_time_s > 0
   );
@@ -432,25 +473,13 @@ export function calculateLaneOutcome(
     (o) => o.team === enemyTeam && mapObjectiveToRawLane(o.team_objective_id) === myLane && o.destroyed_time_s > 0
   );
 
-  const myGuardianDeathTime = myGuardian ? myGuardian.destroyed_time_s : 99999;
-  const enemyGuardianDeathTime = enemyGuardian ? enemyGuardian.destroyed_time_s : 99999;
-
-  // Positive if enemy guardian died before ours (we took down their guardian earlier)
-  const guardianTimeAdvantage = myGuardianDeathTime - enemyGuardianDeathTime;
-
-  // Rule 1: 5000 soul difference is sufficient on its own
-  if (soulDiff >= 5000) return 'won';
-  if (soulDiff <= -5000) return 'lost';
-
-  // Rule 2: >= 4 minutes (240s) guardian difference is notable on its own
-  if (guardianTimeAdvantage >= 240) return 'won';
-  if (guardianTimeAdvantage <= -240) return 'lost';
-
-  // Rule 3: >= 3000 soul difference AND >= 2 minutes (120s) guardian advantage
-  if (soulDiff >= 3000 && guardianTimeAdvantage >= 120) return 'won';
-  if (soulDiff <= -3000 && guardianTimeAdvantage <= -120) return 'lost';
-
-  return 'even';
+  return computeLaneOutcome(
+    { myLaneSouls: myNW, enemyLaneSouls: enemyNW },
+    {
+      myGuardianDestroyedAt: myGuardian?.destroyed_time_s,
+      enemyGuardianDestroyedAt: enemyGuardian?.destroyed_time_s,
+    }
+  );
 }
 
 /**
@@ -619,6 +648,86 @@ export function convertToAppMatch(
     rankedDemotionProtection,
     rankedConsumedDemotionProtection,
     notes: `Ranked Match #${historyEntry.match_id} (Auto-imported from Deadlock API)`,
+  };
+}
+
+/**
+ * Converts a DemParseResult (from the Rust .dem parser) into a Match entity.
+ * Reuses mapRawLaneToLaneColor and computeLaneOutcome to avoid duplication.
+ * Automatically populates ranked progression fields if calculatedRanked is provided.
+ *
+ * @param dem - Result from the Rust parse_dem_file Tauri command
+ * @param rankedData - Calculated ranked progression from deadlock rules, or a string note
+ */
+export function convertDemResultToMatch(
+  dem: import('../types/demTypes').DemParseResult,
+  rankedData?: import('../services/rankedCalculator').CalculatedRankedProgression | string,
+  fallbackDate?: string
+): Match {
+  // team 2 = Hidden King, team 3 = Archmother
+  const side: Side = dem.myTeam === 2 ? 'hidden_king' : 'archmother';
+  const winnerTeam = dem.winningTeam;
+  const result: MatchResult =
+    dem.myTeam === winnerTeam ? 'win' : winnerTeam === 0 ? 'cancel' : 'loss';
+
+  const lane = mapRawLaneToLaneColor(dem.lane);
+
+  // Lane outcome via souls at T=720s & guardian timings — same logic as calculateLaneOutcome
+  const laneOutcome: LaneOutcome | undefined =
+    dem.myLaneSoulsAt720 !== undefined && dem.enemyLaneSoulsAt720 !== undefined
+      ? computeLaneOutcome(
+          {
+            myLaneSouls: dem.myLaneSoulsAt720,
+            enemyLaneSouls: dem.enemyLaneSoulsAt720,
+          },
+          {
+            myGuardianDestroyedAt: dem.myGuardianDestroyedAt,
+            enemyGuardianDestroyedAt: dem.enemyGuardianDestroyedAt,
+          }
+        )
+      : undefined;
+
+  const allies = [...dem.allies];
+  const enemies = [...dem.enemies];
+
+  // Pad arrays to expected lengths (same as API path)
+  while (allies.length < 5) allies.push(0);
+  while (enemies.length < 6) enemies.push(0);
+
+  const isCalculatedObj = typeof rankedData === 'object' && rankedData !== null;
+  const calc = isCalculatedObj ? rankedData : undefined;
+
+  const validDate =
+    fallbackDate && fallbackDate.trim().length > 5
+      ? fallbackDate.trim()
+      : dem.dateIso && dem.dateIso.trim().length > 5
+      ? dem.dateIso.trim()
+      : new Date().toISOString();
+
+  return {
+    id: `dem_${dem.matchId}`,
+    matchId: dem.matchId,
+    date: validDate,
+    side,
+    myHeroId: dem.myHeroId,
+    allies,
+    enemies,
+    result,
+    durationSeconds: dem.durationSeconds,
+    lane,
+    laneAllyId: dem.laneAllyId,
+    laneOpponents: dem.laneOpponents.length > 0 ? dem.laneOpponents : undefined,
+    laneOutcome,
+    // Ranked progression deduced from Deadlock rules
+    rankedBadge: calc?.rankedBadge ?? null,
+    rankedRank: calc?.rankedRank ?? null,
+    rankedSubrank: calc?.rankedSubrank ?? null,
+    rankedDelta: calc?.rankedDelta ?? null,
+    rankedProgress: calc?.rankedProgress ?? null,
+    rankedInitialProgress: calc?.rankedInitialProgress ?? null,
+    rankedDemotionProtection: calc?.rankedDemotionProtection ?? null,
+    rankedConsumedDemotionProtection: calc?.rankedConsumedDemotionProtection ?? null,
+    notes: `Ranked Match #${dem.matchId} (Manual ID Import)`,
   };
 }
 

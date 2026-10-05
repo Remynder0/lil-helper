@@ -271,6 +271,12 @@ mod tests {
             lane_ally_id: None,
             lane_opponents: Some(Vec::new()),
             lane_outcome: None,
+            ranked_badge: None,
+            ranked_rank: None,
+            ranked_subrank: None,
+            ranked_delta: None,
+            ranked_progress: None,
+            ranked_initial_progress: None,
         }
     }
 
