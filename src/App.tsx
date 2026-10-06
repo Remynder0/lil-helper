@@ -139,6 +139,14 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteMatch = async (id: string) => {
+    if (id.startsWith('queue_')) {
+      const matchId = parseInt(id.replace('queue_', ''), 10);
+      if (!isNaN(matchId)) {
+        removeMatchFromQueue(matchId);
+      }
+      return;
+    }
+
     const success = await removeMatch(id);
     if (success) {
       setMatches((prev) => prev.filter((m) => m.id !== id));

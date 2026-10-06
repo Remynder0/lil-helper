@@ -113,4 +113,8 @@ pub struct MatchRecord {
     pub ranked_progress: Option<u32>,
     #[serde(default)]
     pub ranked_initial_progress: Option<u32>,
+    #[serde(default)]
+    pub ranked_demotion_protection: Option<u32>,
+    #[serde(default)]
+    pub ranked_consumed_demotion_protection: Option<bool>,
 }

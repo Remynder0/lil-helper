@@ -3,6 +3,7 @@ import { Disc, FileSearch, Loader2, CheckCircle, AlertCircle, AlertTriangle, X }
 import { Match } from '../types/match';
 import { useDemParser } from '../hooks/useDemParser';
 import { persistMatch } from '../services/storage';
+import { removeMatchFromQueue } from '../services/matchQueue';
 
 interface ReplayRecoveryModalProps {
   isOpen: boolean;
@@ -198,18 +199,38 @@ export const ReplayRecoveryModal: React.FC<ReplayRecoveryModalProps> = ({
           )}
 
           {state === 'error' && (
-            <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between gap-3 text-rose-300 text-xs">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{error}</span>
+            <div className="flex flex-col gap-2">
+              <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between gap-3 text-rose-300 text-xs">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="px-2.5 py-1 rounded bg-black/40 hover:bg-black/60 text-gray-300 border border-rose-500/30 text-[11px] font-bold transition-all"
+                >
+                  Retry
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={reset}
-                className="px-2.5 py-1 rounded bg-black/40 hover:bg-black/60 text-gray-300 border border-rose-500/30 text-[11px] font-bold transition-all"
-              >
-                Retry
-              </button>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-rose-950/40 mt-1">
+                <span className="text-[11px] text-deadlock-muted leading-relaxed max-w-[65%]">
+                  <strong className="text-gray-300 block mb-1">Match not found?</strong>
+                  Make sure you actually clicked <em>"Download Replay"</em> in-game. If this match was cancelled early (AFK) and never had a replay, you can safely discard it.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Discard this match? It will be removed from your history completely.')) {
+                      removeMatchFromQueue(matchId);
+                      onClose();
+                    }
+                  }}
+                  className="px-3 py-2 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 text-[11px] font-bold transition-all whitespace-nowrap"
+                >
+                  Discard Match
+                </button>
+              </div>
             </div>
           )}
 

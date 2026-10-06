@@ -53,7 +53,6 @@ import { HeroAvatar } from './HeroAvatar';
 import { getHeroById } from '../data/heroes';
 import { ConnectedProfile, Match, SIDE_LABELS } from '../types/match';
 import { OcrInspectorModal } from './draft/OcrInspectorModal';
-import { BlockedMatchesRecoveryModal } from './BlockedMatchesRecoveryModal';
 import artDecoCorner from '../assets/art-deco/corner.svg';
 
 interface LogDashboardViewProps {
@@ -83,7 +82,6 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
   const [checkingMatchId, setCheckingMatchId] = useState<number | null>(null);
-  const [showBlockedModal, setShowBlockedModal] = useState<boolean>(false);
 
   const blockedMatches = matchQueue.filter((m) => isMatchBlocked(m));
 
@@ -504,29 +502,6 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
             </div>
 
           </div>
-
-          {/* Warning Banner for > 1 Day Unsynced Blocked Matches */}
-          {blockedMatches.length > 0 && (
-            <div
-              onClick={() => setShowBlockedModal(true)}
-              className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 cursor-pointer flex items-center justify-between gap-3 text-amber-200 transition-all shadow-md group"
-            >
-              <div className="flex items-center gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-amber-300">
-                    {blockedMatches.length} match{blockedMatches.length > 1 ? 's en attente' : ' en attente'} depuis plus d'un jour sans sync
-                  </span>
-                  <span className="text-[11px] text-amber-200/70">
-                    L'API Deadlock ne les indexe pas. Cliquez pour parser directement les replays (.dem).
-                  </span>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0">
-                Voir la solution →
-              </span>
-            </div>
-          )}
 
           {/* Manual Match ID Input with Date */}
           <form onSubmit={handleAddManualMatch} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -1056,34 +1031,6 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
         />
       )}
 
-      {/* Blocked Matches Recovery Modal */}
-      <BlockedMatchesRecoveryModal
-        isOpen={showBlockedModal}
-        onClose={() => setShowBlockedModal(false)}
-        blockedMatches={blockedMatches}
-        allMatches={matches}
-        accountId={profile?.accountId || 0}
-        onCheckMatch={handleCheckQueuedMatch}
-        onRemoveMatch={removeMatchFromQueue}
-        onMatchImported={(importedMatch) => {
-          if (onMatchesUpdated) {
-            onMatchesUpdated((prev) => {
-              const existingIdx = prev.findIndex((m) => m.id === importedMatch.id);
-              let nextList: Match[];
-              if (existingIdx >= 0) {
-                nextList = [...prev];
-                nextList[existingIdx] = importedMatch;
-              } else {
-                nextList = [importedMatch, ...prev];
-              }
-              return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            });
-          }
-          if (importedMatch.matchId) {
-            removeMatchFromQueue(importedMatch.matchId);
-          }
-        }}
-      />
     </div>
   );
 };
