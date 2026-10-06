@@ -110,8 +110,8 @@ export const HEROES: Hero[] = [
     "key": "celeste",
     "name": "Celeste",
     "className": "hero_unicorn",
-    "role": "marksman",
-    "heroType": "marksman",
+    "role": "mystic",
+    "heroType": "mystic",
     "iconUrl": "/heroes/celeste.webp",
     "backgroundUrl": "/heroes/backgrounds/celeste_bg.webp",
     "tags": [
@@ -122,6 +122,24 @@ export const HEROES: Hero[] = [
     "gunTag": "Burst Fire",
     "complexity": 2,
     "hideoutRichPresence": "Cleaning Up Glitter in the Hideout"
+  },
+  {
+    "id": 78,
+    "key": "deadman_danny",
+    "name": "Deadman Danny",
+    "className": "hero_deadpack",
+    "role": "Unknown",
+    "heroType": "brawler",
+    "iconUrl": "/heroes/deadman_danny.webp",
+    "backgroundUrl": "/heroes/backgrounds/deadman_danny_bg.webp",
+    "tags": [
+      "Reckless",
+      "High-flying",
+      "Explosive"
+    ],
+    "gunTag": "",
+    "complexity": 3,
+    "hideoutRichPresence": null
   },
   {
     "id": 64,
@@ -164,8 +182,8 @@ export const HEROES: Hero[] = [
     "key": "graves",
     "name": "Graves",
     "className": "hero_necro",
-    "role": "marksman",
-    "heroType": "marksman",
+    "role": "mystic",
+    "heroType": "mystic",
     "iconUrl": "/heroes/graves.webp",
     "backgroundUrl": "/heroes/backgrounds/graves_bg.webp",
     "tags": [
@@ -314,7 +332,7 @@ export const HEROES: Hero[] = [
     "backgroundUrl": "/heroes/backgrounds/lash_bg.webp",
     "tags": [
       "Initiator",
-      "High Flying",
+      "High-Flying",
       "Arrogant"
     ],
     "gunTag": "Burst Fire",
@@ -394,6 +412,24 @@ export const HEROES: Hero[] = [
     "hideoutRichPresence": null
   },
   {
+    "id": 87,
+    "key": "nurse_harrow",
+    "name": "Nurse Harrow",
+    "className": "hero_nurse",
+    "role": "Unknown",
+    "heroType": "brawler",
+    "iconUrl": "/heroes/nurse_harrow.webp",
+    "backgroundUrl": "/heroes/backgrounds/nurse_harrow_bg.webp",
+    "tags": [
+      "Strict",
+      "Terrifying",
+      "Savior"
+    ],
+    "gunTag": "",
+    "complexity": 3,
+    "hideoutRichPresence": null
+  },
+  {
     "id": 67,
     "key": "paige",
     "name": "Paige",
@@ -448,12 +484,30 @@ export const HEROES: Hero[] = [
     "hideoutRichPresence": "Sulking in the Hideout"
   },
   {
+    "id": 84,
+    "key": "rat_king",
+    "name": "Rat King",
+    "className": "hero_ratking",
+    "role": "brawler",
+    "heroType": "brawler",
+    "iconUrl": "/heroes/rat_king.webp",
+    "backgroundUrl": "/heroes/backgrounds/rat_king_bg.webp",
+    "tags": [
+      "Scrappy",
+      "Regal",
+      "Tenacious"
+    ],
+    "gunTag": "Spreadshot",
+    "complexity": 3,
+    "hideoutRichPresence": "Wishing the Hideout was on Long Island"
+  },
+  {
     "id": 79,
     "key": "rem",
     "name": "Rem",
     "className": "hero_familiar",
-    "role": "Unknown",
-    "heroType": "brawler",
+    "role": "mystic",
+    "heroType": "mystic",
     "iconUrl": "/heroes/rem.webp",
     "backgroundUrl": "/heroes/backgrounds/rem_bg.webp",
     "tags": [
@@ -506,8 +560,8 @@ export const HEROES: Hero[] = [
     "key": "silver",
     "name": "Silver",
     "className": "hero_werewolf",
-    "role": "marksman",
-    "heroType": "marksman",
+    "role": "brawler",
+    "heroType": "brawler",
     "iconUrl": "/heroes/silver.webp",
     "backgroundUrl": "/heroes/backgrounds/silver_bg.webp",
     "tags": [
@@ -536,6 +590,24 @@ export const HEROES: Hero[] = [
     "gunTag": "Burst Fire",
     "complexity": 4,
     "hideoutRichPresence": "Working Magic in the Hideout"
+  },
+  {
+    "id": 85,
+    "key": "solomon",
+    "name": "Solomon",
+    "className": "hero_chessmaster",
+    "role": "Unknown",
+    "heroType": "brawler",
+    "iconUrl": "/heroes/solomon.webp",
+    "backgroundUrl": "/heroes/backgrounds/solomon_bg.webp",
+    "tags": [
+      "Strategist",
+      "Focused",
+      "Checkmate"
+    ],
+    "gunTag": "",
+    "complexity": 3,
+    "hideoutRichPresence": null
   },
   {
     "id": 69,
@@ -608,6 +680,24 @@ export const HEROES: Hero[] = [
     "gunTag": "Long Range",
     "complexity": 1,
     "hideoutRichPresence": "Brooding in the Hideout"
+  },
+  {
+    "id": 86,
+    "key": "violet",
+    "name": "Violet",
+    "className": "hero_artist",
+    "role": "Unknown",
+    "heroType": "brawler",
+    "iconUrl": "/heroes/violet.webp",
+    "backgroundUrl": "/heroes/backgrounds/violet_bg.webp",
+    "tags": [
+      "Ambitious",
+      "Nimble",
+      "Creative"
+    ],
+    "gunTag": "",
+    "complexity": 3,
+    "hideoutRichPresence": null
   },
   {
     "id": 35,

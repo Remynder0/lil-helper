@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const API_URL = 'https://assets.deadlock-api.com/v1/heroes';
+const API_URL = 'https://api.deadlock-api.com/v1/assets/heroes';
 
 async function run() {
   console.log('Fetching Deadlock heroes from API...');
@@ -11,8 +11,12 @@ async function run() {
   const heroesDir = path.resolve('public/heroes');
   fs.mkdirSync(heroesDir, { recursive: true });
 
-  const activeHeroes = heroesData.filter(h => (h.player_selectable && h.in_development !== true) || h.id === 1); // Always include the first hero (ID 1)
-  
+  // Include all heroes that are not explicitly marked as "in development"
+  // Exclude 'Kali' who is an old scrapped concept not considered a new hero.
+  const activeHeroes = heroesData.filter(h => 
+    (h.in_development === false || h.id === 1) && h.name !== 'Kali'
+  );
+
   // Sort alphabetically by name
   activeHeroes.sort((a, b) => a.name.localeCompare(b.name));
 
