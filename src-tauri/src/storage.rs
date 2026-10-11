@@ -277,6 +277,9 @@ mod tests {
             ranked_delta: None,
             ranked_progress: None,
             ranked_initial_progress: None,
+            ranked_demotion_protection: None,
+            ranked_consumed_demotion_protection: None,
+            player_slot: None,
         }
     }
 

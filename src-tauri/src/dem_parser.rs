@@ -31,6 +31,7 @@ pub struct DemParseResult {
     pub lane: Option<u32>,
     pub lane_ally_id: Option<u32>,
     pub lane_opponents: Vec<u32>,
+    pub player_slot: Option<u32>,
     /// Cumulative souls (player + lane ally) at T≈720s
     pub my_lane_souls_at720: Option<u32>,
     /// Cumulative souls (lane enemies) at T≈720s
@@ -49,6 +50,7 @@ struct PlayerInfo {
     hero_id: u32,
     team_num: u32,
     start_lane: u32,
+    player_slot: Option<u32>,
 }
 
 /// Parses a Deadlock .dem replay file and extracts match data.
@@ -144,6 +146,11 @@ pub fn parse_dem_file(path: &str, my_account_id: u32, match_id: u64) -> Result<D
             .map(extract_u32)
             .unwrap_or(0);
 
+        let player_slot = ent
+            .get_by_name("m_nPlayerSlot", ser_ctrl)
+            .or_else(|| ent.get_by_name("m_iPlayerID", ser_ctrl))
+            .map(extract_u32);
+
         players.insert(
             account_id,
             PlayerInfo {
@@ -151,6 +158,7 @@ pub fn parse_dem_file(path: &str, my_account_id: u32, match_id: u64) -> Result<D
                 hero_id,
                 team_num,
                 start_lane,
+                player_slot,
             },
         );
     }
@@ -176,17 +184,19 @@ pub fn parse_dem_file(path: &str, my_account_id: u32, match_id: u64) -> Result<D
     let my_team = me.team_num;
     let my_lane = me.start_lane;
 
-    let allies: Vec<u32> = players
+    let mut allies_players: Vec<&PlayerInfo> = players
         .values()
         .filter(|p| p.team_num == my_team && p.account_id != my_account_id && p.hero_id != 0)
-        .map(|p| p.hero_id)
         .collect();
+    allies_players.sort_by_key(|p| p.start_lane);
+    let allies: Vec<u32> = allies_players.iter().map(|p| p.hero_id).collect();
 
-    let enemies: Vec<u32> = players
+    let mut enemies_players: Vec<&PlayerInfo> = players
         .values()
         .filter(|p| p.team_num != my_team && p.hero_id != 0)
-        .map(|p| p.hero_id)
         .collect();
+    enemies_players.sort_by_key(|p| p.start_lane);
+    let enemies: Vec<u32> = enemies_players.iter().map(|p| p.hero_id).collect();
 
     let lane_ally = players
         .values()
@@ -308,6 +318,7 @@ pub fn parse_dem_file(path: &str, my_account_id: u32, match_id: u64) -> Result<D
         lane: lane_opt,
         lane_ally_id,
         lane_opponents,
+        player_slot: me.player_slot,
         my_lane_souls_at720,
         enemy_lane_souls_at720,
         my_guardian_destroyed_at,
@@ -425,5 +436,6 @@ mod tests {
         let enemy_g = result.enemy_guardian_destroyed_at.unwrap();
         println!("Guardian times: Ally={ally_g}, Enemy={enemy_g}");
         assert!(enemy_g < ally_g, "Enemy guardian should have died before ally guardian");
+        println!("Player slot in result: {:?}", result.player_slot);
     }
 }
