@@ -11,11 +11,10 @@ async function run() {
   const heroesDir = path.resolve('public/heroes');
   fs.mkdirSync(heroesDir, { recursive: true });
 
-  // Include all heroes that are not explicitly marked as "in development"
-  // Exclude 'Kali' who is an old scrapped concept not considered a new hero.
-  const activeHeroes = heroesData.filter(h => 
-    (h.in_development === false || h.id === 1) && h.name !== 'Kali'
-  );
+  // Include all heroes that are active in game (disabled === false)
+  // This automatically includes Baba (in_development: true, disabled: false)
+  // and cleanly excludes Kali and scrapped dev heroes (which have disabled: true).
+  const activeHeroes = heroesData.filter(h => h.disabled === false);
 
   // Sort alphabetically by name
   activeHeroes.sort((a, b) => a.name.localeCompare(b.name));

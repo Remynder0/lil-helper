@@ -31,7 +31,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Shotgun",
     "complexity": 1,
-    "hideoutRichPresence": "Investigating the Hideout"
+    "hideoutRichPresence": "Investigating The Hideout"
   },
   {
     "id": 77,
@@ -49,7 +49,25 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 2,
-    "hideoutRichPresence": "Striving Towards Perfection in the Hideout"
+    "hideoutRichPresence": "Striving Towards Perfection In The Hideout"
+  },
+  {
+    "id": 88,
+    "key": "baba",
+    "name": "Baba",
+    "className": "hero_baba",
+    "role": "mystic",
+    "heroType": "mystic",
+    "iconUrl": "/heroes/baba.webp",
+    "backgroundUrl": "/heroes/backgrounds/baba_bg.webp",
+    "tags": [
+      "Cackling",
+      "Beady",
+      "Hexing"
+    ],
+    "gunTag": "Heavy Artillery",
+    "complexity": 1,
+    "hideoutRichPresence": "Hating Mildred In The Hideout"
   },
   {
     "id": 15,
@@ -67,7 +85,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Beam Weapon",
     "complexity": 2,
-    "hideoutRichPresence": "Ignoring Lash in the Hideout"
+    "hideoutRichPresence": "Ignoring Lash In The Hideout"
   },
   {
     "id": 72,
@@ -85,7 +103,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Close Range",
     "complexity": 3,
-    "hideoutRichPresence": "Ranting in the Hideout"
+    "hideoutRichPresence": "Ranting In The Hideout"
   },
   {
     "id": 16,
@@ -103,7 +121,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 2,
-    "hideoutRichPresence": "Playing With Ava in the Hideout"
+    "hideoutRichPresence": "Playing With Ava In The Hideout"
   },
   {
     "id": 81,
@@ -121,7 +139,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Burst Fire",
     "complexity": 2,
-    "hideoutRichPresence": "Cleaning Up Glitter in the Hideout"
+    "hideoutRichPresence": "Cleaning Up Glitter In The Hideout"
   },
   {
     "id": 78,
@@ -157,7 +175,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 3,
-    "hideoutRichPresence": "Prowling in the Hideout"
+    "hideoutRichPresence": "Prowling In The Hideout"
   },
   {
     "id": 11,
@@ -193,7 +211,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 2,
-    "hideoutRichPresence": "Playing With The Dead in the Hideout"
+    "hideoutRichPresence": "Playing With The Dead In The Hideout"
   },
   {
     "id": 17,
@@ -211,7 +229,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Bow",
     "complexity": 2,
-    "hideoutRichPresence": "Mourning in the Hideout"
+    "hideoutRichPresence": "Mourning In The Hideout"
   },
   {
     "id": 13,
@@ -229,7 +247,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Rapid Fire",
     "complexity": 1,
-    "hideoutRichPresence": "Sleep Walking in the Hideout"
+    "hideoutRichPresence": "Sleep Walking In The Hideout"
   },
   {
     "id": 14,
@@ -247,7 +265,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 3,
-    "hideoutRichPresence": "Solving Mysteries in the Hideout"
+    "hideoutRichPresence": "Solving Mysteries In The Hideout"
   },
   {
     "id": 1,
@@ -265,7 +283,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Rapid Fire",
     "complexity": 1,
-    "hideoutRichPresence": "Mixing Drinks in the Hideout"
+    "hideoutRichPresence": "Mixing Drinks In The Hideout"
   },
   {
     "id": 20,
@@ -283,7 +301,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Rapid Fire",
     "complexity": 3,
-    "hideoutRichPresence": "Wishing the Arroyos were in the Hideout"
+    "hideoutRichPresence": "Wishing the Arroyos were In The Hideout"
   },
   {
     "id": 12,
@@ -301,7 +319,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Heavy Hitter",
     "complexity": 2,
-    "hideoutRichPresence": "Chilling in the Hideout"
+    "hideoutRichPresence": "Chilling In The Hideout"
   },
   {
     "id": 4,
@@ -319,7 +337,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 2,
-    "hideoutRichPresence": "Being Fabulous in the Hideout"
+    "hideoutRichPresence": "Being Fabulous In The Hideout"
   },
   {
     "id": 31,
@@ -337,7 +355,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Burst Fire",
     "complexity": 3,
-    "hideoutRichPresence": "Thinking About Lash in the Hideout"
+    "hideoutRichPresence": "Thinking About Lash In The Hideout"
   },
   {
     "id": 8,
@@ -355,7 +373,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Heavy Artillery",
     "complexity": 1,
-    "hideoutRichPresence": "Tinkering in the Hideout"
+    "hideoutRichPresence": "Tinkering In The Hideout"
   },
   {
     "id": 63,
@@ -373,7 +391,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 3,
-    "hideoutRichPresence": "Grabbing a bite in the Hideout"
+    "hideoutRichPresence": "Grabbing A Bite In The Hideout"
   },
   {
     "id": 52,
@@ -391,7 +409,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 2,
-    "hideoutRichPresence": "Dreaming of Wyoming in the Hideout"
+    "hideoutRichPresence": "Dreaming Of Wyoming In The Hideout"
   },
   {
     "id": 18,
@@ -445,7 +463,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Projectile",
     "complexity": 1,
-    "hideoutRichPresence": "Reading in the Hideout"
+    "hideoutRichPresence": "Reading In The Hideout"
   },
   {
     "id": 10,
@@ -463,7 +481,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Burst Fire",
     "complexity": 3,
-    "hideoutRichPresence": "Scheming in the Hideout"
+    "hideoutRichPresence": "Scheming In The Hideout"
   },
   {
     "id": 50,
@@ -481,7 +499,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 2,
-    "hideoutRichPresence": "Sulking in the Hideout"
+    "hideoutRichPresence": "Sulking In The Hideout"
   },
   {
     "id": 84,
@@ -499,7 +517,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 3,
-    "hideoutRichPresence": "Wishing the Hideout was on Long Island"
+    "hideoutRichPresence": "Wishing The Hideout Was On Long Island"
   },
   {
     "id": 79,
@@ -517,7 +535,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "",
     "complexity": 3,
-    "hideoutRichPresence": "Having Sweet Dreams in the Hideout"
+    "hideoutRichPresence": "Having Sweet Dreams In The Hideout"
   },
   {
     "id": 2,
@@ -535,7 +553,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Burst Fire",
     "complexity": 1,
-    "hideoutRichPresence": "Plotting in the Hideout"
+    "hideoutRichPresence": "Plotting In The Hideout"
   },
   {
     "id": 19,
@@ -553,7 +571,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 3,
-    "hideoutRichPresence": "Playing With Knives in the Hideout"
+    "hideoutRichPresence": "Playing With Knives In The Hideout"
   },
   {
     "id": 80,
@@ -571,7 +589,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Long Range",
     "complexity": 1,
-    "hideoutRichPresence": "Figuring Out What Happened Last Night in the Hideout"
+    "hideoutRichPresence": "Figuring Out What Happened Last Night In The Hideout"
   },
   {
     "id": 60,
@@ -589,15 +607,15 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Burst Fire",
     "complexity": 4,
-    "hideoutRichPresence": "Working Magic in the Hideout"
+    "hideoutRichPresence": "Working Magic In The Hideout"
   },
   {
     "id": 85,
     "key": "solomon",
     "name": "Solomon",
     "className": "hero_chessmaster",
-    "role": "Unknown",
-    "heroType": "brawler",
+    "role": "mystic",
+    "heroType": "mystic",
     "iconUrl": "/heroes/solomon.webp",
     "backgroundUrl": "/heroes/backgrounds/solomon_bg.webp",
     "tags": [
@@ -605,9 +623,9 @@ export const HEROES: Hero[] = [
       "Focused",
       "Checkmate"
     ],
-    "gunTag": "",
-    "complexity": 3,
-    "hideoutRichPresence": null
+    "gunTag": "Projectile",
+    "complexity": 1,
+    "hideoutRichPresence": "Planning Moves In The Hideout"
   },
   {
     "id": 69,
@@ -625,7 +643,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 1,
-    "hideoutRichPresence": "At Your Service in the Hideout"
+    "hideoutRichPresence": "At Your Service In The Hideout"
   },
   {
     "id": 65,
@@ -643,7 +661,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Crossbow",
     "complexity": 2,
-    "hideoutRichPresence": "Blessing Ammunition in the Hideout"
+    "hideoutRichPresence": "Blessing Ammunition In The Hideout"
   },
   {
     "id": 66,
@@ -661,7 +679,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Pistol",
     "complexity": 2,
-    "hideoutRichPresence": "Brooding in the Hideout"
+    "hideoutRichPresence": "Brooding In The Hideout"
   },
   {
     "id": 3,
@@ -679,7 +697,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Long Range",
     "complexity": 1,
-    "hideoutRichPresence": "Brooding in the Hideout"
+    "hideoutRichPresence": "Plotting Against Hathorne In The Hideout"
   },
   {
     "id": 86,
@@ -715,7 +733,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Projectile",
     "complexity": 2,
-    "hideoutRichPresence": "Wishing the Hideout was The Cube"
+    "hideoutRichPresence": "Wishing the Hideout Was The Cube"
   },
   {
     "id": 58,
@@ -733,7 +751,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Rapid Fire",
     "complexity": 1,
-    "hideoutRichPresence": "Making Pruno in the Hideout"
+    "hideoutRichPresence": "Making Pruno In The Hideout"
   },
   {
     "id": 25,
@@ -751,7 +769,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Heavy Hitter",
     "complexity": 2,
-    "hideoutRichPresence": "Training in the Hideout"
+    "hideoutRichPresence": "Training In The Hideout"
   },
   {
     "id": 7,
@@ -769,7 +787,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Rapid Fire",
     "complexity": 1,
-    "hideoutRichPresence": "Gambling in the Hideout"
+    "hideoutRichPresence": "Gambling In The Hideout"
   },
   {
     "id": 27,
@@ -787,7 +805,7 @@ export const HEROES: Hero[] = [
     ],
     "gunTag": "Spreadshot",
     "complexity": 3,
-    "hideoutRichPresence": "Reminiscing in the Hideout"
+    "hideoutRichPresence": "Reminiscing In The Hideout"
   }
 ];
 
