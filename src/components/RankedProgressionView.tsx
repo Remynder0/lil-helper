@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Match,
   ConnectedProfile,
@@ -9,6 +9,11 @@ import {
 import { getHeroById } from '../data/heroes';
 import { DEADLOCK_RANK_NAMES } from '../services/deadlockApi';
 import { HeroAvatar } from './HeroAvatar';
+import {
+  loadUserSettings,
+  saveUserSettings,
+  ShieldDisplayMode,
+} from '../services/userSettings';
 import {
   Trophy,
   TrendingUp,
@@ -116,13 +121,6 @@ export function computeRankedShieldEvents(matches: Match[]): RankedShieldAnalysi
     const explicitConsumed = curr.rankedConsumedDemotionProtection === true;
     const isLoss = curr.result === 'loss' || (curr.rankedDelta || 0) < 0;
 
-    const inferredConsumed =
-      !explicitConsumed &&
-      isLoss &&
-      prevProgress !== null &&
-      ((prevProgress % 1000 === 0 && currProgress % 1000 === 0 && (curr.rankedDelta || 0) !== 0) ||
-        (prevProgress % 1000 < Math.abs(curr.rankedDelta || 0)));
-
     const explicitProtectionDecreased =
       isLoss &&
       prev?.rankedDemotionProtection !== undefined &&
@@ -131,11 +129,38 @@ export function computeRankedShieldEvents(matches: Match[]): RankedShieldAnalysi
       curr.rankedDemotionProtection !== null &&
       curr.rankedDemotionProtection < prev.rankedDemotionProtection;
 
-    const shieldUsed = explicitConsumed || inferredConsumed || explicitProtectionDecreased;
+    // Inferred shield consumption when explicit flag is null/missing:
+    // A loss held at or clamped to the subrank floor absorbs points
+    let inferredConsumed = false;
+    if (
+      isLoss &&
+      !explicitConsumed &&
+      !explicitProtectionDecreased &&
+      curr.rankedConsumedDemotionProtection !== false &&
+      runningShields > 0 &&
+      prevProgress !== null
+    ) {
+      const subrankFloor = Math.floor(prevProgress / 1000) * 1000;
+      const initialProg = curr.rankedInitialProgress ?? prevProgress;
+      // Held at floor (e.g. 2000 -> 2000) or clamped at floor (e.g. 1100 -> 1000 with nominal delta -300)
+      if (
+        (initialProg === subrankFloor && currProgress === subrankFloor) ||
+        (initialProg > subrankFloor && currProgress === subrankFloor && (curr.rankedDelta || -300) < -(initialProg - subrankFloor))
+      ) {
+        inferredConsumed = true;
+      }
+    }
+
+    const shieldUsed = explicitConsumed || explicitProtectionDecreased || inferredConsumed;
 
     if (shieldUsed) {
       if (curr.rankedDemotionProtection !== undefined && curr.rankedDemotionProtection !== null) {
-        runningShields = curr.rankedDemotionProtection;
+        // If stored protection equals prev and wasn't decremented despite being consumed (old un-migrated record), decrement
+        if (explicitConsumed && prev && curr.rankedDemotionProtection === prev.rankedDemotionProtection) {
+          runningShields = Math.max(0, runningShields - 1);
+        } else {
+          runningShields = curr.rankedDemotionProtection;
+        }
       } else {
         runningShields = Math.max(0, runningShields - 1);
       }
@@ -143,7 +168,7 @@ export function computeRankedShieldEvents(matches: Match[]): RankedShieldAnalysi
         matchId: curr.id,
         type: 'used',
         count: -1,
-        reason: 'Demotion protection activated (subrank floor preserved)',
+        reason: 'Demotion protection activated (shield consumed)',
         subrankLabel: currSubrankLabel,
         shieldsRemaining: runningShields,
       });
@@ -181,6 +206,27 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     y: number;
     progress: number;
   } | null>(null);
+
+  // Shield display mode: 'badges' (floating pins, new) | 'tooltip' (inside tooltip, old) | 'both'
+  const [shieldDisplayMode, setShieldDisplayMode] = useState<ShieldDisplayMode>(
+    () => loadUserSettings().shieldDisplayMode
+  );
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setShieldDisplayMode(loadUserSettings().shieldDisplayMode);
+    };
+    window.addEventListener('deadlock_settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('deadlock_settings_updated', handleSettingsUpdate);
+  }, []);
+
+  const handleShieldDisplayModeChange = (mode: ShieldDisplayMode) => {
+    setShieldDisplayMode(mode);
+    saveUserSettings({ shieldDisplayMode: mode });
+  };
+
+  const showFloatingBadges = shieldDisplayMode === 'badges';
+  const showTooltipShields = shieldDisplayMode === 'tooltip';
 
   // Filter matches that have ranked data, strictly excluding Obscurus (unranked / calibration badge 0)
   const rankedMatchesChronological = useMemo(() => {
@@ -319,22 +365,34 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     const progressMaxSubrank = 1000;
     const subrankPercent = Math.min(100, Math.round((progressInSubrank / progressMaxSubrank) * 100));
 
-    // Net delta across all matches
-    const totalDelta = rankedMatchesChronological.reduce(
+    // Net delta across visible matches in graph (adapts to range filter: all / last 20 / last 10)
+    const visibleDelta = filteredMatches.reduce(
       (sum, m) => sum + (matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0)),
       0
     );
 
-    // Wins and losses deltas
-    const winDeltas = rankedMatchesChronological
+    // Wins and losses deltas across visible matches
+    const visibleWinDeltas = filteredMatches
       .map((m) => matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0))
       .filter((d) => d > 0);
-    const lossDeltas = rankedMatchesChronological
+    const visibleLossDeltas = filteredMatches
       .map((m) => matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0))
       .filter((d) => d < 0);
 
-    const avgWin = winDeltas.length > 0 ? Math.round(winDeltas.reduce((a, b) => a + b, 0) / winDeltas.length) : 0;
-    const avgLoss = lossDeltas.length > 0 ? Math.round(lossDeltas.reduce((a, b) => a + b, 0) / lossDeltas.length) : 0;
+    const avgWin =
+      visibleWinDeltas.length > 0
+        ? Math.round(visibleWinDeltas.reduce((a, b) => a + b, 0) / visibleWinDeltas.length)
+        : 0;
+    const avgLoss =
+      visibleLossDeltas.length > 0
+        ? Math.round(visibleLossDeltas.reduce((a, b) => a + b, 0) / visibleLossDeltas.length)
+        : 0;
+
+    // All-time delta across all matches
+    const allTimeDelta = rankedMatchesChronological.reduce(
+      (sum, m) => sum + (matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0)),
+      0
+    );
 
     // Peak progress
     const peakProgress = Math.max(...rankedMatchesChronological.map((m) => m.rankedProgress || 0));
@@ -362,7 +420,9 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       progressInSubrank,
       progressMaxSubrank,
       subrankPercent,
-      totalDelta,
+      totalDelta: visibleDelta,
+      visibleDelta,
+      allTimeDelta,
       avgWin,
       avgLoss,
       peakProgress,
@@ -371,12 +431,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       totalWins,
       totalLosses,
       winRate,
+      visibleMatchesCount: filteredMatches.length,
       totalRanked: rankedMatchesChronological.length,
       totalShieldsGained,
       totalShieldsUsed,
       activeShields,
     };
-  }, [rankedMatchesChronological, shieldEventsMap, shieldAnalysis, matchDeltasMap]);
+  }, [rankedMatchesChronological, filteredMatches, shieldEventsMap, shieldAnalysis, matchDeltasMap]);
 
   // SVG Chart Geometry calculations
   const chartData = useMemo(() => {
@@ -559,9 +620,16 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
           {/* Card 2: Net Ranked Points Balance */}
           <div className="steam-glass steam-panel rounded-xl p-4 border border-deadlock-border/80 shadow-lg flex flex-col justify-between relative overflow-hidden group">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
-                Net Points Balance
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
+                  Net Points Balance
+                </span>
+                {rangeFilter !== 'all' && (
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-accent/40 text-deadlock-accent font-bold">
+                    {rangeFilter === 'last10' ? 'Last 10' : 'Last 20'}
+                  </span>
+                )}
+              </div>
               {stats.totalDelta >= 0 ? (
                 <TrendingUp className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
               ) : (
@@ -579,7 +647,9 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <span className="text-xs font-normal text-deadlock-muted">pts</span>
               </div>
               <p className="text-[11px] text-deadlock-muted mt-0.5 text-center">
-                Over {stats.totalRanked} recorded ranked matches
+                {rangeFilter === 'all'
+                  ? `Over ${stats.totalRanked} recorded ranked matches`
+                  : `Over last ${stats.visibleMatchesCount} matches`}
               </p>
             </div>
           </div>
@@ -587,9 +657,16 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
           {/* Card 3: Average Points per Game */}
           <div className="steam-glass steam-panel rounded-xl p-4 border border-deadlock-border/80 shadow-lg flex flex-col justify-between relative overflow-hidden group">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
-                Points Dynamic
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
+                  Points Dynamic
+                </span>
+                {rangeFilter !== 'all' && (
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-accent/40 text-deadlock-accent font-bold">
+                    {rangeFilter === 'last10' ? 'Last 10' : 'Last 20'}
+                  </span>
+                )}
+              </div>
               <Flame className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
 
@@ -597,7 +674,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               <div className="flex flex-col bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2 text-center">
                 <span className="text-[10px] uppercase font-bold text-emerald-300">Avg Gain</span>
                 <span className="text-base font-black font-mono text-emerald-400">
-                  +{stats.avgWin}
+                  {stats.avgWin > 0 ? `+${stats.avgWin}` : stats.avgWin}
                 </span>
               </div>
               <div className="flex flex-col bg-rose-500/10 border border-rose-500/30 rounded-lg p-2 text-center">
@@ -688,6 +765,35 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 }`}
               >
                 Last 10
+              </button>
+            </div>
+
+            {/* Shield Display Mode Switcher (Badges vs Tooltip) */}
+            <div className="flex items-center bg-deadlock-dark/80 p-0.5 rounded-lg border border-deadlock-border/60" title="Shield Display Style">
+              <button
+                type="button"
+                onClick={() => handleShieldDisplayModeChange('badges')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 ${
+                  shieldDisplayMode === 'badges'
+                    ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
+                    : 'text-deadlock-muted hover:text-deadlock-steam'
+                }`}
+                title="Badges (New version: Blue/Rose shields floating above match nodes)"
+              >
+                <Shield className="w-3 h-3 text-sky-400 fill-sky-500/80" />
+                <span>Badges</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShieldDisplayModeChange('tooltip')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  shieldDisplayMode === 'tooltip'
+                    ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
+                    : 'text-deadlock-muted hover:text-deadlock-steam'
+                }`}
+                title="Tooltip (Classic version: Shields inside hover tooltip)"
+              >
+                Tooltip
               </button>
             </div>
 
@@ -850,6 +956,11 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 const isSelectedHero = selectedHeroId === null || pt.match.myHeroId === selectedHeroId;
                 const isHovered = hoveredPoint?.index === pt.index;
                 const isSelectedMatch = selectedMatch?.id === pt.match.id;
+                const isShieldConsumed =
+                  pt.shieldEvent?.type === 'used' ||
+                  pt.match.rankedConsumedDemotionProtection === true;
+                const isShieldReset = pt.shieldEvent?.type === 'gained';
+                const shieldY = Math.max(12, pt.y - 20);
 
                 return (
                   <g key={pt.index} className={isSelectedHero ? 'opacity-100' : 'opacity-35 transition-opacity'}>
@@ -864,6 +975,128 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                         strokeWidth={2}
                         className="animate-pulse"
                       />
+                    )}
+
+                    {/* Consumed Demotion Protection Shield Badge (Rose) */}
+                    {showFloatingBadges && isShieldConsumed && (
+                      <g
+                        className="cursor-pointer transition-transform duration-150"
+                        onClick={() => {
+                          setSelectedMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
+                        }}
+                        onMouseEnter={() => {
+                          setHoveredFinalPoint(null);
+                          setHoveredPoint({
+                            match: pt.match,
+                            x: pt.x,
+                            y: pt.y,
+                            index: pt.index,
+                            startProgress: pt.startProgress,
+                            endProgress: pt.endProgress,
+                            effectiveDelta: pt.effectiveDelta,
+                          });
+                        }}
+                        style={{
+                          filter:
+                            isHovered || isSelectedMatch
+                              ? 'drop-shadow(0 2px 8px rgba(244,63,94,0.95))'
+                              : 'drop-shadow(0 2px 5px rgba(244,63,94,0.7))',
+                        }}
+                      >
+                        {/* Connecting dashed stem */}
+                        <line
+                          x1={pt.x}
+                          y1={pt.y - (isSelectedMatch ? 8 : 5)}
+                          x2={pt.x}
+                          y2={shieldY + 8}
+                          stroke="#f43f5e"
+                          strokeWidth={1.5}
+                          strokeDasharray="2 2"
+                          strokeOpacity={0.8}
+                        />
+
+                        {/* Shield Badge Container */}
+                        <circle
+                          cx={pt.x}
+                          cy={shieldY}
+                          r={8}
+                          fill="#200d11"
+                          stroke={isHovered || isSelectedMatch ? '#fb7185' : '#e11d48'}
+                          strokeWidth={isHovered || isSelectedMatch ? 2 : 1.5}
+                        />
+
+                        {/* Shield Icon SVG Path */}
+                        <path
+                          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+                          fill="#f43f5e"
+                          stroke={isHovered || isSelectedMatch ? '#ffffff' : '#fda4af'}
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          transform={`translate(${pt.x - 4.8}, ${shieldY - 4.8}) scale(0.4)`}
+                        />
+                      </g>
+                    )}
+
+                    {/* Shields Reset Protection Badge (Blue) */}
+                    {showFloatingBadges && isShieldReset && !isShieldConsumed && (
+                      <g
+                        className="cursor-pointer transition-transform duration-150"
+                        onClick={() => {
+                          setSelectedMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
+                        }}
+                        onMouseEnter={() => {
+                          setHoveredFinalPoint(null);
+                          setHoveredPoint({
+                            match: pt.match,
+                            x: pt.x,
+                            y: pt.y,
+                            index: pt.index,
+                            startProgress: pt.startProgress,
+                            endProgress: pt.endProgress,
+                            effectiveDelta: pt.effectiveDelta,
+                          });
+                        }}
+                        style={{
+                          filter:
+                            isHovered || isSelectedMatch
+                              ? 'drop-shadow(0 2px 8px rgba(56,189,248,0.95))'
+                              : 'drop-shadow(0 2px 5px rgba(56,189,248,0.7))',
+                        }}
+                      >
+                        {/* Connecting dashed stem */}
+                        <line
+                          x1={pt.x}
+                          y1={pt.y - (isSelectedMatch ? 8 : 5)}
+                          x2={pt.x}
+                          y2={shieldY + 8}
+                          stroke="#38bdf8"
+                          strokeWidth={1.5}
+                          strokeDasharray="2 2"
+                          strokeOpacity={0.8}
+                        />
+
+                        {/* Shield Badge Container */}
+                        <circle
+                          cx={pt.x}
+                          cy={shieldY}
+                          r={8}
+                          fill="#082032"
+                          stroke={isHovered || isSelectedMatch ? '#60a5fa' : '#0284c7'}
+                          strokeWidth={isHovered || isSelectedMatch ? 2 : 1.5}
+                        />
+
+                        {/* Shield Icon SVG Path */}
+                        <path
+                          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+                          fill="#38bdf8"
+                          stroke={isHovered || isSelectedMatch ? '#ffffff' : '#bae6fd'}
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          transform={`translate(${pt.x - 4.8}, ${shieldY - 4.8}) scale(0.4)`}
+                        />
+                      </g>
                     )}
 
                     {/* Hover & Click target circle */}
@@ -907,10 +1140,14 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                           ? '#fff'
                           : isHovered && pt.shieldEvent
                           ? pt.shieldEvent.type === 'gained'
-                            ? '#22d3ee'
+                            ? '#38bdf8'
                             : '#f43f5e'
                           : isHovered
                           ? '#e8c06a'
+                          : showFloatingBadges && isShieldConsumed
+                          ? '#f43f5e'
+                          : showFloatingBadges && isShieldReset
+                          ? '#38bdf8'
                           : isSelectedHero && selectedHeroId
                           ? '#e8c06a'
                           : '#110f0c'
@@ -982,7 +1219,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               const tierName = DEADLOCK_RANK_NAMES[rankTier] || 'Initiate';
               const progressInSub = startProg % 1000;
               const standingText = `${tierName} ${subrankRoman} · ${progressInSub} pts`;
-              const hoveredShield = shieldEventsMap.get(hoveredPoint.match.id);
+              const hoveredShield = showTooltipShields ? shieldEventsMap.get(hoveredPoint.match.id) : null;
 
               return (
                 <div
@@ -1004,8 +1241,8 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                       {standingText}
                     </span>
 
-                    {/* Shield event badge in tooltip */}
-                    {hoveredShield && (
+                    {/* Shield event badge in tooltip (Classic / Tooltip mode) */}
+                    {showTooltipShields && hoveredShield && (
                       <div
                         className={`mt-1 px-2 py-0.5 rounded flex items-center gap-1.5 text-[10px] font-bold font-mono ${
                           hoveredShield.type === 'gained'
@@ -1078,6 +1315,18 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
               <span className="w-3.5 h-1 rounded bg-[#a94442]" />
               <span>Defeat Trait (-pts)</span>
             </span>
+            {showFloatingBadges && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-sky-400 fill-sky-500/80" />
+                  <span>Shields Reset</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-rose-400 fill-rose-500/80" />
+                  <span>Shield Consumed</span>
+                </span>
+              </>
+            )}
             {chartData?.finalEndpoint && (
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#e8c06a] border border-[#110f0c]" />
