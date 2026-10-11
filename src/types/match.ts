@@ -55,6 +55,7 @@ export interface Match {
   laneAllyId?: number; // 1 ally on your duo lane
   laneOpponents?: number[]; // 1 or 2 enemies on your duo lane
   laneOutcome?: LaneOutcome;
+  playerSlot?: number; // 1-indexed (1 to 6) draft slot in the team
 
   // Ranked progression tracking - Auto-retrieved from Deadlock API
   rankedBadge?: number | null; // e.g. 13 (badge code)

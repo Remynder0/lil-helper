@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { HeroAvatar } from './HeroAvatar';
 import { HEROES, getHeroById } from '../data/heroes';
-import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS, LANE_LABELS, LANE_OUTCOME_LABELS, ConnectedProfile } from '../types/match';
-import { fetchPlayerRankStanding, PlayerRankStanding } from '../services/deadlockApi';
+import { Match, Side, MatchResult, SIDE_LABELS, RESULT_LABELS, LANE_LABELS, LANE_OUTCOME_LABELS, LaneColor, ConnectedProfile } from '../types/match';
+import { fetchPlayerRankStanding, PlayerRankStanding, buildRankStandingFromLocalMatch } from '../services/deadlockApi';
 import occultBadge from '../assets/occult/badge.svg';
 import victorianBadge from '../assets/victorian-metal/badge.svg';
 import victorianDivider from '../assets/victorian-metal/divider.svg';
@@ -32,6 +32,124 @@ import { persistMatch } from '../services/storage';
 import { updateQueuedMatchStatus, formatDurationDHM } from '../services/matchQueue';
 import { ReplayRecoveryModal } from './ReplayRecoveryModal';
 
+export interface LaneDuo {
+  lane: LaneColor;
+  heroes: number[];
+}
+
+/**
+ * Organizes a match's draft into 3 map duos (Yellow, Blue, Green).
+ * Places the player and partner in their actual lane duo, keeping
+ * the player's hero at their authentic map lane.
+ */
+export function getLanedTeamDuos(m: Match): { yourTeam: LaneDuo[]; enemyTeam: LaneDuo[] } {
+  // 1. Determine player's lane
+  let playerLane: LaneColor = m.lane || 'yellow';
+  if (!m.lane && m.playerSlot) {
+    if (m.playerSlot <= 2) playerLane = 'yellow';
+    else if (m.playerSlot <= 4) playerLane = 'blue';
+    else playerLane = 'green';
+  }
+
+  // 2. Build Your Team
+  const alliesList = Array.isArray(m.allies) ? m.allies : [];
+  const partnerId =
+    m.laneAllyId !== undefined && alliesList.includes(m.laneAllyId)
+      ? m.laneAllyId
+      : undefined;
+
+  const remainingAllies = partnerId !== undefined
+    ? alliesList.filter((id) => id !== partnerId)
+    : [...alliesList];
+
+  let playerDuo: number[];
+  let otherAllies: number[];
+
+  if (partnerId !== undefined) {
+    playerDuo = [m.myHeroId, partnerId];
+    otherAllies = remainingAllies;
+  } else if (remainingAllies.length > 0) {
+    playerDuo = [m.myHeroId, remainingAllies[0]];
+    otherAllies = remainingAllies.slice(1);
+  } else {
+    playerDuo = [m.myHeroId];
+    otherAllies = [];
+  }
+
+  const pair1 = otherAllies.slice(0, 2);
+  const pair2 = otherAllies.slice(2, 4);
+
+  let yourYellow: number[];
+  let yourBlue: number[];
+  let yourGreen: number[];
+
+  if (playerLane === 'yellow') {
+    yourYellow = playerDuo;
+    yourBlue = pair1;
+    yourGreen = pair2;
+  } else if (playerLane === 'blue') {
+    yourYellow = pair1;
+    yourBlue = playerDuo;
+    yourGreen = pair2;
+  } else {
+    yourYellow = pair1;
+    yourBlue = pair2;
+    yourGreen = playerDuo;
+  }
+
+  const yourTeam: LaneDuo[] = [
+    { lane: 'yellow', heroes: yourYellow },
+    { lane: 'blue', heroes: yourBlue },
+    { lane: 'green', heroes: yourGreen },
+  ];
+
+  // 3. Build Enemy Team
+  const enemiesList = Array.isArray(m.enemies) ? m.enemies : [];
+  const directOpponents = Array.isArray(m.laneOpponents) ? m.laneOpponents : [];
+  const oppIdsInEnemies = directOpponents.filter((id) => enemiesList.includes(id));
+
+  let enemyYellow: number[];
+  let enemyBlue: number[];
+  let enemyGreen: number[];
+
+  if (oppIdsInEnemies.length > 0) {
+    const oppDuo = [...oppIdsInEnemies];
+    const remainingEnemies = enemiesList.filter((id) => !oppDuo.includes(id));
+    while (oppDuo.length < 2 && remainingEnemies.length > 0) {
+      oppDuo.push(remainingEnemies.shift()!);
+    }
+
+    const enemyPair1 = remainingEnemies.slice(0, 2);
+    const enemyPair2 = remainingEnemies.slice(2, 4);
+
+    if (playerLane === 'yellow') {
+      enemyYellow = oppDuo;
+      enemyBlue = enemyPair1;
+      enemyGreen = enemyPair2;
+    } else if (playerLane === 'blue') {
+      enemyYellow = enemyPair1;
+      enemyBlue = oppDuo;
+      enemyGreen = enemyPair2;
+    } else {
+      enemyYellow = enemyPair1;
+      enemyBlue = enemyPair2;
+      enemyGreen = oppDuo;
+    }
+  } else {
+    enemyYellow = enemiesList.slice(0, 2);
+    enemyBlue = enemiesList.slice(2, 4);
+    enemyGreen = enemiesList.slice(4, 6);
+  }
+
+  const enemyTeam: LaneDuo[] = [
+    { lane: 'yellow', heroes: enemyYellow },
+    { lane: 'blue', heroes: enemyBlue },
+    { lane: 'green', heroes: enemyGreen },
+  ];
+
+  return { yourTeam, enemyTeam };
+}
+
 interface HistoryListProps {
   matches: Match[];
   profile?: ConnectedProfile | null;
@@ -57,26 +175,29 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   onMatchImported,
   className = '',
 }) => {
-  // Rank Standing state
-  const [rankStanding, setRankStanding] = useState<PlayerRankStanding | null>(null);
-  const [isLoadingRank, setIsLoadingRank] = useState<boolean>(false);
+  // Chronological ranked matches from local history
+  const latestLocalRankedMatch = useMemo(() => {
+    const ranked = matches
+      .filter((m) => m.rankedProgress !== undefined && m.rankedProgress !== null)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return ranked.length > 0 ? ranked[ranked.length - 1] : null;
+  }, [matches]);
 
-  // Incomplete match syncing & replay recovery states
-  const [syncingMatchId, setSyncingMatchId] = useState<number | null>(null);
-  const [waitNoticeMatchId, setWaitNoticeMatchId] = useState<number | null>(null);
-  const [selectedRecoveryMatch, setSelectedRecoveryMatch] = useState<Match | null>(null);
+  // Rank Standing state
+  const [apiStanding, setApiStanding] = useState<PlayerRankStanding | null>(null);
+  const [isLoadingRank, setIsLoadingRank] = useState<boolean>(false);
 
   useEffect(() => {
     if (!profile?.accountId) {
-      setRankStanding(null);
+      setApiStanding(null);
       return;
     }
     let isMounted = true;
     setIsLoadingRank(true);
-    fetchPlayerRankStanding(profile.accountId)
+    fetchPlayerRankStanding(profile.accountId, latestLocalRankedMatch)
       .then((data) => {
         if (isMounted) {
-          setRankStanding(data);
+          setApiStanding(data);
         }
       })
       .catch((err) => {
@@ -91,7 +212,21 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [profile?.accountId]);
+  }, [profile?.accountId, latestLocalRankedMatch?.id, latestLocalRankedMatch?.rankedProgress]);
+
+  // Effective rank standing: prioritize local match data (fallback to immediate local standing if API is loading)
+  const rankStanding = useMemo(() => {
+    if (apiStanding) return apiStanding;
+    if (latestLocalRankedMatch) {
+      return buildRankStandingFromLocalMatch(latestLocalRankedMatch, []);
+    }
+    return null;
+  }, [apiStanding, latestLocalRankedMatch]);
+
+  // Incomplete match syncing & replay recovery states
+  const [syncingMatchId, setSyncingMatchId] = useState<number | null>(null);
+  const [waitNoticeMatchId, setWaitNoticeMatchId] = useState<number | null>(null);
+  const [selectedRecoveryMatch, setSelectedRecoveryMatch] = useState<Match | null>(null);
 
   // Filter states
   const [heroFilter, setHeroFilter] = useState<number | 'all'>('all');
@@ -718,6 +853,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               );
             }
 
+            const lanedDuos = getLanedTeamDuos(m);
+
             return (
               <div
                 key={m.id}
@@ -731,9 +868,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 }`}
               >
                 {/* Main Card Row */}
-                <div className="p-3.5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div className="p-3.5 flex flex-row items-center justify-between gap-4 overflow-x-auto min-w-0">
                   {/* Left: Result Talisman Seal + Date + Played Hero Summary */}
-                  <div className="flex items-center gap-3.5 min-w-[230px]">
+                  <div className="flex items-center gap-3.5 shrink-0">
                     <div
                       className={`flex items-center justify-center w-11 h-11 rounded-full shadow-lg shrink-0 border-2 transition-transform group-hover:scale-105 ${
                         m.result === 'win'
@@ -776,15 +913,19 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                             ★ Streak
                           </span>
                         )}
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            m.side === 'hidden_king'
-                              ? 'bg-deadlock-hidden-king/20 text-deadlock-hidden-king border border-deadlock-hidden-king/40'
-                              : 'bg-deadlock-archmother/20 text-deadlock-archmother border border-deadlock-archmother/40'
-                          }`}
-                        >
-                          {SIDE_LABELS[m.side]}
-                        </span>
+                        {m.laneOutcome && (
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                              m.laneOutcome === 'won'
+                                ? 'bg-deadlock-win/15 border-deadlock-win/40 text-deadlock-win'
+                                : m.laneOutcome === 'lost'
+                                ? 'bg-deadlock-loss/15 border-deadlock-loss/40 text-deadlock-loss'
+                                : 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
+                            }`}
+                          >
+                            {LANE_OUTCOME_LABELS[m.laneOutcome]}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 text-[11px] text-gray-200 mt-0.5 flex-wrap">
@@ -799,84 +940,101 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                           </span>
                         )}
                       </div>
-
-                      <span className="text-xs font-semibold text-gray-200 mt-0.5">
-                        Played: <strong className="text-deadlock-steam">{myHero?.name || 'Unknown'}</strong>
-                      </span>
-
-                      {/* Lane Badge (if tracked) */}
-                      {m.lane && (
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                              m.lane === 'yellow'
-                                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
-                                : m.lane === 'blue'
-                                ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
-                                : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            }`}
-                          >
-                            {LANE_LABELS[m.lane]}
-                          </span>
-                          {m.laneOutcome && (
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                                m.laneOutcome === 'won'
-                                  ? 'bg-deadlock-win/15 border-deadlock-win/40 text-deadlock-win'
-                                  : m.laneOutcome === 'lost'
-                                  ? 'bg-deadlock-loss/15 border-deadlock-loss/40 text-deadlock-loss'
-                                  : 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
-                              }`}
-                            >
-                              {LANE_OUTCOME_LABELS[m.laneOutcome]}
-                            </span>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
-                  {/* Middle: 6v6 Team Draft Visuals */}
-                  <div className="flex-1 flex flex-wrap items-center justify-center gap-3">
+                  {/* Middle: 6v6 Team Draft Visuals (Grouped by Lane: Yellow ➔ Blue ➔ Green) */}
+                  <div className="flex-1 flex items-center justify-center gap-3 shrink-0 flex-nowrap min-w-0">
                     {/* Your Team */}
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-deadlock-dark/70 border border-deadlock-border/50">
-                      {/* My Hero (Highlighted) */}
-                      <div title={`Your Hero: ${myHero?.name}`}>
-                        <HeroAvatar
-                          heroId={m.myHeroId}
-                          size="sm"
-                          accentColor={m.side}
-                          isHighlighted={true}
-                        />
-                      </div>
-                      <span className="w-px h-6 bg-deadlock-border/70 mx-0.5" />
-                      {/* Allies */}
-                      {m.allies.map((allyId, idx) => {
-                        const ally = getHeroById(allyId);
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-deadlock-dark/70 border border-deadlock-border/50 shrink-0">
+                      {lanedDuos.yourTeam.map((duo, duoIdx) => {
+                        const isMyLane = duo.lane === m.lane;
                         return (
-                          <div key={idx} title={`Ally: ${ally?.name}`}>
-                            <HeroAvatar heroId={allyId} size="xs" accentColor={m.side} />
-                          </div>
+                          <React.Fragment key={duo.lane}>
+                            <div
+                              className={`flex items-center gap-1 px-1 py-0.5 rounded-md transition-colors ${
+                                isMyLane
+                                  ? 'bg-deadlock-panel/60 border border-deadlock-border/80 shadow-sm'
+                                  : ''
+                              }`}
+                              title={`${LANE_LABELS[duo.lane]}${isMyLane ? ' (Your Lane)' : ''}`}
+                            >
+                              {duo.heroes.map((heroId, heroIdx) => {
+                                const isUser = heroId === m.myHeroId;
+                                const isPartner = heroId === m.laneAllyId;
+                                const heroData = getHeroById(heroId);
+                                return (
+                                  <div
+                                    key={`${heroId}-${heroIdx}`}
+                                    title={
+                                      isUser
+                                        ? `Your Hero: ${heroData?.name || 'Unknown'} (${LANE_LABELS[duo.lane]})`
+                                        : isPartner
+                                        ? `Lane Partner: ${heroData?.name || 'Unknown'} (${LANE_LABELS[duo.lane]})`
+                                        : `Ally: ${heroData?.name || 'Unknown'} (${LANE_LABELS[duo.lane]})`
+                                    }
+                                  >
+                                    <HeroAvatar
+                                      heroId={heroId}
+                                      size={isUser ? 'sm' : 'xs'}
+                                      accentColor={m.side}
+                                      isHighlighted={isUser}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {duoIdx < 2 && (
+                              <span className="w-px h-5 bg-deadlock-border/40" />
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </div>
 
-                    <span className="text-xs font-bold font-mono text-deadlock-muted px-1">VS</span>
+                    <span className="text-xs font-bold font-mono text-deadlock-muted px-1 shrink-0">VS</span>
 
                     {/* Enemy Team */}
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-deadlock-dark/70 border border-deadlock-border/50">
-                      {m.enemies.map((enemyId, idx) => {
-                        const enemy = getHeroById(enemyId);
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-deadlock-dark/70 border border-deadlock-border/50 shrink-0">
+                      {lanedDuos.enemyTeam.map((duo, duoIdx) => {
+                        const isOpponentLane = duo.lane === m.lane;
                         return (
-                          <div key={idx} title={`Enemy: ${enemy?.name}`}>
-                            <HeroAvatar heroId={enemyId} size="xs" accentColor={enemySide} />
-                          </div>
+                          <React.Fragment key={duo.lane}>
+                            <div
+                              className={`flex items-center gap-1 px-1 py-0.5 rounded-md transition-colors ${
+                                isOpponentLane
+                                  ? 'bg-deadlock-panel/60 border border-deadlock-border/80 shadow-sm'
+                                  : ''
+                              }`}
+                              title={`${LANE_LABELS[duo.lane]}${isOpponentLane ? ' (Opponents in Your Lane)' : ''}`}
+                            >
+                              {duo.heroes.map((enemyId, heroIdx) => {
+                                const enemy = getHeroById(enemyId);
+                                const isDirectOpponent = m.laneOpponents?.includes(enemyId);
+                                return (
+                                  <div
+                                    key={`${enemyId}-${heroIdx}`}
+                                    title={
+                                      isDirectOpponent
+                                        ? `Direct Opponent: ${enemy?.name || 'Unknown'} (${LANE_LABELS[duo.lane]})`
+                                        : `Enemy: ${enemy?.name || 'Unknown'} (${LANE_LABELS[duo.lane]})`
+                                    }
+                                  >
+                                    <HeroAvatar heroId={enemyId} size="xs" accentColor={enemySide} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {duoIdx < 2 && (
+                              <span className="w-px h-5 bg-deadlock-border/40" />
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </div>
                   </div>
 
                   {/* Right: Actions (Details, Edit, Delete) */}
-                  <div className="flex items-center gap-1.5 self-end lg:self-center">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {/* Details Toggle */}
                     <button
                       type="button"

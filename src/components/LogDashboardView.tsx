@@ -14,7 +14,6 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  AlertTriangle,
   Gamepad2,
   ExternalLink,
   ChevronDown,
@@ -29,7 +28,6 @@ import {
   removeMatchFromQueue,
   updateQueuedMatchStatus,
   formatDurationDHM,
-  isMatchBlocked,
 } from '../services/matchQueue';
 import {
   OcrCaptureEntry,
@@ -82,8 +80,6 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
   const [checkingMatchId, setCheckingMatchId] = useState<number | null>(null);
-
-  const blockedMatches = matchQueue.filter((m) => isMatchBlocked(m));
 
   // 3. OCR Captures State
   const [ocrCaptures, setOcrCaptures] = useState<OcrCaptureEntry[]>([]);

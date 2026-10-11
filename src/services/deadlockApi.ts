@@ -110,6 +110,7 @@ export interface RawMatchPlayerMetadata {
   account_id: number;
   hero_id: number;
   team: number; // 0 or 1
+  player_slot?: number;
   assigned_lane?: number; // 1, 4, 6 or other
   kills?: number;
   deaths?: number;
@@ -538,6 +539,7 @@ export function convertToAppMatch(
   let laneAllyId: number | undefined;
   let laneOpponents: number[] | undefined;
   let laneOutcome: LaneOutcome | undefined;
+  let playerSlot: number | undefined;
   let rankedBadge: number | null = null;
   let rankedRank: number | null = null;
   let rankedSubrank: number | null = null;
@@ -554,10 +556,17 @@ export function convertToAppMatch(
       (p) => p.account_id === historyEntry.account_id || p.hero_id === myHeroId
     );
 
+    if (myPlayerMeta?.player_slot !== undefined) {
+      playerSlot = myPlayerMeta.player_slot;
+    }
+
     const allyPlayers = players.filter(
       (p) => p.team === myTeam && p.hero_id !== myHeroId
     );
     const enemyPlayers = players.filter((p) => p.team !== myTeam);
+
+    allyPlayers.sort((a, b) => (a.assigned_lane ?? 99) - (b.assigned_lane ?? 99));
+    enemyPlayers.sort((a, b) => (a.assigned_lane ?? 99) - (b.assigned_lane ?? 99));
 
     allies = allyPlayers.map((p) => p.hero_id).slice(0, 5);
     enemies = enemyPlayers.map((p) => p.hero_id).slice(0, 6);
@@ -603,8 +612,12 @@ export function convertToAppMatch(
       }
       rankedProgress = rankData.final_flat_progress ?? null;
       rankedInitialProgress = rankData.initial_flat_progress ?? null;
-      rankedDemotionProtection = rankData.initial_demotion_protection_games ?? null;
-      rankedConsumedDemotionProtection = rankData.consumed_demotion_protection ?? false;
+      const initialShields = rankData.initial_demotion_protection_games ?? null;
+      const consumedShield = rankData.consumed_demotion_protection ?? false;
+      rankedConsumedDemotionProtection = consumedShield;
+      rankedDemotionProtection = initialShields !== null
+        ? (consumedShield ? Math.max(0, initialShields - 1) : initialShields)
+        : null;
     }
   }
 
@@ -639,6 +652,7 @@ export function convertToAppMatch(
     laneAllyId,
     laneOpponents,
     laneOutcome,
+    playerSlot,
     rankedBadge,
     rankedRank,
     rankedSubrank,
@@ -834,7 +848,13 @@ export async function backfillRankedDataForMatches(
                   : rankData.desired_progress_change ?? null,
               rankedProgress: rankData.final_flat_progress ?? null,
               rankedInitialProgress: rankData.initial_flat_progress ?? null,
-              rankedDemotionProtection: rankData.initial_demotion_protection_games ?? null,
+              rankedDemotionProtection:
+                rankData.initial_demotion_protection_games !== undefined &&
+                rankData.initial_demotion_protection_games !== null
+                  ? (rankData.consumed_demotion_protection
+                      ? Math.max(0, rankData.initial_demotion_protection_games - 1)
+                      : rankData.initial_demotion_protection_games)
+                  : null,
               rankedConsumedDemotionProtection: rankData.consumed_demotion_protection ?? false,
             };
             updatedMap.set(m.id, updated);
@@ -1059,11 +1079,93 @@ export async function fetchPlayerRank(accountId: number): Promise<RawPlayerRankR
   }
 }
 
-export async function fetchPlayerRankStanding(accountId: number): Promise<PlayerRankStanding | null> {
+/**
+ * Builds a PlayerRankStanding directly from a local match entity,
+ * combining local calculated progression with global leaderboard percentile.
+ */
+export function buildRankStandingFromLocalMatch(
+  match: Match,
+  badgeDist: RawBadgeDistributionEntry[] = []
+): PlayerRankStanding | null {
+  if (match.rankedProgress === undefined || match.rankedProgress === null) {
+    return null;
+  }
+
+  const currentProgress = match.rankedProgress;
+  const rank = match.rankedRank || (match.rankedBadge ? Math.floor(match.rankedBadge / 10) : 1);
+  const subrank = Math.min(6, Math.max(1, Math.floor((currentProgress % 6000) / 1000) + 1));
+  const badge = rank * 10 + subrank;
+  const tierName = DEADLOCK_RANK_NAMES[rank] || `Rank ${rank}`;
+  const subrankRoman = ROMAN_NUMERALS[subrank] || (subrank > 0 ? String(subrank) : '');
+  const badgeImageUrl = `https://api.deadlock-api.com/v1/assets/ranks/${rank}/${subrank}/image`;
+
+  const progress = currentProgress % 1000;
+  const progressMax = 1000;
+  const progressChange = match.rankedDelta ?? 0;
+
+  const defaultMaxProtection = subrank === 1 ? 5 : 2;
+  const demotionProtectionGames = match.rankedDemotionProtection ?? defaultMaxProtection;
+  const maxDemotionProtectionGames = Math.max(defaultMaxProtection, demotionProtectionGames);
+
+  const totalRankedPlayers = badgeDist.reduce((sum, item) => sum + (item.unique_players || 0), 0);
+  const playersAbove = badgeDist
+    .filter((item) => item.badge_level > badge)
+    .reduce((sum, item) => sum + (item.unique_players || 0), 0);
+  const playersBelow = badgeDist
+    .filter((item) => item.badge_level < badge)
+    .reduce((sum, item) => sum + (item.unique_players || 0), 0);
+
+  let topPercentile = 0;
+  let betterThanPercentile = 0;
+  if (totalRankedPlayers > 0) {
+    topPercentile = (playersAbove / totalRankedPlayers) * 100;
+    betterThanPercentile = (playersBelow / totalRankedPlayers) * 100;
+  }
+
+  const topPercentileFormatted =
+    totalRankedPlayers > 0
+      ? topPercentile < 0.1
+        ? 'Top 0.1%'
+        : `Top ${topPercentile.toFixed(1)}%`
+      : 'Top --%';
+  const betterThanFormatted =
+    totalRankedPlayers > 0 ? `Better than ${betterThanPercentile.toFixed(1)}%` : 'Active player';
+
+  return {
+    badge,
+    rank,
+    subrank,
+    tierName,
+    subrankRoman,
+    badgeImageUrl,
+    progress,
+    progressMax,
+    flatProgress: currentProgress,
+    progressChange,
+    demotionProtectionGames,
+    maxDemotionProtectionGames,
+    calibrationGamesRemaining: 0,
+    percentile: parseFloat(betterThanPercentile.toFixed(1)),
+    topPercentileFormatted,
+    betterThanFormatted,
+    totalRankedPlayers,
+    playersAbove,
+  };
+}
+
+export async function fetchPlayerRankStanding(
+  accountId: number,
+  latestLocalMatch?: Match | null
+): Promise<PlayerRankStanding | null> {
   const [rankData, badgeDist] = await Promise.all([
     fetchPlayerRank(accountId),
     fetchBadgeDistribution(),
   ]);
+
+  // Priority: if a local match has ranked data, use it as the source of truth for the player's rank!
+  if (latestLocalMatch && latestLocalMatch.rankedProgress !== undefined && latestLocalMatch.rankedProgress !== null) {
+    return buildRankStandingFromLocalMatch(latestLocalMatch, badgeDist);
+  }
 
   if (!rankData || rankData.rank === undefined) {
     return null;
