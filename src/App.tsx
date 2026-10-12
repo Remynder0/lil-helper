@@ -9,6 +9,8 @@ import { AppHeader, AppTab } from './components/AppHeader';
 import { ImportMatchByIdModal } from './components/ImportMatchByIdModal';
 import { useProfileSync } from './hooks/useProfileSync';
 import { useDeadlockGameState } from './hooks/useDeadlockGameState';
+import { PlayerGameState } from './services/logWatcher';
+import { loadUserSettings } from './services/userSettings';
 import {
   fetchAllMatches,
   removeMatch,
@@ -88,6 +90,19 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadMatches();
   }, []);
+
+  // Automatically switch to Draft Assistant view when game enters draft / selection phase
+  const prevGameStateRef = useRef<PlayerGameState | null>(null);
+  useEffect(() => {
+    const prevState = prevGameStateRef.current;
+    const currentState = gameContext.state;
+    prevGameStateRef.current = currentState;
+
+    const settings = loadUserSettings();
+    if (settings.autoNavigateToDraft && currentState === 'draft' && prevState !== 'draft') {
+      setActiveTab('assistant');
+    }
+  }, [gameContext.state]);
 
   // Automatically record active matchId from live game logs into tracked pending list
   useEffect(() => {
@@ -406,9 +421,9 @@ export const App: React.FC = () => {
             onNavigateToStreak={handleNavigateToStreak}
           />
         )}
-        {activeTab === 'assistant' && (
+        <div className={activeTab === 'assistant' ? 'contents' : 'hidden'}>
           <DraftAssistantView matches={matches} gameContext={gameContext} />
-        )}
+        </div>
         {activeTab === 'logs' && (
           <LogDashboardView
             profile={profile}

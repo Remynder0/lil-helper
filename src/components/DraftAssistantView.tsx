@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import occultCorner from '../assets/occult/corner.svg';
 import { Match, Side, LaneColor, LANE_LABELS } from '../types/match';
 import { HeroPicker } from './HeroPicker';
@@ -10,6 +10,12 @@ import { DraftHeader } from './draft/DraftHeader';
 import { DraftLanesBoard } from './draft/DraftLanesBoard';
 import { DraftDecisionTree } from './draft/DraftDecisionTree';
 import { OcrInspectorModal } from './draft/OcrInspectorModal';
+import { loadUserSettings, saveUserSettings } from '../services/userSettings';
+import {
+  loadDraftSessionState,
+  saveDraftSessionState,
+  resetDraftSessionState,
+} from '../services/draftStorage';
 
 interface DraftAssistantViewProps {
   matches: Match[];
@@ -17,23 +23,64 @@ interface DraftAssistantViewProps {
 }
 
 export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches, gameContext }) => {
+  // Persistent Draft Session State across tab changes & reloads
+  const initialSession = useMemo(() => loadDraftSessionState(), []);
+
+  // Mode Manuel vs Mode Auto (OCR & Sync)
+  const [isManualMode, setIsManualMode] = useState<boolean>(() => {
+    return loadUserSettings().draftMode === 'manual';
+  });
+
+  // Collapsible state for The 3 Duo Lanes Astral Alignment board
+  const [isLanesCollapsed, setIsLanesCollapsed] = useState<boolean>(() => initialSession.isLanesCollapsed);
+  const autoCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearAutoCollapseTimer = () => {
+    if (autoCollapseTimerRef.current) {
+      clearTimeout(autoCollapseTimerRef.current);
+      autoCollapseTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearAutoCollapseTimer();
+  }, []);
+
+  const handleToggleLanesCollapse = () => {
+    clearAutoCollapseTimer();
+    setIsLanesCollapsed((prev) => !prev);
+  };
+
+  const handleToggleManualMode = () => {
+    clearAutoCollapseTimer();
+    setIsLanesCollapsed(false); // Keep board open in manual mode for slot selection
+    setIsManualMode((prev) => {
+      const next = !prev;
+      saveUserSettings({ draftMode: next ? 'manual' : 'ocr' });
+      if (!next) {
+        setActiveSlot(null);
+      } else {
+        setActiveSlot({ type: 'lane', lane: assignedLane, team: 'allies', index: 0 });
+      }
+      return next;
+    });
+  };
+
   // 1. Patron Factions (Side)
-  const [side, setSide] = useState<Side>('hidden_king');
+  const [side, setSide] = useState<Side>(() => initialSession.side);
   const enemySide: Side = side === 'hidden_king' ? 'archmother' : 'hidden_king';
 
-  // 2. Bans (Exactly 2 banned heroes in the game)
-  const [bannedHeroIds, setBannedHeroIds] = useState<(number | null)[]>([null, null]);
+  // 2. Bans (Exactly 3 banned heroes in the match)
+  const [bannedHeroIds, setBannedHeroIds] = useState<(number | null)[]>(() => initialSession.bannedHeroIds);
 
   // 3. Your Hero & Assigned Lane
-  const [myHeroId, setMyHeroId] = useState<number | null>(null);
-  const [assignedLane, setAssignedLane] = useState<LaneColor>('green');
+  const [myHeroId, setMyHeroId] = useState<number | null>(() => initialSession.myHeroId);
+  const [assignedLane, setAssignedLane] = useState<LaneColor>(() => initialSession.assignedLane);
 
   // 4. The 3 Duo Lanes Draft (Yellow, Blue, Green: 2 allies & 2 enemies each = exactly 6v6)
-  const [lanes, setLanes] = useState<Record<LaneColor, { allies: (number | null)[]; enemies: (number | null)[] }>>({
-    yellow: { allies: [null, null], enemies: [null, null] },
-    blue: { allies: [null, null], enemies: [null, null] },
-    green: { allies: [null, null], enemies: [null, null] },
-  });
+  const [lanes, setLanes] = useState<Record<LaneColor, { allies: (number | null)[]; enemies: (number | null)[] }>>(
+    () => initialSession.lanes
+  );
 
   const handleSetAssignedLane = (newLane: LaneColor) => {
     setAssignedLane(newLane);
@@ -86,12 +133,11 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
     }
   }, [gameContext?.myHeroId, assignedLane, myHeroId]);
 
-  // 5. Active slot targeting for one-click hero picker assignment
-  const [activeSlot, setActiveSlot] = useState<ActiveSlot | null>({
-    type: 'lane',
-    lane: 'green',
-    team: 'allies',
-    index: 0,
+  // 5. Active slot targeting for one-click hero picker assignment (only when in manual mode)
+  const [activeSlot, setActiveSlot] = useState<ActiveSlot | null>(() => {
+    return loadUserSettings().draftMode === 'manual'
+      ? { type: 'lane', lane: 'green', team: 'allies', index: 0 }
+      : null;
   });
 
   // Memoized: Calculate all picked heroes across all lanes
@@ -175,11 +221,17 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
       const nextBans = [...bannedHeroIds];
       nextBans[activeSlot.index] = heroId;
       setBannedHeroIds(nextBans);
-      // Auto-advance to next ban or first ally slot
+      // Auto-advance to next empty ban slot (0 -> 1 -> 2)
       if (activeSlot.index === 0 && nextBans[1] === null) {
         setActiveSlot({ type: 'ban', index: 1 });
+      } else if ((activeSlot.index === 0 || activeSlot.index === 1) && nextBans[2] === null) {
+        setActiveSlot({ type: 'ban', index: 2 });
       } else {
-        setActiveSlot({ type: 'lane', lane: assignedLane, team: 'allies', index: 0 });
+        if (isManualMode) {
+          setActiveSlot({ type: 'lane', lane: assignedLane, team: 'allies', index: 0 });
+        } else {
+          setActiveSlot(null);
+        }
       }
     } else {
       const { lane: l, team, index } = activeSlot;
@@ -202,22 +254,44 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
   };
 
   const handleReset = () => {
-    setBannedHeroIds([null, null]);
+    clearAutoCollapseTimer();
+    resetDraftSessionState();
+    setBannedHeroIds([null, null, null]);
     setMyHeroId(null);
     setAssignedLane('green');
+    setSide('hidden_king');
     setLanes({
       yellow: { allies: [null, null], enemies: [null, null] },
       blue: { allies: [null, null], enemies: [null, null] },
       green: { allies: [null, null], enemies: [null, null] },
     });
-    setActiveSlot({ type: 'lane', lane: 'green', team: 'allies', index: 0 });
+    setLastScanResult(null);
+    setIsLanesCollapsed(false);
+    if (isManualMode) {
+      setActiveSlot({ type: 'lane', lane: 'green', team: 'allies', index: 0 });
+    } else {
+      setActiveSlot(null);
+    }
   };
 
   // Screen OCR Scanning (reads Deadlock Escape Menu on demand)
   const [isScanningScreen, setIsScanningScreen] = useState(false);
   const [scanStatusMessage, setScanStatusMessage] = useState<string | null>(null);
-  const [lastScanResult, setLastScanResult] = useState<ScreenScanResult | null>(null);
+  const [lastScanResult, setLastScanResult] = useState<ScreenScanResult | null>(() => initialSession.lastScanResult);
   const [showOcrInspector, setShowOcrInspector] = useState(false);
+
+  // Persist draft slots and state so they survive tab changes & reloads until Reset or new Scan
+  useEffect(() => {
+    saveDraftSessionState({
+      side,
+      bannedHeroIds,
+      myHeroId,
+      assignedLane,
+      lanes,
+      lastScanResult,
+      isLanesCollapsed,
+    });
+  }, [side, bannedHeroIds, myHeroId, assignedLane, lanes, lastScanResult, isLanesCollapsed]);
 
   const handleScanScreen = async () => {
     try {
@@ -230,11 +304,11 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
       let alliesPlaced = 0;
       let enemiesPlaced = 0;
 
-      setLanes((prev) => {
-        const nextLanes = {
-          yellow: { allies: [...prev.yellow.allies], enemies: [...prev.yellow.enemies] },
-          blue: { allies: [...prev.blue.allies], enemies: [...prev.blue.enemies] },
-          green: { allies: [...prev.green.allies], enemies: [...prev.green.enemies] },
+      setLanes((_prev) => {
+        const nextLanes: Record<LaneColor, { allies: (number | null)[]; enemies: (number | null)[] }> = {
+          yellow: { allies: [null, null], enemies: [null, null] },
+          blue: { allies: [null, null], enemies: [null, null] },
+          green: { allies: [null, null], enemies: [null, null] },
         };
 
         // Deadlock lists heroes in exact lane order:
@@ -271,7 +345,19 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
         setSide(result.detectedSide);
       }
 
-      setScanStatusMessage(`Scan complete: ${alliesPlaced} allies & ${enemiesPlaced} enemies detected! Click "Journal OCR" to inspect details.`);
+      // Expand board initially so user sees the newly populated heroes
+      setIsLanesCollapsed(false);
+      clearAutoCollapseTimer();
+
+      // Automatically collapse with fluid animation after 3 seconds to reveal the swap/switch recommendations
+      autoCollapseTimerRef.current = setTimeout(() => {
+        setIsLanesCollapsed(true);
+        autoCollapseTimerRef.current = null;
+      }, 3000);
+
+      setScanStatusMessage(
+        `Scan complete: ${alliesPlaced} allies & ${enemiesPlaced} enemies detected! Collapsing lanes in 3s to show swap/switch options.`
+      );
       setTimeout(() => setScanStatusMessage(null), 8000);
     } catch (err) {
       console.error('Screen OCR scan failed:', err);
@@ -300,18 +386,27 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
         />
       </div>
 
-      <div className="flex flex-col gap-6 relative z-10">
+      <div className="flex flex-col gap-6 relative z-30">
         {/* 1. TOP SETUP HEADER: SIDES + BANS + RESET + LIVE SYNC */}
         <DraftHeader
           side={side}
           onSideChange={setSide}
           bannedHeroIds={bannedHeroIds}
-          onSelectBanSlot={(index) => setActiveSlot({ type: 'ban', index })}
+          onSelectBanSlot={(index) => {
+            if (activeSlot?.type === 'ban' && activeSlot.index === index) {
+              setActiveSlot(null);
+            } else {
+              setActiveSlot({ type: 'ban', index });
+            }
+          }}
           onRemoveBan={(index) => {
             const next = [...bannedHeroIds];
             next[index] = null;
             setBannedHeroIds(next);
           }}
+          onSelectHeroForBan={handleSelectHero}
+          disabledHeroIds={allUnavailableHeroIds}
+          onCloseBanPopover={() => setActiveSlot(null)}
           activeSlot={activeSlot}
           isScanningScreen={isScanningScreen}
           onScanScreen={handleScanScreen}
@@ -319,9 +414,8 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
           onOpenOcrInspector={() => setShowOcrInspector(true)}
           onReset={handleReset}
           scanStatusMessage={scanStatusMessage}
-          gameContext={gameContext}
-          assignedLane={assignedLane}
-          onSetAssignedLane={handleSetAssignedLane}
+          isManualMode={isManualMode}
+          onToggleManualMode={handleToggleManualMode}
         />
 
         {/* 2. THE 3 DUO LANES BOARD */}
@@ -342,35 +436,42 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
             }
           }}
           onSetAssignedLane={handleSetAssignedLane}
+          isManualMode={isManualMode}
+          isCollapsed={isLanesCollapsed}
+          onToggleCollapse={handleToggleLanesCollapse}
         />
 
         {/* 3. OPTIMAL ACTIONS VISUAL DECISION TREE & 4. FAST HERO PICKER */}
-        {/* Stacks vertically on base/small screens, splits side-by-side on wide/2K screens */}
+        {/* In Auto Mode: Decision Tree spans full width (bans selected via floating popover bubble in header). In Manual Mode: Decision Tree on left, HeroPicker on right */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <div className="xl:col-span-7 flex flex-col gap-6">
+          <div className={isManualMode ? 'xl:col-span-7 flex flex-col gap-6' : 'xl:col-span-12 flex flex-col gap-6'}>
             <DraftDecisionTree
               bestActionsAdvisor={bestActionsAdvisor}
               myHeroId={myHeroId}
+              isManualMode={isManualMode}
+              onSwitchToManual={handleToggleManualMode}
             />
           </div>
 
-          <div className="xl:col-span-5 xl:sticky xl:top-[90px]">
-            <HeroPicker
-              title={
-                activeSlot?.type === 'ban'
-                  ? `Select Hero to Ban #${activeSlot.index + 1}`
-                  : activeSlot
-                  ? `Pick Hero for ${activeSlot.team === 'allies' ? 'Allied Duo' : 'Enemy Duo'} (${LANE_LABELS[activeSlot.lane]} Slot #${activeSlot.index + 1})`
-                  : 'Select a hero'
-              }
-              subtitle="Only 1 copy per hero allowed in the match. Banned heroes and already picked heroes are disabled."
-              selectedHeroIds={allUnavailableHeroIds}
-              disabledHeroIds={allUnavailableHeroIds}
-              onSelectHero={handleSelectHero}
-              accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
-              variant="occult"
-            />
-          </div>
+          {isManualMode && (
+            <div className="xl:col-span-5 xl:sticky xl:top-[90px]">
+              <HeroPicker
+                title={
+                  activeSlot?.type === 'ban'
+                    ? `Select Hero to Ban #${activeSlot.index + 1}`
+                    : activeSlot
+                    ? `Pick Hero for ${activeSlot.team === 'allies' ? 'Allied Duo' : 'Enemy Duo'} (${LANE_LABELS[activeSlot.lane]} Slot #${activeSlot.index + 1})`
+                    : 'Select a hero'
+                }
+                subtitle="Only 1 copy per hero allowed in the match. Banned heroes and already picked heroes are disabled."
+                selectedHeroIds={allUnavailableHeroIds}
+                disabledHeroIds={allUnavailableHeroIds}
+                onSelectHero={handleSelectHero}
+                accentColor={activeSlot?.type === 'ban' ? 'default' : activeSlot?.team === 'allies' ? side : enemySide}
+                variant="occult"
+              />
+            </div>
+          )}
         </div>
 
       {/* 5. OCR JOURNAL & DIAGNOSTIC MODAL */}
