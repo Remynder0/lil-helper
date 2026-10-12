@@ -50,58 +50,13 @@ function levenshtein(a: string, b: string): number {
   return matrix[an][bn];
 }
 
-// Common game/UI words in Deadlock menu that should never match hero names
-const UI_STOP_WORDS = new Set([
-  'niveau',
-  'contacts',
-  'occultistes',
-  'equipe',
-  'ennemie',
-  'ennemi',
-  'enemy',
-  'team',
-  'allies',
-  'kills',
-  'kill',
-  'death',
-  'deaths',
-  'mort',
-  'morts',
-  'assists',
-  'assist',
-  'ping',
-  'fps',
-  'server',
-  'serveur',
-  'report',
-  'signaler',
-  'mute',
-  'vocal',
-  'chat',
-  'partie',
-  'match',
-  'stat',
-  'stats',
-  'spectateur',
-  'spectator',
-  'patron',
-  'ombre',
-  'matriarche',
-  'archmother',
-  'hidden',
-  'king',
-  'menu',
-  'echap',
-  'escape',
-  'abandonner',
-  'rejoindre',
-  'pause',
-  'joueur',
-  'player',
-  'profil',
-  'profile',
-  'steam',
-]);
+import {
+  isOcrStopWord,
+  ALLIES_HEADER_REGEX,
+  ENEMIES_HEADER_REGEX,
+  ENEMY_FALLBACK_REGEX,
+  detectFactionBilingual,
+} from './ocr/ocrDictionaries';
 
 interface CandidateMatch {
   hero: Hero;
@@ -115,7 +70,7 @@ function findBestHero(token: string): { hero: Hero; distance: number; confidence
   const clean = cleanWord(token);
   if (clean.length < 3) return null;
 
-  if (UI_STOP_WORDS.has(clean)) {
+  if (isOcrStopWord(clean)) {
     return null;
   }
 
@@ -293,9 +248,6 @@ function findSectionBoundaries(lines: string[]): {
   let alliesHeaderName = '';
   let enemiesHeaderName = '';
 
-  const ALLIES_HEADER_REGEX = /(?:mon\s*equipe|mon\s*équipe|équipe\s*alli[ée]e?|allied\s*team|allies|your\s*team)/i;
-  const ENEMIES_HEADER_REGEX = /(?:equipe\s*ennemie|équipe\s*ennemie|ennemie|ennemi|enemy\s*team|enemies|enemy)/i;
-
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -317,7 +269,7 @@ function findSectionBoundaries(lines: string[]): {
   if (enemiesStart === -1) {
     // Look for mid-point or word 'ennemi' in any line
     for (let i = alliesStart + 1; i < lines.length; i++) {
-      if (/ennemi|enemy/i.test(lines[i])) {
+      if (ENEMY_FALLBACK_REGEX.test(lines[i])) {
         enemiesStart = i;
         enemiesHeaderName = lines[i];
         break;
@@ -381,25 +333,14 @@ export async function scanEscapeMenuDraft(): Promise<ScreenScanResult> {
     allies = allies.slice(0, 6);
     enemies = enemies.slice(0, 6);
 
-    // 4. Detect Faction Side (Patron)
-    // If enemy side has "Roi de l'Ombre", player is "The Archmother"
-    // If enemy side has "Matriarche", player is "The Hidden King"
+    // 4. Detect Faction Side (Patron) — Seamlessly supports French, English, or mixed clients
     const alliesRawText = lines.slice(alliesStart, enemiesStart).join(' ');
     const enemiesRawText = lines.slice(enemiesStart).join(' ');
 
-    let detectedSide: Side | undefined = undefined;
-    if (/roi\s*de\s*(?:l\s*['’]?)?ombre/i.test(enemiesRawText)) {
-      detectedSide = 'archmother'; // Allied side is Archmother
-      statusLog.push(`[${new Date().toLocaleTimeString()}] Detected Enemy Patron: Roi de l'Ombre -> Player Side: The Archmother.`);
-    } else if (/matriarche/i.test(enemiesRawText)) {
-      detectedSide = 'hidden_king'; // Allied side is Hidden King
-      statusLog.push(`[${new Date().toLocaleTimeString()}] Detected Enemy Patron: Matriarche -> Player Side: The Hidden King.`);
-    } else if (/matriarche/i.test(alliesRawText)) {
-      detectedSide = 'archmother';
-      statusLog.push(`[${new Date().toLocaleTimeString()}] Detected Allied Patron: Matriarche -> Player Side: The Archmother.`);
-    } else if (/roi\s*de\s*(?:l\s*['’]?)?ombre/i.test(alliesRawText)) {
-      detectedSide = 'hidden_king';
-      statusLog.push(`[${new Date().toLocaleTimeString()}] Detected Allied Patron: Roi de l'Ombre -> Player Side: The Hidden King.`);
+    const factionResult = detectFactionBilingual(alliesRawText, enemiesRawText);
+    const detectedSide: Side | undefined = factionResult?.side;
+    if (factionResult) {
+      statusLog.push(`[${new Date().toLocaleTimeString()}] ${factionResult.reason}.`);
     }
 
     // Ensure each recognized hero appears exactly once in the diagnostic log
