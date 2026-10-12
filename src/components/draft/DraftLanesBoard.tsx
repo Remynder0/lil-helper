@@ -3,7 +3,7 @@ import occultDivider from '../../assets/occult/divider.svg';
 import occultSeal from '../../assets/occult/seal.svg';
 import { LaneColor, LANE_LABELS } from '../../types/match';
 import { HeroAvatar } from '../HeroAvatar';
-import { Compass, Users, Swords } from 'lucide-react';
+import { Compass, Users, Swords, ChevronDown } from 'lucide-react';
 import { ActiveSlot } from './types';
 
 interface DraftLanesBoardProps {
@@ -15,6 +15,9 @@ interface DraftLanesBoardProps {
   onSetMyHeroId: (heroId: number | null) => void;
   onRemoveHero: (lane: LaneColor, team: 'allies' | 'enemies', index: number) => void;
   onSetAssignedLane: (lane: LaneColor) => void;
+  isManualMode?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
@@ -26,9 +29,16 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
   onSetMyHeroId,
   onRemoveHero,
   onSetAssignedLane,
+  isManualMode = false,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   return (
-    <div className="occult-panel arcane-glow rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden">
+    <div
+      className={`occult-panel arcane-glow rounded-xl flex flex-col relative z-10 overflow-hidden transition-all duration-500 ease-in-out ${
+        isCollapsed ? 'p-3.5 gap-0' : 'p-5 gap-4'
+      }`}
+    >
       {/* Alchemical Solomon Seal Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden z-0">
         <img
@@ -39,26 +49,71 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
         />
       </div>
 
-      {/* 1. Panel Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-deadlock-arcane/30 relative z-10">
-        <div className="flex items-center gap-2">
-          <Compass className="w-4 h-4 text-deadlock-arcane" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-purple-100 font-mono flex items-center gap-1.5">
-            The 3 Duo Lanes <span className="text-purple-400/60">•</span> Astral Alignment
-          </h3>
+      {/* 1. Panel Header (Collapsible toggle) */}
+      <div
+        className={`flex items-center justify-between flex-wrap gap-2 relative z-10 transition-all duration-300 ${
+          isCollapsed ? 'pb-0 border-b-0' : 'pb-3 border-b border-deadlock-arcane/30'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="flex items-center gap-2 group text-left cursor-pointer select-none"
+          title={isCollapsed ? 'Click to expand lanes board' : 'Click to collapse lanes board'}
+        >
+          <div className="p-1.5 rounded-md bg-purple-950/60 border border-deadlock-arcane/40 group-hover:border-deadlock-arcane text-deadlock-arcane group-hover:text-purple-200 transition-all shadow-inner">
+            <Compass className="w-4 h-4" />
+          </div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-purple-100 font-mono flex items-center gap-1.5 group-hover:text-white transition-colors">
+              The 3 Duo Lanes <span className="text-purple-400/60">•</span> Astral Alignment
+            </h3>
+            {isCollapsed && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-deadlock-arcane/25 border border-deadlock-arcane/50 text-purple-200 font-bold shadow-sm">
+                Folded (6v6 Aligned)
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 text-purple-300/70 group-hover:text-purple-100 transition-transform duration-500 ease-in-out ${
+              isCollapsed ? '-rotate-90' : 'rotate-0'
+            }`}
+          />
+        </button>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-purple-300/70 italic hidden sm:inline">
+            {isCollapsed
+              ? 'Lanes folded to focus on swap & switch suggestions'
+              : isManualMode
+              ? 'Manual Mode: Click on ritual slots below to pick or ban heroes (6 Allies vs 6 Enemies)'
+              : 'Auto Mode (OCR): Lane alignment detected automatically'}
+          </span>
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1a1226]/90 hover:bg-[#251a36] border border-deadlock-arcane/40 text-[11px] font-mono font-bold text-purple-200 hover:text-white transition-all shadow-sm cursor-pointer"
+            >
+              {isCollapsed ? 'Expand Board' : 'Collapse Board'}
+            </button>
+          )}
         </div>
-        <span className="text-xs text-purple-300/70 italic">
-          Channel heroes into the ritual slots below (6 Allies vs 6 Enemies)
-        </span>
       </div>
 
       {/* 2. Unified Lanes Board with Continuous Color Halos and Full-Width Occult Separator */}
-      <div className="overflow-x-auto pb-1 relative z-10">
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${
+          isCollapsed ? 'grid-rows-[0fr] opacity-0 pointer-events-none' : 'grid-rows-[1fr] opacity-100'
+        }`}
+      >
+        <div className="overflow-hidden min-h-0">
+          <div className="overflow-x-auto pb-1 pt-1 relative z-10">
         <div className="min-w-[650px] relative rounded-xl overflow-hidden p-3 md:p-4 bg-[#130d1e]/85 border border-deadlock-arcane/35 shadow-inner">
           {/* Continuous Colored Halos (One for each lane from top to bottom) */}
           <div className="absolute inset-3 md:inset-4 grid grid-cols-3 gap-3 md:gap-4 pointer-events-none z-0">
             {(['yellow', 'blue', 'green'] as const).map((laneColor) => {
-              const isMyLane = assignedLane === laneColor;
+              const isMyLane = isManualMode && assignedLane === laneColor;
 
               if (laneColor === 'yellow') {
                 return (
@@ -103,7 +158,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
             <div className="grid grid-cols-3 gap-3 md:gap-4">
               {(['yellow', 'blue', 'green'] as const).map((laneColor) => {
                 const laneData = lanes[laneColor];
-                const isMyLane = assignedLane === laneColor;
+                const isMyLane = isManualMode && assignedLane === laneColor;
 
                 return (
                   <div key={laneColor} className="flex flex-col gap-2 p-2.5 sm:p-3">
@@ -132,17 +187,19 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => onSetAssignedLane(laneColor)}
-                        className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${
-                          isMyLane
-                            ? 'bg-deadlock-accent border-deadlock-accent text-deadlock-steam shadow-sm'
-                            : 'bg-[#1a1228]/85 border-deadlock-arcane/40 text-purple-300/80 hover:text-white hover:border-purple-400'
-                        }`}
-                      >
-                        {isMyLane ? '★ Your Lane' : 'Set as Mine'}
-                      </button>
+                      {isManualMode && (
+                        <button
+                          type="button"
+                          onClick={() => onSetAssignedLane(laneColor)}
+                          className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${
+                            isMyLane
+                              ? 'bg-deadlock-accent border-deadlock-accent text-deadlock-steam shadow-sm'
+                              : 'bg-[#1a1228]/85 border-deadlock-arcane/40 text-purple-300/80 hover:text-white hover:border-purple-400'
+                          }`}
+                        >
+                          {isMyLane ? 'Focus Lane' : 'Select'}
+                        </button>
+                      )}
                     </div>
 
                     {/* Allied Duo */}
@@ -155,6 +212,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                           const heroId = laneData.allies[idx];
                           const isYou = heroId !== null && heroId === myHeroId;
                           const isActive =
+                            isManualMode &&
                             activeSlot?.type === 'lane' &&
                             activeSlot.lane === laneColor &&
                             activeSlot.team === 'allies' &&
@@ -163,16 +221,24 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                           return (
                             <div
                               key={idx}
-                              onClick={() => {
-                                onSelectSlot({ type: 'lane', lane: laneColor, team: 'allies', index: idx });
-                                if (heroId) onSetMyHeroId(heroId);
-                              }}
-                              className={`flex flex-col items-center justify-center p-2 rounded-lg border cursor-pointer transition-all ${
+                              onClick={
+                                isManualMode
+                                  ? () => {
+                                      onSelectSlot({ type: 'lane', lane: laneColor, team: 'allies', index: idx });
+                                      if (heroId) onSetMyHeroId(heroId);
+                                    }
+                                  : undefined
+                              }
+                              className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
+                                isManualMode ? 'cursor-pointer' : 'cursor-default'
+                              } ${
                                 isActive
                                   ? 'border-deadlock-archmother bg-deadlock-archmother/25 ring-1 ring-deadlock-archmother shadow-[0_0_12px_rgba(234,179,8,0.3)]'
                                   : isYou
                                   ? 'border-deadlock-accent bg-deadlock-accent/25 ring-1 ring-deadlock-accent shadow-[0_0_12px_rgba(234,179,8,0.3)]'
-                                  : 'border-deadlock-arcane/40 bg-[#1a1226]/90 hover:border-purple-400 hover:bg-[#201633]'
+                                  : isManualMode
+                                  ? 'border-deadlock-arcane/40 bg-[#1a1226]/90 hover:border-purple-400 hover:bg-[#201633]'
+                                  : 'border-deadlock-arcane/30 bg-[#1a1226]/70'
                               }`}
                             >
                               <HeroAvatar
@@ -180,13 +246,15 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                                 size="sm"
                                 showName
                                 onRemove={
-                                  heroId
+                                  isManualMode && heroId
                                     ? () => onRemoveHero(laneColor, 'allies', idx)
                                     : undefined
                                 }
                               />
                               {isYou && (
-                                <span className="text-[9px] text-deadlock-accent font-black mt-0.5">YOU</span>
+                                <span className="text-[9px] text-deadlock-accent font-black mt-0.5">
+                                  YOU
+                                </span>
                               )}
                               {!heroId && (
                                 <span className="text-[10px] text-purple-300/60 font-mono mt-1">
@@ -229,6 +297,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                       {[0, 1].map((idx) => {
                         const heroId = laneData.enemies[idx];
                         const isActive =
+                          isManualMode &&
                           activeSlot?.type === 'lane' &&
                           activeSlot.lane === laneColor &&
                           activeSlot.team === 'enemies' &&
@@ -237,13 +306,20 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                         return (
                           <div
                             key={idx}
-                            onClick={() =>
-                              onSelectSlot({ type: 'lane', lane: laneColor, team: 'enemies', index: idx })
+                            onClick={
+                              isManualMode
+                                ? () =>
+                                    onSelectSlot({ type: 'lane', lane: laneColor, team: 'enemies', index: idx })
+                                : undefined
                             }
-                            className={`flex flex-col items-center justify-center p-2 rounded-lg border cursor-pointer transition-all ${
+                            className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
+                              isManualMode ? 'cursor-pointer' : 'cursor-default'
+                            } ${
                               isActive
                                 ? 'border-deadlock-hidden-king bg-deadlock-hidden-king/25 ring-1 ring-deadlock-hidden-king shadow-[0_0_12px_rgba(139,58,58,0.4)]'
-                                : 'border-deadlock-arcane/40 bg-[#1a1226]/90 hover:border-purple-400 hover:bg-[#201633]'
+                                : isManualMode
+                                ? 'border-deadlock-arcane/40 bg-[#1a1226]/90 hover:border-purple-400 hover:bg-[#201633]'
+                                : 'border-deadlock-arcane/30 bg-[#1a1226]/70'
                             }`}
                           >
                             <HeroAvatar
@@ -251,7 +327,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
                               size="sm"
                               showName
                               onRemove={
-                                heroId
+                                isManualMode && heroId
                                   ? () => onRemoveHero(laneColor, 'enemies', idx)
                                   : undefined
                               }
@@ -273,5 +349,7 @@ export const DraftLanesBoard: React.FC<DraftLanesBoardProps> = ({
         </div>
       </div>
     </div>
+  </div>
+</div>
   );
 };

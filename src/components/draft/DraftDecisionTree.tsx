@@ -2,18 +2,22 @@ import React from 'react';
 import { LANE_LABELS } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
 import { HeroAvatar } from '../HeroAvatar';
-import { Sparkles, Users, ArrowRight, ArrowRightLeft } from 'lucide-react';
+import { Sparkles, Users, ArrowRight, ArrowRightLeft, Pencil } from 'lucide-react';
 import { BestActionsAdvisorResult } from '../../services/analytics';
 import occultSeal from '../../assets/occult/seal.svg';
 
 interface DraftDecisionTreeProps {
   bestActionsAdvisor: BestActionsAdvisorResult | null;
   myHeroId: number | null;
+  isManualMode?: boolean;
+  onSwitchToManual?: () => void;
 }
 
 export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
   bestActionsAdvisor,
   myHeroId,
+  isManualMode = false,
+  onSwitchToManual,
 }) => {
   return (
     <div className="occult-panel arcane-glow rounded-xl p-5 flex flex-col gap-5 relative overflow-hidden">
@@ -43,11 +47,32 @@ export const DraftDecisionTree: React.FC<DraftDecisionTreeProps> = ({
       </div>
 
       {!myHeroId ? (
-        <div className="py-8 flex flex-col items-center justify-center text-center text-deadlock-muted">
-          <Users className="w-8 h-8 mb-2 opacity-40 text-deadlock-accent" />
-          <p className="text-xs italic">
-            Click on an allied hero slot on your lane to set your hero and display action recommendations.
-          </p>
+        <div className="py-8 flex flex-col items-center justify-center text-center text-deadlock-muted gap-2">
+          <Users className="w-8 h-8 opacity-40 text-deadlock-accent mb-1" />
+          {isManualMode ? (
+            <p className="text-xs italic text-purple-200/80">
+              Select an allied hero in your lane to set your character and calculate optimal actions.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-purple-200/90">
+                Waiting for player hero detection (Live Game Sync)...
+              </p>
+              <p className="text-[11px] text-purple-300/60 max-w-md">
+                Launch a Deadlock match to automatically synchronize your hero and lane, or switch to Manual Mode to build a custom draft.
+              </p>
+              {onSwitchToManual && (
+                <button
+                  type="button"
+                  onClick={onSwitchToManual}
+                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-deadlock-accent/50 bg-deadlock-accent/15 text-yellow-300 text-xs font-bold hover:bg-deadlock-accent/25 transition-all shadow-sm"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-deadlock-accent" />
+                  <span>Switch to Manual Mode</span>
+                </button>
+              )}
+            </>
+          )}
         </div>
       ) : bestActionsAdvisor ? (
         (() => {
