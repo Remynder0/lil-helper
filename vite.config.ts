@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -34,5 +35,16 @@ export default defineConfig(() => ({
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : ["es2021", "chrome105", "safari13"],
     minify: !process.env.TAURI_ENV_DEBUG,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/services/**', 'src/types/**'],
+      exclude: ['src/test/**'],
+    },
   },
 }));
