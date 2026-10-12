@@ -29,9 +29,12 @@ import { calculateHeroPerformance } from './services/analytics';
 import { getHeroById } from './data/heroes';
 import occultBadge from './assets/occult/badge.svg';
 import { RefreshCw } from 'lucide-react';
+import { ToastProvider, useToast } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
-export const App: React.FC = () => {
+const AppInner: React.FC = () => {
   const { gameContext } = useDeadlockGameState();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<AppTab>('history');
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -195,10 +198,10 @@ export const App: React.FC = () => {
       const text = await file.text();
       const count = await importMatchesJson(text);
       await loadMatches();
-      alert(`${count} matches successfully loaded!`);
+      toast.success(`${count} matches imported successfully`);
     } catch (err) {
       console.error('Import failed:', err);
-      alert('Invalid match data file format.');
+      toast.error('Invalid file format — expected a valid matches JSON file');
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -394,35 +397,41 @@ export const App: React.FC = () => {
           )
         )}
         {activeTab === 'history' && (
-          <HistoryList
-            matches={allHistoryMatches}
-            profile={profile}
-            onEditMatch={handleEditMatch}
-            onDeleteMatch={handleDeleteMatch}
-            onHeroFilterChange={setPreviewHeroId}
-            highlightedMatchIds={highlightedMatchIds}
-            highlightedStreakType={highlightedStreakType}
-            onClearHighlight={() => {
-              setHighlightedMatchIds(null);
-              setHighlightedStreakType(null);
-            }}
-            onMatchImported={(imported) => {
-              handleMatchSaved(imported);
-              if (imported.matchId) {
-                removeMatchFromQueue(imported.matchId);
-              }
-            }}
-          />
+          <ErrorBoundary section="History">
+            <HistoryList
+              matches={allHistoryMatches}
+              profile={profile}
+              onEditMatch={handleEditMatch}
+              onDeleteMatch={handleDeleteMatch}
+              onHeroFilterChange={setPreviewHeroId}
+              highlightedMatchIds={highlightedMatchIds}
+              highlightedStreakType={highlightedStreakType}
+              onClearHighlight={() => {
+                setHighlightedMatchIds(null);
+                setHighlightedStreakType(null);
+              }}
+              onMatchImported={(imported) => {
+                handleMatchSaved(imported);
+                if (imported.matchId) {
+                  removeMatchFromQueue(imported.matchId);
+                }
+              }}
+            />
+          </ErrorBoundary>
         )}
         {activeTab === 'analytics' && (
-          <AnalyticsView
-            matches={matches}
-            profile={profile}
-            onNavigateToStreak={handleNavigateToStreak}
-          />
+          <ErrorBoundary section="Analytics">
+            <AnalyticsView
+              matches={matches}
+              profile={profile}
+              onNavigateToStreak={handleNavigateToStreak}
+            />
+          </ErrorBoundary>
         )}
         <div className={activeTab === 'assistant' ? 'contents' : 'hidden'}>
-          <DraftAssistantView matches={matches} gameContext={gameContext} />
+          <ErrorBoundary section="Draft Assistant">
+            <DraftAssistantView matches={matches} gameContext={gameContext} />
+          </ErrorBoundary>
         </div>
         {activeTab === 'logs' && (
           <LogDashboardView
@@ -466,5 +475,10 @@ export const App: React.FC = () => {
   );
 };
 
-export default App;
+export const App: React.FC = () => (
+  <ToastProvider>
+    <AppInner />
+  </ToastProvider>
+);
 
+export default App;

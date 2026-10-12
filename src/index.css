@@ -330,3 +330,8 @@ h1, h2 {
 .animate-arcaneFlicker {
   animation: arcaneFlicker 3s ease-in-out infinite;
 }
+
+@keyframes slideInRight {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
