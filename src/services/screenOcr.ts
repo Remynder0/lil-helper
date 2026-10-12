@@ -185,28 +185,40 @@ function extractHeroCandidates(
   allMatchedWords: HeroMatchDetail[]
 ): Hero[] {
   const candidates: CandidateMatch[] = [];
+  const lineMatchedHeroIds = new Map<number, Set<number>>();
 
   for (let i = startLineIdx; i < endLineIdx; i++) {
     const rawLine = lines[i];
     if (!rawLine) continue;
     const cleanLine = cleanWord(rawLine);
 
-    // 1. Direct multi-word check in line (e.g. "Grey Talon", "Mo & Krill", "Lady Geist", "The Doorman")
+    if (!lineMatchedHeroIds.has(i)) {
+      lineMatchedHeroIds.set(i, new Set());
+    }
+    const matchedInThisLine = lineMatchedHeroIds.get(i)!;
+
+    // 1. Direct multi-word check in line (ONLY for multi-word heroes like "Grey Talon", "Mo & Krill", "Lady Geist")
     for (const hero of HEROES) {
+      const isMultiWord = hero.name.includes(' ') || hero.name.includes('&');
+      if (!isMultiWord) continue;
+
       const hClean = cleanWord(hero.name);
       if (hClean.length >= 5 && cleanLine.includes(hClean)) {
-        candidates.push({
-          hero,
-          matchedToken: hero.name,
-          confidence: 100,
-          distance: 0,
-          lineIndex: i,
-        });
-        allMatchedWords.push({
-          word: rawLine.trim(),
-          matchedHero: hero,
-          distance: 0,
-        });
+        if (!matchedInThisLine.has(hero.id)) {
+          matchedInThisLine.add(hero.id);
+          candidates.push({
+            hero,
+            matchedToken: hero.name,
+            confidence: 100,
+            distance: 0,
+            lineIndex: i,
+          });
+          allMatchedWords.push({
+            word: hero.name,
+            matchedHero: hero,
+            distance: 0,
+          });
+        }
       }
     }
 
@@ -214,7 +226,8 @@ function extractHeroCandidates(
     const tokens = rawLine.split(/[\s:,\-_./'"’`()\[\]{}|+=*<>!?;#~^]+/);
     for (const tok of tokens) {
       const match = findBestHero(tok);
-      if (match) {
+      if (match && !matchedInThisLine.has(match.hero.id)) {
+        matchedInThisLine.add(match.hero.id);
         candidates.push({
           hero: match.hero,
           matchedToken: tok,
@@ -389,6 +402,17 @@ export async function scanEscapeMenuDraft(): Promise<ScreenScanResult> {
       statusLog.push(`[${new Date().toLocaleTimeString()}] Detected Allied Patron: Roi de l'Ombre -> Player Side: The Hidden King.`);
     }
 
+    // Ensure each recognized hero appears exactly once in the diagnostic log
+    const finalizedHeroIds = new Set([...allies.map((a) => a.id), ...enemies.map((e) => e.id)]);
+    const uniqueMatchedWords: HeroMatchDetail[] = [];
+    const seenHeroIds = new Set<number>();
+    for (const m of matchedWords) {
+      if (finalizedHeroIds.has(m.matchedHero.id) && !seenHeroIds.has(m.matchedHero.id)) {
+        seenHeroIds.add(m.matchedHero.id);
+        uniqueMatchedWords.push(m);
+      }
+    }
+
     statusLog.push(
       `[${new Date().toLocaleTimeString()}] Parsed: ${allies.length} allies (${allies.map((h) => h.name).join(', ') || 'none'}), ${enemies.length} enemies (${enemies.map((h) => h.name).join(', ') || 'none'}).`
     );
@@ -400,7 +424,7 @@ export async function scanEscapeMenuDraft(): Promise<ScreenScanResult> {
       allies: allies.map((h) => ({ id: h.id, name: h.name, iconUrl: h.iconUrl })),
       enemies: enemies.map((h) => ({ id: h.id, name: h.name, iconUrl: h.iconUrl })),
       linesCount: lines.length,
-      matchedWordsCount: matchedWords.length,
+      matchedWordsCount: uniqueMatchedWords.length,
       durationMs,
       capturedImagePreview: base64Image,
       rawText,
@@ -414,7 +438,7 @@ export async function scanEscapeMenuDraft(): Promise<ScreenScanResult> {
       rawText,
       capturedImage: base64Image,
       lines,
-      matchedWords,
+      matchedWords: uniqueMatchedWords,
       statusLog,
     };
   } finally {
