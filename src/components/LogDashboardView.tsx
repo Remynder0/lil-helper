@@ -816,8 +816,10 @@ export const LogDashboardView: React.FC<LogDashboardViewProps> = ({
                 className={`w-2 h-2 rounded-full ${
                   gameContext.state === 'in_game'
                     ? 'bg-emerald-400 animate-ping'
+                    : gameContext.state === 'draft'
+                    ? 'bg-amber-400 animate-pulse'
                     : gameContext.state === 'hideout'
-                    ? 'bg-amber-400'
+                    ? 'bg-sky-400'
                     : 'bg-zinc-500'
                 }`}
               />

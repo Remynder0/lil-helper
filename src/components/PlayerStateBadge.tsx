@@ -1,7 +1,7 @@
 import React from 'react';
 import { PlayerGameState } from '../services/logWatcher';
 import { getHeroById, findHeroByName } from '../data/heroes';
-import { Swords, Home, WifiOff } from 'lucide-react';
+import { Swords, Home, WifiOff, Brain } from 'lucide-react';
 
 interface PlayerStateBadgeProps {
   state: PlayerGameState;
@@ -20,6 +20,29 @@ export const PlayerStateBadge: React.FC<PlayerStateBadgeProps> = ({
   heroId,
   mapName,
 }) => {
+  if (state === 'draft') {
+    return (
+      <div
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 shadow-sm transition-all"
+        title={`Draft / Hero Selection Phase${playerName ? ` (${playerName})` : ''}`}
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+        </span>
+        <Brain className="w-3.5 h-3.5 text-amber-400" />
+        <div className="flex flex-col text-left">
+          <span className="text-[11px] font-black uppercase tracking-wider leading-none text-amber-200">
+            {stateLabel || 'DRAFT PHASE'}
+          </span>
+          <span className="text-[9px] text-amber-400/80 font-medium font-mono leading-none mt-0.5">
+            {heroName ? heroName : playerName ? playerName : 'Hero Selection'}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   if (state === 'in_game') {
     return (
       <div

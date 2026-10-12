@@ -4,6 +4,7 @@
  */
 
 export type ShieldDisplayMode = 'badges' | 'tooltip';
+export type DraftMode = 'ocr' | 'manual';
 
 export interface UserSettings {
   /**
@@ -12,12 +13,24 @@ export interface UserSettings {
    * - 'tooltip' : ancienne version, aucun badge au-dessus des points, badge shield affiché dans la bulle au hover
    */
   shieldDisplayMode: ShieldDisplayMode;
+  /**
+   * Mode du Draft Assistant :
+   * - 'ocr' : Mode automatique basé sur la reconnaissance d'écran OCR et le Live Sync
+   * - 'manual' : Mode manuel bac à sable pour concevoir des drafts et tester des compos
+   */
+  draftMode: DraftMode;
+  /**
+   * Bascule automatique vers le Draft Assistant lorsque le jeu entre en phase de draft / sélection
+   */
+  autoNavigateToDraft: boolean;
 }
 
 const SETTINGS_KEY = 'deadlock_user_settings_v1';
 
 export const DEFAULT_SETTINGS: UserSettings = {
   shieldDisplayMode: 'badges',
+  draftMode: 'ocr',
+  autoNavigateToDraft: true,
 };
 
 export function loadUserSettings(): UserSettings {

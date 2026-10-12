@@ -7,7 +7,7 @@ export interface LogEvent {
   eventType: 'info' | 'match_found' | 'hero_detected' | 'status';
 }
 
-export type PlayerGameState = 'in_game' | 'hideout' | 'disconnected';
+export type PlayerGameState = 'in_game' | 'draft' | 'hideout' | 'disconnected';
 
 export interface ParsedGameContext {
   state: PlayerGameState;
@@ -130,8 +130,40 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
 
   const seenHeroIds = new Set<number>();
 
+  let isHideout = true;
+
   for (const event of events) {
     const line = event.rawLine;
+
+    // Check if connecting to or playing a remote match
+    if (
+      line.includes('Host activate: Remote Connect') ||
+      line.includes('Hideout Lobby Connection State: Invalid') ||
+      line.includes('Connected to \'=[A:') ||
+      line.includes('Connecting to =[A:') ||
+      line.includes('dl_midtown') ||
+      (line.includes('Lobby ') && line.includes('for Match '))
+    ) {
+      isHideout = false;
+      if (result.mapName && result.mapName.toLowerCase().includes('hideout')) {
+        result.mapName = null;
+      }
+    }
+
+    // Check if returning to Hideout
+    if (
+      line.includes('Created physics for dl_hideout') ||
+      line.includes('Loading map "dl_hideout"') ||
+      line.includes('Spawn Server: dl_hideout') ||
+      line.includes('OnGameStateChanged: GameOver') ||
+      line.includes('OnGameStateChanged: End') ||
+      line.includes('Disconnecting from server')
+    ) {
+      isHideout = true;
+      result.mapName = 'dl_hideout';
+      result.state = 'hideout';
+      result.stateLabel = 'In Hideout';
+    }
 
     // 1. Detect Local Player Name and Slot
     // e.g.: [Prediction] Added prediction for player slot 1 (Remynder)
@@ -158,10 +190,20 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
     const mapPhysicsMatch = line.match(/(?:Created physics for|Host activate: Loading \()([a-zA-Z0-9_-]+)/i);
     if (mapPhysicsMatch) {
       result.mapName = mapPhysicsMatch[1];
+      if (mapPhysicsMatch[1].toLowerCase().includes('hideout')) {
+        isHideout = true;
+      } else {
+        isHideout = false;
+      }
     }
     const mapAttrMatch = line.match(/Map:\s*"([^"]+)"/i);
     if (mapAttrMatch) {
       result.mapName = mapAttrMatch[1];
+      if (mapAttrMatch[1].toLowerCase().includes('hideout')) {
+        isHideout = true;
+      } else {
+        isHideout = false;
+      }
     }
 
     // 5. Detect Assigned Lane
@@ -183,52 +225,70 @@ export function parseDeadlockLogEvents(events: LogEvent[]): ParsedGameContext {
       result.matchId = parseInt(matchIdMatch[1], 10);
     }
 
-    // 7. Game State Transitions
-    // Note: dl_hideout also simulates internal states (MatchIntro, GameInProgress) when spawning local test bots!
-    // So we only mark 'in_game' if we are NOT in dl_hideout (or if map is midtown / match_id is present)
-    const isCurrentMapHideout = result.mapName && result.mapName.toLowerCase().includes('hideout');
-
-    if (line.includes('OnGameStateChanged: GameInProgress')) {
-      if (isCurrentMapHideout) {
+    // 7. Game State Transitions (Source 2 / Deadlock)
+    // dl_hideout boots dummy bots and briefly executes states in <0.1s.
+    // In actual matches, draft, intro and pregame states persist for 20-90 seconds.
+    if (line.includes('HeroSelection')) {
+      if (!isHideout) {
+        result.state = 'draft';
+        result.stateLabel = 'Hero Selection';
+      }
+    } else if (line.includes('WaitingForPlayersToJoin')) {
+      if (!isHideout) {
+        result.state = 'draft';
+        result.stateLabel = 'Hero Selection';
+      }
+    } else if (line.includes('MatchIntro')) {
+      if (!isHideout) {
+        result.state = 'draft';
+        result.stateLabel = 'Match Intro';
+      }
+    } else if (line.includes('PreGameWait')) {
+      if (!isHideout) {
+        result.state = 'draft';
+        result.stateLabel = 'Pre-Game Draft';
+      }
+    } else if (line.includes('WaitForMapToLoad')) {
+      if (!isHideout) {
+        if (result.state !== 'draft') {
+          result.state = 'draft';
+        }
+        result.stateLabel = 'Loading Match';
+      }
+    } else if (line.includes('GameInProgress')) {
+      if (isHideout) {
         result.state = 'hideout';
         result.stateLabel = 'In Hideout';
       } else {
         result.state = 'in_game';
         result.stateLabel = 'In Game';
       }
-    } else if (line.includes('OnGameStateChanged: PreGameWait')) {
-      if (!isCurrentMapHideout) {
+    } else if (line.includes('PostGame')) {
+      if (!isHideout) {
         result.state = 'in_game';
-        result.stateLabel = 'Pre-Game Wait';
-      }
-    } else if (line.includes('OnGameStateChanged: MatchIntro')) {
-      if (!isCurrentMapHideout) {
-        result.state = 'in_game';
-        result.stateLabel = 'Match Intro';
-      }
-    } else if (line.includes('OnGameStateChanged: WaitForMapToLoad')) {
-      if (!isCurrentMapHideout) {
-        result.state = 'in_game';
-        result.stateLabel = 'Loading Game';
+        result.stateLabel = 'Post Game';
       }
     } else if (
       line.includes('OnGameStateChanged: GameOver') ||
+      line.includes('OnGameStateChanged: End') ||
       line.includes('Disconnecting from server') ||
-      line.includes('CLoopModeRemoteConnect::OnClientFrameSimulate switching to "levelload"') && line.includes('dl_hideout')
+      (line.includes('CLoopModeRemoteConnect::OnClientFrameSimulate switching to "levelload"') && line.includes('dl_hideout'))
     ) {
+      isHideout = true;
       result.state = 'hideout';
       result.stateLabel = 'In Hideout';
-    } else if (line.includes('Hideout Lobby Connection State') || line.includes('Created physics for dl_hideout')) {
+    } else if (line.includes('Hideout Lobby Connection State: NoLobby') || line.includes('Created physics for dl_hideout')) {
+      isHideout = true;
       result.state = 'hideout';
       result.stateLabel = 'In Hideout';
     }
   }
 
-  // Final check: If map is explicitly dl_hideout, player is in Hideout, NOT in_game
-  if (result.mapName && result.mapName.toLowerCase().includes('hideout')) {
+  // Final check: If explicitly marked hideout, player is in Hideout
+  if (isHideout || (result.mapName && result.mapName.toLowerCase().includes('hideout'))) {
     result.state = 'hideout';
     result.stateLabel = 'In Hideout';
-  } else if (result.mapName && result.mapName.toLowerCase().includes('midtown')) {
+  } else if (result.state !== 'draft' && result.mapName && result.mapName.toLowerCase().includes('midtown')) {
     result.state = 'in_game';
     result.stateLabel = 'In Game';
   }
