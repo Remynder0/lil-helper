@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ConnectedProfile } from '../types/match';
+import { useUIStore } from '../stores/useUIStore';
 import {
   Activity,
   Download,
@@ -17,10 +18,6 @@ interface ProfileDropdownMenuProps {
   isSyncing: boolean;
   cooldownRemaining: number;
   onSync: () => void;
-  onOpenLogDashboard: () => void;
-  onOpenImportById: () => void;
-  onOpenDebugConsole: () => void;
-  onSwitchProfile: () => void;
   onExport: () => void;
   onTriggerImportFile: () => void;
   onDisconnect: () => void;
@@ -31,16 +28,15 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
   isSyncing,
   cooldownRemaining,
   onSync,
-  onOpenLogDashboard,
-  onOpenImportById,
-  onOpenDebugConsole,
-  onSwitchProfile,
   onExport,
   onTriggerImportFile,
   onDisconnect,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const setImportByIdModalOpen = useUIStore((s) => s.setImportByIdModalOpen);
+  const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -101,7 +97,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             <button
               type="button"
               onClick={() => {
-                onOpenLogDashboard();
+                setActiveTab('logs');
                 setIsOpen(false);
               }}
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
@@ -114,7 +110,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             <button
               type="button"
               onClick={() => {
-                onOpenImportById();
+                setImportByIdModalOpen(true);
                 setIsOpen(false);
               }}
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
@@ -127,7 +123,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             <button
               type="button"
               onClick={() => {
-                onOpenDebugConsole();
+                setActiveTab('logs');
                 setIsOpen(false);
               }}
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
@@ -140,7 +136,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             <button
               type="button"
               onClick={() => {
-                onSwitchProfile();
+                setProfileModalOpen(true);
                 setIsOpen(false);
               }}
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"

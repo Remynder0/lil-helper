@@ -1,29 +1,18 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { MatchForm } from './components/MatchForm';
 import { HistoryList } from './components/HistoryList';
 import { AnalyticsView } from './components/AnalyticsView';
 import { DraftAssistantView } from './components/DraftAssistantView';
 import { ProfileConnectModal } from './components/ProfileConnectModal';
 import { LogDashboardView } from './components/LogDashboardView';
-import { AppHeader, AppTab } from './components/AppHeader';
+import { AppHeader } from './components/AppHeader';
 import { ImportMatchByIdModal } from './components/ImportMatchByIdModal';
 import { useProfileSync } from './hooks/useProfileSync';
 import { useDeadlockGameState } from './hooks/useDeadlockGameState';
 import { PlayerGameState } from './services/logWatcher';
 import { loadUserSettings } from './services/userSettings';
-import {
-  fetchAllMatches,
-  removeMatch,
-  saveTrackedPendingMatch,
-  exportMatchesJson,
-  importMatchesJson,
-} from './services/storage';
-import {
-  addMatchToQueue,
-  subscribeToMatchQueue,
-  removeMatchFromQueue,
-  QueuedMatch,
-} from './services/matchQueue';
+import { saveTrackedPendingMatch } from './services/storage';
+import { addMatchToQueue, subscribeToMatchQueue, removeMatchFromQueue } from './services/matchQueue';
 import { Match } from './types/match';
 import { calculateHeroPerformance } from './services/analytics';
 import { getHeroById } from './data/heroes';
@@ -31,36 +20,58 @@ import occultBadge from './assets/occult/badge.svg';
 import { RefreshCw } from 'lucide-react';
 import { ToastProvider, useToast } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useUIStore } from './stores/useUIStore';
+import { useMatchStore, selectAllHistoryMatches } from './stores/useMatchStore';
 
 const AppInner: React.FC = () => {
   const { gameContext } = useDeadlockGameState();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<AppTab>('history');
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
-  const [previewHeroId, setPreviewHeroId] = useState<number | null>(null);
-  const [highlightedMatchIds, setHighlightedMatchIds] = useState<string[] | null>(null);
-  const [highlightedStreakType, setHighlightedStreakType] = useState<'win' | 'loss' | null>(null);
-  const [matchQueue, setMatchQueue] = useState<QueuedMatch[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleNavigateToStreak = (matchIds: string[], type: 'win' | 'loss') => {
-    setHighlightedMatchIds(matchIds);
-    setHighlightedStreakType(type);
-    setActiveTab('history');
-  };
+  // ── UI Store (Routing, Modals, Highlights) ──
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const previewHeroId = useUIStore((s) => s.previewHeroId);
+  const setPreviewHeroId = useUIStore((s) => s.setPreviewHeroId);
+  const highlightedMatchIds = useUIStore((s) => s.highlightedMatchIds);
+  const setHighlightedMatchIds = useUIStore((s) => s.setHighlightedMatchIds);
+  const highlightedStreakType = useUIStore((s) => s.highlightedStreakType);
+  const navigateToStreak = useUIStore((s) => s.navigateToStreak);
+  const clearHighlight = useUIStore((s) => s.clearHighlight);
+  const isProfileModalOpen = useUIStore((s) => s.isProfileModalOpen);
+  const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
+  const isImportByIdModalOpen = useUIStore((s) => s.isImportByIdModalOpen);
+  const setImportByIdModalOpen = useUIStore((s) => s.setImportByIdModalOpen);
 
+  // ── Match Store (Matches, Queue, CRUD) ──
+  const matches = useMatchStore((s) => s.matches);
+  const setMatches = useMatchStore((s) => s.setMatches);
+  const editingMatch = useMatchStore((s) => s.editingMatch);
+  const setEditingMatch = useMatchStore((s) => s.setEditingMatch);
+  const setMatchQueue = useMatchStore((s) => s.setMatchQueue);
+  const loadMatches = useMatchStore((s) => s.loadMatches);
+  const saveMatch = useMatchStore((s) => s.saveMatch);
+  const deleteMatch = useMatchStore((s) => s.deleteMatch);
+  const exportMatches = useMatchStore((s) => s.exportMatches);
+  const importMatches = useMatchStore((s) => s.importMatches);
+  const allHistoryMatches = useMatchStore(selectAllHistoryMatches);
+
+  // Subscribe to background match queue
   useEffect(() => {
     const unsub = subscribeToMatchQueue((queue) => {
       setMatchQueue(queue);
     });
     return () => unsub();
-  }, []);
+  }, [setMatchQueue]);
 
+  // Load matches from persistent storage on mount
+  useEffect(() => {
+    loadMatches();
+  }, [loadMatches]);
+
+  // ── Profile Sync Hook ──
   const {
     profile,
-    isProfileModalOpen,
-    setIsProfileModalOpen,
     isSyncing,
     syncStatusText,
     setSyncStatusText,
@@ -68,31 +79,12 @@ const AppInner: React.FC = () => {
     handleSyncMatches,
     handleConnectProfile,
     handleDisconnectProfile,
-    isImportByIdModalOpen,
-    setIsImportByIdModalOpen,
     importMatchIdInput,
     setImportMatchIdInput,
     isImportingById,
     importByIdError,
     handleImportMatchById,
   } = useProfileSync();
-
-  // Load matches from storage on mount (sorted newest to oldest)
-  const loadMatches = async () => {
-    try {
-      const data = await fetchAllMatches();
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setMatches(sorted);
-    } catch (err) {
-      console.error('Failed to load matches:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadMatches();
-  }, []);
 
   // Automatically switch to Draft Assistant view when game enters draft / selection phase
   const prevGameStateRef = useRef<PlayerGameState | null>(null);
@@ -105,7 +97,7 @@ const AppInner: React.FC = () => {
     if (settings.autoNavigateToDraft && currentState === 'draft' && prevState !== 'draft') {
       setActiveTab('assistant');
     }
-  }, [gameContext.state]);
+  }, [gameContext.state, setActiveTab]);
 
   // Automatically record active matchId from live game logs into tracked pending list
   useEffect(() => {
@@ -128,18 +120,7 @@ const AppInner: React.FC = () => {
   }, [gameContext.matchId, gameContext.myHeroId, gameContext.myHeroName]);
 
   const handleMatchSaved = (savedMatch: Match) => {
-    setMatches((prev) => {
-      const existingIdx = prev.findIndex((m) => m.id === savedMatch.id);
-      let nextList: Match[];
-      if (existingIdx >= 0) {
-        nextList = [...prev];
-        nextList[existingIdx] = savedMatch;
-      } else {
-        nextList = [savedMatch, ...prev];
-      }
-      return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    });
-
+    saveMatch(savedMatch);
     if (editingMatch) {
       setEditingMatch(null);
       setActiveTab('history');
@@ -157,27 +138,13 @@ const AppInner: React.FC = () => {
   };
 
   const handleDeleteMatch = async (id: string) => {
-    if (id.startsWith('queue_')) {
-      const matchId = parseInt(id.replace('queue_', ''), 10);
-      if (!isNaN(matchId)) {
-        removeMatchFromQueue(matchId);
-      }
-      return;
-    }
-
-    const success = await removeMatch(id);
-    if (success) {
-      setMatches((prev) => prev.filter((m) => m.id !== id));
-      if (editingMatch && editingMatch.id === id) {
-        setEditingMatch(null);
-      }
-    }
+    await deleteMatch(id);
   };
 
   // Export matches to a downloadable JSON file
   const handleExport = async () => {
     try {
-      const jsonStr = await exportMatchesJson();
+      const jsonStr = await exportMatches();
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -187,6 +154,7 @@ const AppInner: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export failed:', err);
+      toast.error('Failed to export matches');
     }
   };
 
@@ -196,8 +164,7 @@ const AppInner: React.FC = () => {
     if (!file) return;
     try {
       const text = await file.text();
-      const count = await importMatchesJson(text);
-      await loadMatches();
+      const count = await importMatches(text);
       toast.success(`${count} matches imported successfully`);
     } catch (err) {
       console.error('Import failed:', err);
@@ -208,15 +175,6 @@ const AppInner: React.FC = () => {
       }
     }
   };
-
-  // Quick stats memoization (cancelled matches are excluded from winrate calculation)
-  const totalMatches = matches.length;
-  const totalWins = useMemo(() => matches.filter((m) => m.result === 'win').length, [matches]);
-  const totalDecided = useMemo(
-    () => matches.filter((m) => m.result === 'win' || m.result === 'loss').length,
-    [matches]
-  );
-  const winRate = totalDecided > 0 ? Math.round((totalWins / totalDecided) * 100) : 0;
 
   // Dynamic hero background artwork
   // Priority: 1) filtered/previewed hero, 2) live in-game hero, 3) most-played hero, 4) fallback: Celeste
@@ -250,37 +208,6 @@ const AppInner: React.FC = () => {
     return '/heroes/backgrounds/celeste_bg.webp';
   }, [previewHeroId, gameContext.myHeroId, matches]);
 
-  // Combines persisted matches with unsynced queued matches (marked as incomplete)
-  const allHistoryMatches = useMemo(() => {
-    const unsyncedQueued = matchQueue.filter(
-      (q) =>
-        q.status !== 'synced' &&
-        !matches.some(
-          (m) =>
-            m.matchId === q.matchId ||
-            m.id === String(q.matchId) ||
-            m.id === `dem_${q.matchId}`
-        )
-    );
-
-    const placeholders: Match[] = unsyncedQueued.map((q) => ({
-      id: `pending_${q.matchId}`,
-      matchId: q.matchId,
-      date: new Date(q.detectedAt).toISOString(),
-      side: 'hidden_king',
-      myHeroId: q.heroId || 0,
-      allies: [],
-      enemies: [],
-      result: 'cancel',
-      isIncomplete: true,
-      queuedMatch: q,
-    }));
-
-    return [...matches, ...placeholders].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [matches, matchQueue]);
-
   return (
     <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative">
       {/* Dynamic hero background — Full-size theatrical hero wallpaper */}
@@ -298,7 +225,7 @@ const AppInner: React.FC = () => {
           <div className="absolute top-1/4 right-8 w-[650px] h-[650px] bg-gradient-to-br from-deadlock-accent/25 via-amber-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-10 right-28 w-[400px] h-[400px] bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
 
-          {/* Full-bleed hero artwork: covers full screen height at right with vivid brilliance, contrast and shadow */}
+          {/* Full-bleed hero artwork */}
           <div
             className="absolute inset-0 bg-cover bg-right bg-no-repeat transition-all duration-700 opacity-95"
             style={{
@@ -307,45 +234,24 @@ const AppInner: React.FC = () => {
             }}
           />
 
-          {/* Left-to-right fade: softened mask allowing character illumination to radiate while preserving card clarity */}
+          {/* Left-to-right fade mask */}
           <div className="absolute inset-0 bg-gradient-to-r from-deadlock-dark/85 via-deadlock-dark/35 to-transparent via-55%" />
 
-          {/* Subtle top and bottom atmospheric vignette */}
+          {/* Top and bottom vignette */}
           <div className="absolute inset-0 bg-gradient-to-b from-deadlock-dark/35 via-transparent to-deadlock-dark/70" />
         </div>
       )}
 
-      {/* Top Header */}
+      {/* Top Header — Props reduced from 17 to 8 using Zustand */}
       <AppHeader
-        totalMatches={totalMatches}
-        winRate={winRate}
-        activeTab={activeTab}
-        onTabChange={(tab) => {
-          setEditingMatch(null);
-          setActiveTab(tab);
-        }}
         gameContext={gameContext}
         profile={profile}
         isSyncing={isSyncing}
         cooldownRemaining={cooldownRemaining}
         onSync={() => handleSyncMatches(matches, setMatches)}
-        onOpenLogDashboard={() => {
-          setEditingMatch(null);
-          setActiveTab('logs');
-        }}
-        onOpenImportById={() => {
-          setImportMatchIdInput('');
-          setIsImportByIdModalOpen(true);
-        }}
-        onOpenDebugConsole={() => {
-          setEditingMatch(null);
-          setActiveTab('logs');
-        }}
-        onSwitchProfile={() => setIsProfileModalOpen(true)}
         onExport={handleExport}
         onTriggerImportFile={() => fileInputRef.current?.click()}
         onDisconnect={handleDisconnectProfile}
-        onOpenConnectModal={() => setIsProfileModalOpen(true)}
       />
 
       {/* Spacer for fixed header */}
@@ -360,7 +266,7 @@ const AppInner: React.FC = () => {
         className="hidden"
       />
 
-      {/* Sync Status Banner / Toast */}
+      {/* Sync Status Banner */}
       {syncStatusText && (
         <div className="bg-deadlock-panel/90 border-b border-deadlock-accent/40 px-6 py-2 text-xs flex items-center justify-between text-gray-200 animate-fadeIn">
           <div className="flex items-center gap-2">
@@ -406,10 +312,7 @@ const AppInner: React.FC = () => {
               onHeroFilterChange={setPreviewHeroId}
               highlightedMatchIds={highlightedMatchIds}
               highlightedStreakType={highlightedStreakType}
-              onClearHighlight={() => {
-                setHighlightedMatchIds(null);
-                setHighlightedStreakType(null);
-              }}
+              onClearHighlight={clearHighlight}
               onMatchImported={(imported) => {
                 handleMatchSaved(imported);
                 if (imported.matchId) {
@@ -424,7 +327,7 @@ const AppInner: React.FC = () => {
             <AnalyticsView
               matches={matches}
               profile={profile}
-              onNavigateToStreak={handleNavigateToStreak}
+              onNavigateToStreak={navigateToStreak}
             />
           </ErrorBoundary>
         )}
@@ -446,7 +349,7 @@ const AppInner: React.FC = () => {
       {/* Profile Connect Modal */}
       <ProfileConnectModal
         isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
+        onClose={() => setProfileModalOpen(false)}
         currentProfile={profile}
         onConnect={(newProfile) => handleConnectProfile(newProfile, matches, setMatches)}
         onDisconnect={handleDisconnectProfile}
@@ -455,7 +358,7 @@ const AppInner: React.FC = () => {
       {/* Import Match by ID Modal */}
       <ImportMatchByIdModal
         isOpen={isImportByIdModalOpen}
-        onClose={() => setIsImportByIdModalOpen(false)}
+        onClose={() => setImportByIdModalOpen(false)}
         matchIdInput={importMatchIdInput}
         onMatchIdInputChange={setImportMatchIdInput}
         isImporting={isImportingById}

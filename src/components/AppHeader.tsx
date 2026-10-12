@@ -4,51 +4,42 @@ import { ConnectedProfile } from '../types/match';
 import { PlayerStateBadge } from './PlayerStateBadge';
 import { ProfileDropdownMenu } from './ProfileDropdownMenu';
 import { ParsedGameContext } from '../services/logWatcher';
+import { useUIStore, AppTab } from '../stores/useUIStore';
+import { useMatchStore, selectTotalMatches, selectWinRate } from '../stores/useMatchStore';
 import victorianBadge from '../assets/victorian-metal/badge.svg';
 import artDecoDivider from '../assets/art-deco/divider.svg';
 import artDecoCartouche from '../assets/art-deco/cartouche.svg';
 
-export type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
+export type { AppTab };
 
 interface AppHeaderProps {
-  totalMatches: number;
-  winRate: number;
-  activeTab: AppTab;
-  onTabChange: (tab: AppTab) => void;
   gameContext: ParsedGameContext;
   profile: ConnectedProfile | null;
   isSyncing: boolean;
   cooldownRemaining: number;
   onSync: () => void;
-  onOpenLogDashboard: () => void;
-  onOpenImportById: () => void;
-  onOpenDebugConsole: () => void;
-  onSwitchProfile: () => void;
   onExport: () => void;
   onTriggerImportFile: () => void;
   onDisconnect: () => void;
-  onOpenConnectModal: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
-  totalMatches,
-  winRate,
-  activeTab,
-  onTabChange,
   gameContext,
   profile,
   isSyncing,
   cooldownRemaining,
   onSync,
-  onOpenLogDashboard,
-  onOpenImportById,
-  onOpenDebugConsole,
-  onSwitchProfile,
   onExport,
   onTriggerImportFile,
   onDisconnect,
-  onOpenConnectModal,
 }) => {
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
+
+  const totalMatches = useMatchStore(selectTotalMatches);
+  const winRate = useMatchStore(selectWinRate);
+
   return (
     <header className="steam-glass border-b-2 border-deadlock-brass/40 px-4 sm:px-6 py-3.5 fixed top-0 left-0 right-0 w-full z-40 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
       {/* Decorative background brass conduit line */}
@@ -57,11 +48,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto flex items-center justify-between">
         {/* Brand & Steampunk Apparatus Emblem */}
         <div className="flex items-center gap-3 relative z-10">
-          <div className="flex items-center gap-2"> 
+          <div className="flex items-center gap-2">
             {/* Prominent mechanical turning gears */}
             <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
           </div>
-
         </div>
 
         {/* Global Quick Stats & Navigation */}
@@ -91,42 +81,32 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-all duration-300 filter drop-shadow-[0_0_8px_rgba(232,192,106,0.25)] group-hover:drop-shadow-[0_0_14px_rgba(232,192,106,0.5)]"
             />
             <div className="relative z-10 flex items-center gap-1.5 text-deadlock-muted text-xs px-2.5">
-              <span>Winrate:</span>
-              <strong
-                className={`font-mono font-bold px-1.5 py-0.5 rounded text-xs ${
-                  winRate >= 50
-                    ? 'bg-deadlock-win/20 text-deadlock-win border border-deadlock-win/40 shadow-[0_0_8px_rgba(95,143,122,0.3)]'
-                    : totalMatches > 0
-                    ? 'bg-deadlock-loss/20 text-deadlock-loss border border-deadlock-loss/40 shadow-[0_0_8px_rgba(169,68,66,0.3)]'
-                    : 'text-deadlock-steam'
-                }`}
-              >
-                {totalMatches > 0 ? `${winRate}%` : 'N/A'}
-              </strong>
+              <BarChart2 className="w-4 h-4 text-deadlock-accent shrink-0" />
+              <span className="truncate">Winrate: <strong className={`font-mono font-bold text-sm ${winRate >= 50 ? 'text-deadlock-win' : 'text-deadlock-loss'}`}>{winRate}%</strong></span>
             </div>
           </div>
         </div>
 
-        {/* Tactile Navigation Tabs */}
-        <div className="flex items-center bg-deadlock-dark/90 p-1 rounded-lg border border-deadlock-brass/40 shadow-inner">
+        {/* Tab Navigation Controls */}
+        <div className="flex bg-deadlock-dark/80 p-1 rounded-lg border border-deadlock-border/80 steam-card">
           <button
             type="button"
-            onClick={() => onTabChange('history')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
+            onClick={() => setActiveTab('history')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold transition-all ${
               activeTab === 'history'
-                ? 'btn-steampunk-primary text-black shadow-md'
+                ? 'bg-deadlock-accent text-black shadow-md'
                 : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>History ({totalMatches})</span>
+            <span>History</span>
           </button>
           <button
             type="button"
-            onClick={() => onTabChange('analytics')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold transition-all ${
               activeTab === 'analytics'
-                ? 'btn-steampunk-primary text-black shadow-md'
+                ? 'bg-deadlock-accent text-black shadow-md'
                 : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
             }`}
           >
@@ -135,8 +115,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onTabChange('assistant')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold text-xs transition-all ${
+            onClick={() => setActiveTab('assistant')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold transition-all ${
               activeTab === 'assistant'
                 ? 'bg-linear-to-b from-[#8b5da8] via-deadlock-arcane to-[#45285c] text-white border border-[#b388eb] shadow-md shadow-purple-900/50'
                 : 'text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/40'
@@ -164,10 +144,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               isSyncing={isSyncing}
               cooldownRemaining={cooldownRemaining}
               onSync={onSync}
-              onOpenLogDashboard={onOpenLogDashboard}
-              onOpenImportById={onOpenImportById}
-              onOpenDebugConsole={onOpenDebugConsole}
-              onSwitchProfile={onSwitchProfile}
               onExport={onExport}
               onTriggerImportFile={onTriggerImportFile}
               onDisconnect={onDisconnect}
@@ -175,7 +151,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           ) : (
             <button
               type="button"
-              onClick={onOpenConnectModal}
+              onClick={() => setProfileModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-deadlock-dark/80 border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-deadlock-accent hover:text-deadlock-steam transition-all shadow-sm steam-card"
             >
               <User className="w-3.5 h-3.5" />
