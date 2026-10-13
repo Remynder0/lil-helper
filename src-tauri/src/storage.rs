@@ -18,6 +18,27 @@ use crate::models::MatchRecord;
 
 const STORAGE_FILE_NAME: &str = "deadlock_matches.json";
 const BACKUP_FILE_NAME: &str = "deadlock_matches.json.bak";
+const STORAGE_SCHEMA_VERSION: u32 = 2;
+
+/// Flexible container handling both versioned JSON { version, matches } and legacy arrays [ ... ].
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+enum StorageContainer {
+    Versioned {
+        version: u32,
+        #[serde(default)]
+        updated_at: Option<u64>,
+        matches: Vec<MatchRecord>,
+    },
+    Legacy(Vec<MatchRecord>),
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct VersionedOutput<'a> {
+    version: u32,
+    updated_at: u64,
+    matches: &'a [MatchRecord],
+}
 
 /// Mutex ensuring mutually exclusive file access across all Tauri threads.
 static STORAGE_MUTEX: Mutex<()> = Mutex::new(());
@@ -119,8 +140,14 @@ fn load_matches_internal(file_path: &Path) -> Result<Vec<MatchRecord>, String> {
                 if trimmed.is_empty() {
                     return Ok(Vec::new());
                 }
-                match serde_json::from_str::<Vec<MatchRecord>>(trimmed) {
-                    Ok(records) => return Ok(records),
+                match serde_json::from_str::<StorageContainer>(trimmed) {
+                    Ok(container) => {
+                        let records = match container {
+                            StorageContainer::Versioned { matches, .. } => matches,
+                            StorageContainer::Legacy(matches) => matches,
+                        };
+                        return Ok(records);
+                    }
                     Err(parse_err) => {
                         eprintln!(
                             "[storage] Primary JSON file {} is corrupted ({}). Attempting backup recovery...",
@@ -145,7 +172,11 @@ fn load_matches_internal(file_path: &Path) -> Result<Vec<MatchRecord>, String> {
         if let Ok(bak_content) = fs::read_to_string(&bak_path) {
             let trimmed = bak_content.trim();
             if !trimmed.is_empty() {
-                if let Ok(records) = serde_json::from_str::<Vec<MatchRecord>>(trimmed) {
+                if let Ok(container) = serde_json::from_str::<StorageContainer>(trimmed) {
+                    let records = match container {
+                        StorageContainer::Versioned { matches, .. } => matches,
+                        StorageContainer::Legacy(matches) => matches,
+                    };
                     eprintln!(
                         "[storage] Successfully recovered {} matches from backup {}",
                         records.len(),
@@ -202,7 +233,18 @@ pub fn save_all_matches(app: &tauri::AppHandle, matches: &[MatchRecord]) -> Resu
 
 /// Internal helper for saving matches atomically to a specific file path.
 fn save_all_matches_internal(file_path: &Path, matches: &[MatchRecord]) -> Result<(), String> {
-    let json_text = serde_json::to_string_pretty(matches)
+    let updated_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let output = VersionedOutput {
+        version: STORAGE_SCHEMA_VERSION,
+        updated_at,
+        matches,
+    };
+
+    let json_text = serde_json::to_string_pretty(&output)
         .map_err(|e| format!("JSON serialization failed: {}", e))?;
 
     atomic_write_file(file_path, json_text.as_bytes())
@@ -365,6 +407,34 @@ mod tests {
 
         let final_records = load_matches_internal(&file_path).unwrap();
         assert_eq!(final_records.len(), 50);
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_schema_migration_backward_compatibility() {
+        let temp_dir = std::env::temp_dir().join(format!("deadlock_test_migration_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("deadlock_matches.json");
+
+        // 1. Write legacy raw array [ ... ]
+        let legacy_json = serde_json::to_string_pretty(&vec![create_test_record("legacy_1")]).unwrap();
+        fs::write(&file_path, legacy_json).unwrap();
+
+        // 2. Load should seamlessly parse legacy array
+        let loaded_legacy = load_matches_internal(&file_path).unwrap();
+        assert_eq!(loaded_legacy.len(), 1);
+        assert_eq!(loaded_legacy[0].id, "legacy_1");
+
+        // 3. Save will upgrade to versioned container
+        save_all_matches_internal(&file_path, &loaded_legacy).unwrap();
+        let raw_saved = fs::read_to_string(&file_path).unwrap();
+        assert!(raw_saved.contains("\"version\": 2"));
+
+        // 4. Loading the versioned container should also succeed
+        let loaded_versioned = load_matches_internal(&file_path).unwrap();
+        assert_eq!(loaded_versioned.len(), 1);
+        assert_eq!(loaded_versioned[0].id, "legacy_1");
 
         let _ = fs::remove_dir_all(temp_dir);
     }
