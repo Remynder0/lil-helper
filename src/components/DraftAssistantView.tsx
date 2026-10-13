@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import occultCorner from '../assets/occult/corner.svg';
 import { Match, Side, LaneColor, LANE_LABELS } from '../types/match';
 import { HeroPicker } from './HeroPicker';
-import { calculateBestDraftActions } from '../services/analytics';
+import { getCachedBestDraftActions } from '../services/analytics';
 import { ParsedGameContext } from '../services/logWatcher';
 import { scanEscapeMenuDraft } from '../services/screenOcr';
 import { ActiveSlot } from './draft/types';
@@ -84,10 +84,10 @@ export const DraftAssistantView: React.FC<DraftAssistantViewProps> = ({ matches,
     };
   }, [lanes]);
 
-  // Memoized: Combinatorial Best Actions Analysis (Hero switch x Lane swap)
+  // Memoized: Combinatorial Best Actions Analysis (Hero switch x Lane swap) with cached analytics
   const bestActionsAdvisor = useMemo(() => {
     if (!myHeroId) return null;
-    return calculateBestDraftActions(
+    return getCachedBestDraftActions(
       matches,
       myHeroId,
       assignedLane,

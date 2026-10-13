@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Match } from '../types/match';
 import { HeroAvatar } from './HeroAvatar';
 import {
-  calculateEnemyMatchups,
-  calculateAllySynergies,
+  getCachedEnemyMatchups,
+  getCachedAllySynergies,
   EnemyMatchupStat,
   AllySynergyStat,
   getSampleThreshold,
@@ -49,12 +49,12 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
 
   // Calculate matchups against enemies
   const enemyMatchups = useMemo(() => {
-    return calculateEnemyMatchups(matches, selectedPlayerHeroId);
+    return getCachedEnemyMatchups(matches, selectedPlayerHeroId);
   }, [matches, selectedPlayerHeroId]);
 
   // Calculate synergies with allies
   const allySynergies = useMemo(() => {
-    return calculateAllySynergies(matches, selectedPlayerHeroId);
+    return getCachedAllySynergies(matches, selectedPlayerHeroId);
   }, [matches, selectedPlayerHeroId]);
 
   // Filtered & Sorted Enemy Matchups

@@ -6,11 +6,11 @@ import { HeroMatchupsAndSynergiesView } from './HeroMatchupsAndSynergiesView';
 import { LanePerformanceView } from './LanePerformanceView';
 import { RankedProgressionView } from './RankedProgressionView';
 import {
-  calculateGlobalStats,
-  calculatePatronStats,
-  calculateHeroPerformance,
-  calculateFamiliarFace,
-  calculateLaneAnalytics,
+  getCachedGlobalStats,
+  getCachedPatronStats,
+  getCachedHeroPerformance,
+  getCachedFamiliarFace,
+  getCachedLaneAnalytics,
   formatStreakDateRange,
   HeroPerformance,
   getSampleThreshold,
@@ -49,11 +49,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
 
   const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
 
-  const globalStats = useMemo(() => calculateGlobalStats(matches), [matches]);
-  const patronStats = useMemo(() => calculatePatronStats(matches), [matches]);
-  const heroPerformances = useMemo(() => calculateHeroPerformance(matches), [matches]);
-  const familiarFace = useMemo(() => calculateFamiliarFace(matches), [matches]);
-  const laneAnalytics = useMemo(() => calculateLaneAnalytics(matches), [matches]);
+  const globalStats = useMemo(() => getCachedGlobalStats(matches), [matches]);
+  const patronStats = useMemo(() => getCachedPatronStats(matches), [matches]);
+  const heroPerformances = useMemo(() => getCachedHeroPerformance(matches), [matches]);
+  const familiarFace = useMemo(() => getCachedFamiliarFace(matches), [matches]);
+  const laneAnalytics = useMemo(() => getCachedLaneAnalytics(matches), [matches]);
 
   const topLanePartner = useMemo(() => {
     return laneAnalytics.allies.length > 0 && laneAnalytics.allies[0].lanesTogether > 0
