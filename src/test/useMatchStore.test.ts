@@ -112,4 +112,15 @@ describe('useMatchStore – Sélecteurs et mutations d\'état', () => {
     expect(placeholder).toBeDefined();
     expect(placeholder?.isIncomplete).toBe(true);
   });
+
+  it('switches currentAccountId and sets active storage account', async () => {
+    const store = useMatchStore.getState();
+    expect(store.currentAccountId).toBeNull();
+
+    store.setCurrentAccountId(12345678);
+    expect(useMatchStore.getState().currentAccountId).toBe(12345678);
+
+    store.setCurrentAccountId(null);
+    expect(useMatchStore.getState().currentAccountId).toBeNull();
+  });
 });

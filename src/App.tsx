@@ -48,13 +48,18 @@ const AppInner: React.FC = () => {
   const setMatches = useMatchStore((s) => s.setMatches);
   const editingMatch = useMatchStore((s) => s.editingMatch);
   const setEditingMatch = useMatchStore((s) => s.setEditingMatch);
+  const matchQueue = useMatchStore((s) => s.matchQueue);
   const setMatchQueue = useMatchStore((s) => s.setMatchQueue);
   const loadMatches = useMatchStore((s) => s.loadMatches);
   const saveMatch = useMatchStore((s) => s.saveMatch);
   const deleteMatch = useMatchStore((s) => s.deleteMatch);
   const exportMatches = useMatchStore((s) => s.exportMatches);
   const importMatches = useMatchStore((s) => s.importMatches);
-  const allHistoryMatches = useMatchStore(selectAllHistoryMatches);
+
+  // Combine persisted matches and pending queued matches memoized to avoid infinite re-renders
+  const allHistoryMatches = useMemo(() => {
+    return selectAllHistoryMatches({ matches, matchQueue });
+  }, [matches, matchQueue]);
 
   // Subscribe to background match queue
   useEffect(() => {
@@ -63,11 +68,6 @@ const AppInner: React.FC = () => {
     });
     return () => unsub();
   }, [setMatchQueue]);
-
-  // Load matches from persistent storage on mount
-  useEffect(() => {
-    loadMatches();
-  }, [loadMatches]);
 
   // ── Profile Sync Hook ──
   const {
@@ -85,6 +85,11 @@ const AppInner: React.FC = () => {
     importByIdError,
     handleImportMatchById,
   } = useProfileSync();
+
+  // Load matches from persistent storage on mount or account switch
+  useEffect(() => {
+    loadMatches(profile ? profile.accountId : null);
+  }, [loadMatches, profile]);
 
   // Automatically switch to Draft Assistant view when game enters draft / selection phase
   const prevGameStateRef = useRef<PlayerGameState | null>(null);
@@ -379,9 +384,11 @@ const AppInner: React.FC = () => {
 };
 
 export const App: React.FC = () => (
-  <ToastProvider>
-    <AppInner />
-  </ToastProvider>
+  <ErrorBoundary section="Deadlock Analyzer Application">
+    <ToastProvider>
+      <AppInner />
+    </ToastProvider>
+  </ErrorBoundary>
 );
 
 export default App;

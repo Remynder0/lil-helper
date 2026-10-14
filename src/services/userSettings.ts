@@ -3,6 +3,8 @@
  * Persisté dans le localStorage et prêt pour la future page de Paramètres.
  */
 
+import { saveAppSettings } from './storage';
+
 export type ShieldDisplayMode = 'badges' | 'tooltip';
 export type DraftMode = 'ocr' | 'manual';
 
@@ -50,6 +52,7 @@ export function saveUserSettings(settings: Partial<UserSettings>): UserSettings 
     const updated = { ...current, ...settings };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event('deadlock_settings_updated'));
+    saveAppSettings({ settings: updated }).catch(console.error);
     return updated;
   } catch (err) {
     console.error('Failed to save user settings:', err);

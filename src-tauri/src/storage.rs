@@ -16,8 +16,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 use crate::models::MatchRecord;
 
-const STORAGE_FILE_NAME: &str = "deadlock_matches.json";
-const BACKUP_FILE_NAME: &str = "deadlock_matches.json.bak";
 const STORAGE_SCHEMA_VERSION: u32 = 2;
 
 /// Flexible container handling both versioned JSON { version, matches } and legacy arrays [ ... ].
@@ -43,19 +41,54 @@ struct VersionedOutput<'a> {
 /// Mutex ensuring mutually exclusive file access across all Tauri threads.
 static STORAGE_MUTEX: Mutex<()> = Mutex::new(());
 
-/// Resolves the absolute path to the data storage file on the user's computer.
-fn get_storage_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+/// Resolves the absolute path to the match history file for a specific account or default.
+fn get_storage_path(app: &tauri::AppHandle, account_id: Option<u64>) -> Result<PathBuf, String> {
     let app_data_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|e| format!("Could not get app data directory: {}", e))?;
+        .app_local_data_dir()
+        .map_err(|e| format!("Could not get app local data directory: {}", e))?;
 
     if !app_data_dir.exists() {
         fs::create_dir_all(&app_data_dir)
             .map_err(|e| format!("Could not create storage directory: {}", e))?;
     }
 
-    Ok(app_data_dir.join(STORAGE_FILE_NAME))
+    let file_name = match account_id {
+        Some(id) if id > 0 => format!("history_{}.json", id),
+        _ => "history.json".to_string(),
+    };
+
+    let target_path = app_data_dir.join(&file_name);
+
+    // Auto-migration from legacy deadlock_matches.json to history.json
+    if !target_path.exists() {
+        let old_local = app_data_dir.join("deadlock_matches.json");
+        if old_local.exists() {
+            let _ = fs::copy(&old_local, &target_path);
+        } else if let Ok(roaming_dir) = app.path().app_data_dir() {
+            let old_roaming = roaming_dir.join("deadlock_matches.json");
+            if old_roaming.exists() {
+                let _ = fs::copy(&old_roaming, &target_path);
+            }
+        }
+    }
+
+    Ok(target_path)
+}
+
+/// Resolves the absolute path to settings.json in the local app data directory.
+fn get_settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Could not get app local data directory: {}", e))?;
+
+    if !app_data_dir.exists() {
+        fs::create_dir_all(&app_data_dir)
+            .map_err(|e| format!("Could not create storage directory: {}", e))?;
+    }
+
+    Ok(app_data_dir.join("settings.json"))
 }
 
 /// Atomically writes content to a file:
@@ -91,7 +124,7 @@ fn atomic_write_file(target_path: &Path, content: &[u8]) -> Result<(), String> {
     drop(file);
 
     // Step 2: Backup existing target file before overwriting
-    let bak_path = target_path.with_file_name(BACKUP_FILE_NAME);
+    let bak_path = target_path.with_extension("json.bak");
     if target_path.exists() {
         if let Err(e) = fs::copy(target_path, &bak_path) {
             eprintln!(
@@ -130,7 +163,7 @@ fn atomic_write_file(target_path: &Path, content: &[u8]) -> Result<(), String> {
 
 /// Internal helper: Reads and parses matches from a specific file path with backup fallback.
 fn load_matches_internal(file_path: &Path) -> Result<Vec<MatchRecord>, String> {
-    let bak_path = file_path.with_file_name(BACKUP_FILE_NAME);
+    let bak_path = file_path.with_extension("json.bak");
 
     // If main file exists, attempt to read and parse it
     if file_path.exists() {
@@ -209,25 +242,28 @@ fn load_matches_internal(file_path: &Path) -> Result<Vec<MatchRecord>, String> {
     ))
 }
 
-/// Reads and returns all matches stored in the JSON file.
+/// Reads and returns all matches stored in the JSON file for a specific account or default.
 /// If the file does not exist yet, returns an empty list.
 /// Automatically recovers from `.bak` if corrupted.
-pub fn load_matches(app: &tauri::AppHandle) -> Result<Vec<MatchRecord>, String> {
+pub fn load_matches(app: &tauri::AppHandle, account_id: Option<u64>) -> Result<Vec<MatchRecord>, String> {
     let _lock = STORAGE_MUTEX
         .lock()
         .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
 
-    let file_path = get_storage_path(app)?;
+    let file_path = get_storage_path(app, account_id)?;
+    if !file_path.exists() {
+        let _ = atomic_write_file(&file_path, b"[]\n");
+    }
     load_matches_internal(&file_path)
 }
 
 /// Writes the full list of matches to the JSON file atomically with backup.
-pub fn save_all_matches(app: &tauri::AppHandle, matches: &[MatchRecord]) -> Result<(), String> {
+pub fn save_all_matches(app: &tauri::AppHandle, matches: &[MatchRecord], account_id: Option<u64>) -> Result<(), String> {
     let _lock = STORAGE_MUTEX
         .lock()
         .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
 
-    let file_path = get_storage_path(app)?;
+    let file_path = get_storage_path(app, account_id)?;
     save_all_matches_internal(&file_path, matches)
 }
 
@@ -251,12 +287,16 @@ fn save_all_matches_internal(file_path: &Path, matches: &[MatchRecord]) -> Resul
 }
 
 /// Adds a new match or updates an existing one if the ID already exists.
-pub fn add_or_update_match(app: &tauri::AppHandle, new_record: MatchRecord) -> Result<MatchRecord, String> {
+pub fn add_or_update_match(
+    app: &tauri::AppHandle,
+    new_record: MatchRecord,
+    account_id: Option<u64>,
+) -> Result<MatchRecord, String> {
     let _lock = STORAGE_MUTEX
         .lock()
         .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
 
-    let file_path = get_storage_path(app)?;
+    let file_path = get_storage_path(app, account_id)?;
     let mut current_matches = load_matches_internal(&file_path)?;
 
     // Search if a match with the same ID already exists
@@ -272,12 +312,16 @@ pub fn add_or_update_match(app: &tauri::AppHandle, new_record: MatchRecord) -> R
 }
 
 /// Deletes a match by its unique ID string.
-pub fn delete_match_by_id(app: &tauri::AppHandle, match_id: &str) -> Result<bool, String> {
+pub fn delete_match_by_id(
+    app: &tauri::AppHandle,
+    match_id: &str,
+    account_id: Option<u64>,
+) -> Result<bool, String> {
     let _lock = STORAGE_MUTEX
         .lock()
         .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
 
-    let file_path = get_storage_path(app)?;
+    let file_path = get_storage_path(app, account_id)?;
     let mut current_matches = load_matches_internal(&file_path)?;
 
     let initial_len = current_matches.len();
@@ -289,6 +333,43 @@ pub fn delete_match_by_id(app: &tauri::AppHandle, match_id: &str) -> Result<bool
     } else {
         Ok(false)
     }
+}
+
+/// Reads settings.json from local app data directory.
+pub fn load_settings(app: &tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let _lock = STORAGE_MUTEX
+        .lock()
+        .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
+
+    let file_path = get_settings_path(app)?;
+    if !file_path.exists() {
+        let initial_val = serde_json::json!({});
+        let _ = atomic_write_file(&file_path, b"{}\n");
+        return Ok(initial_val);
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read settings file: {}", e))?;
+
+    if content.trim().is_empty() {
+        return Ok(serde_json::json!({}));
+    }
+
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse settings JSON: {}", e))
+}
+
+/// Atomically saves settings.json into local app data directory.
+pub fn save_settings(app: &tauri::AppHandle, settings: serde_json::Value) -> Result<(), String> {
+    let _lock = STORAGE_MUTEX
+        .lock()
+        .map_err(|e| format!("Storage mutex poisoned: {}", e))?;
+
+    let file_path = get_settings_path(app)?;
+    let content = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+
+    atomic_write_file(&file_path, content.as_bytes())
 }
 
 #[cfg(test)]
@@ -435,6 +516,64 @@ mod tests {
         let loaded_versioned = load_matches_internal(&file_path).unwrap();
         assert_eq!(loaded_versioned.len(), 1);
         assert_eq!(loaded_versioned[0].id, "legacy_1");
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_account_isolated_match_histories() {
+        let temp_dir = std::env::temp_dir().join(format!("deadlock_test_accounts_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let account_1_path = temp_dir.join("history_12345.json");
+        let account_2_path = temp_dir.join("history_67890.json");
+
+        let matches_acc1 = vec![create_test_record("acc1_match1")];
+        let matches_acc2 = vec![create_test_record("acc2_match1"), create_test_record("acc2_match2")];
+
+        save_all_matches_internal(&account_1_path, &matches_acc1).unwrap();
+        save_all_matches_internal(&account_2_path, &matches_acc2).unwrap();
+
+        let loaded_1 = load_matches_internal(&account_1_path).unwrap();
+        let loaded_2 = load_matches_internal(&account_2_path).unwrap();
+
+        assert_eq!(loaded_1.len(), 1);
+        assert_eq!(loaded_1[0].id, "acc1_match1");
+
+        assert_eq!(loaded_2.len(), 2);
+        assert_eq!(loaded_2[0].id, "acc2_match1");
+        assert_eq!(loaded_2[1].id, "acc2_match2");
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_settings_atomic_save_and_load() {
+        let temp_dir = std::env::temp_dir().join(format!("deadlock_test_settings_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let settings_file = temp_dir.join("settings.json");
+
+        let settings_data = serde_json::json!({
+            "activeAccountId": 12345678,
+            "profile": {
+                "accountId": 12345678,
+                "personaName": "TestPlayer"
+            },
+            "settings": {
+                "shieldDisplayMode": "badges",
+                "draftMode": "ocr",
+                "autoNavigateToDraft": true
+            }
+        });
+
+        let json_text = serde_json::to_string_pretty(&settings_data).unwrap();
+        atomic_write_file(&settings_file, json_text.as_bytes()).unwrap();
+
+        let loaded_text = fs::read_to_string(&settings_file).unwrap();
+        let loaded_json: serde_json::Value = serde_json::from_str(&loaded_text).unwrap();
+
+        assert_eq!(loaded_json["activeAccountId"], 12345678);
+        assert_eq!(loaded_json["profile"]["personaName"], "TestPlayer");
 
         let _ = fs::remove_dir_all(temp_dir);
     }

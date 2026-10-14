@@ -5,7 +5,10 @@ import {
   getTrackedPendingMatches,
   removeTrackedPendingMatch,
   saveTrackedPendingMatch,
+  saveAppSettings,
+  fetchAppSettings,
 } from '../services/storage';
+import { useMatchStore } from '../stores/useMatchStore';
 import {
   syncRankedMatchesForAccount,
   fetchSingleMatchResultById,
@@ -28,6 +31,16 @@ export function useProfileSync() {
       return null;
     }
   });
+
+  // Hydrate profile from settings.json on mount
+  useEffect(() => {
+    fetchAppSettings().then((appSettings) => {
+      if (appSettings.profile) {
+        setProfile(appSettings.profile);
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(appSettings.profile));
+      }
+    }).catch(console.error);
+  }, []);
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -204,6 +217,7 @@ export function useProfileSync() {
       };
       setProfile(updatedProfile);
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile));
+      saveAppSettings({ profile: updatedProfile, activeAccountId: updatedProfile.accountId }).catch(console.error);
     } catch (err) {
       console.error('Sync failed:', err);
       setSyncStatusText('Sync failed. Please try again.');
@@ -294,20 +308,30 @@ export function useProfileSync() {
     }
   };
 
-  const handleConnectProfile = (
+  const handleConnectProfile = async (
     newProfile: ConnectedProfile,
-    matches: Match[],
+    _matches: Match[],
     onMatchesUpdated: (updater: (prev: Match[]) => Match[]) => void
   ) => {
     setProfile(newProfile);
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
-    handleSyncMatches(matches, onMatchesUpdated, newProfile);
+    await saveAppSettings({ profile: newProfile, activeAccountId: newProfile.accountId });
+
+    // Switch match history to the connected profile
+    await useMatchStore.getState().loadMatches(newProfile.accountId);
+    const newAccountMatches = useMatchStore.getState().matches;
+
+    handleSyncMatches(newAccountMatches, onMatchesUpdated, newProfile);
   };
 
-  const handleDisconnectProfile = () => {
+  const handleDisconnectProfile = async () => {
     setProfile(null);
     localStorage.removeItem(PROFILE_STORAGE_KEY);
+    await saveAppSettings({ profile: null, activeAccountId: null });
     setSyncStatusText(null);
+
+    // Switch back to default match history
+    await useMatchStore.getState().loadMatches(null);
   };
 
   return {

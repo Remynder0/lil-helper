@@ -5,6 +5,7 @@ import {
   removeMatch,
   exportMatchesJson,
   importMatchesJson,
+  setActiveStorageAccountId,
 } from '../services/storage';
 import {
   removeMatchFromQueue,
@@ -16,12 +17,14 @@ interface MatchState {
   matchQueue: QueuedMatch[];
   editingMatch: Match | null;
   isLoading: boolean;
+  currentAccountId: number | null;
 
   setMatches: (matchesOrUpdater: Match[] | ((prev: Match[]) => Match[])) => void;
   setMatchQueue: (queue: QueuedMatch[]) => void;
   setEditingMatch: (match: Match | null) => void;
+  setCurrentAccountId: (accountId: number | null) => void;
 
-  loadMatches: () => Promise<void>;
+  loadMatches: (accountId?: number | null) => Promise<void>;
   saveMatch: (savedMatch: Match) => void;
   deleteMatch: (id: string) => Promise<boolean>;
   exportMatches: () => Promise<string>;
@@ -33,6 +36,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   matchQueue: [],
   editingMatch: null,
   isLoading: false,
+  currentAccountId: null,
 
   setMatches: (matchesOrUpdater) => {
     if (typeof matchesOrUpdater === 'function') {
@@ -46,10 +50,17 @@ export const useMatchStore = create<MatchState>((set, get) => ({
 
   setEditingMatch: (match) => set({ editingMatch: match }),
 
-  loadMatches: async () => {
-    set({ isLoading: true });
+  setCurrentAccountId: (accountId) => {
+    setActiveStorageAccountId(accountId);
+    set({ currentAccountId: accountId });
+  },
+
+  loadMatches: async (accountId?: number | null) => {
+    const effectiveAccountId = accountId !== undefined ? accountId : get().currentAccountId;
+    setActiveStorageAccountId(effectiveAccountId);
+    set({ isLoading: true, currentAccountId: effectiveAccountId ?? null });
     try {
-      const data = await fetchAllMatches();
+      const data = await fetchAllMatches(effectiveAccountId);
       const sorted = [...data].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
@@ -86,7 +97,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       return true;
     }
 
-    const success = await removeMatch(id);
+    const success = await removeMatch(id, get().currentAccountId ?? undefined);
     if (success) {
       set((state) => ({
         matches: state.matches.filter((m) => m.id !== id),
@@ -98,12 +109,12 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   },
 
   exportMatches: async () => {
-    return await exportMatchesJson();
+    return await exportMatchesJson(get().currentAccountId ?? undefined);
   },
 
   importMatches: async (jsonText: string) => {
-    const count = await importMatchesJson(jsonText);
-    await get().loadMatches();
+    const count = await importMatchesJson(jsonText, get().currentAccountId ?? undefined);
+    await get().loadMatches(get().currentAccountId);
     return count;
   },
 }));
@@ -123,7 +134,13 @@ export const selectWinRate = (state: MatchState) => {
   return decided > 0 ? Math.round((wins / decided) * 100) : 0;
 };
 
-export const selectAllHistoryMatches = (state: MatchState): Match[] => {
+export const selectAllHistoryMatches = (
+  state: Pick<MatchState, 'matches' | 'matchQueue'>
+): Match[] => {
+  if (!state.matchQueue || state.matchQueue.length === 0) {
+    return state.matches;
+  }
+
   const unsyncedQueued = state.matchQueue.filter(
     (q) =>
       q.status !== 'synced' &&
@@ -134,6 +151,10 @@ export const selectAllHistoryMatches = (state: MatchState): Match[] => {
           m.id === `dem_${q.matchId}`
       )
   );
+
+  if (unsyncedQueued.length === 0) {
+    return state.matches;
+  }
 
   const placeholders: Match[] = unsyncedQueued.map((q) => ({
     id: `pending_${q.matchId}`,
@@ -152,3 +173,4 @@ export const selectAllHistoryMatches = (state: MatchState): Match[] => {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 };
+

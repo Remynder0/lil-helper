@@ -37,9 +37,15 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
       const results = await searchSteamProfiles(query);
       setSearchResults(results);
       setHasSearched(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Search failed:', err);
-      setErrorMessage('Failed to search Steam profiles. Please try again.');
+      if (err?.message === 'STEAM_SEARCH_503' || err?.status === 503) {
+        setErrorMessage(
+          "L'index de recherche par pseudo de l'API Deadlock est actuellement en maintenance (Erreur 503). Entrez directement un Code Ami Steam (ex: 123456789), un SteamID64 ou le lien d'un profil Steam pour vous connecter instantanément !"
+        );
+      } else {
+        setErrorMessage('Failed to search Steam profiles. Please try again.');
+      }
     } finally {
       setIsSearching(false);
     }
@@ -150,7 +156,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
           {/* Search Form */}
           <form onSubmit={handleSearch} className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-gray-300">
-              {currentProfile ? 'Switch to another account' : 'Search by Steam Nickname or Account ID'}
+              {currentProfile ? 'Switch to another account' : 'Connect Steam Profile'}
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -159,8 +165,8 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="e.g. Mika or 202670018..."
-                  className="w-full bg-deadlock-card border border-deadlock-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-deadlock-steam placeholder-deadlock-muted focus:outline-none focus:border-deadlock-accent transition-colors"
+                  placeholder="Code ami (ex: 123456789), SteamID64 ou lien profil..."
+                  className="w-full bg-deadlock-card border border-deadlock-border rounded-xl pl-9 pr-4 py-2.5 text-xs text-deadlock-steam placeholder-deadlock-muted focus:outline-none focus:border-deadlock-accent transition-colors font-mono"
                 />
               </div>
               <button
@@ -178,11 +184,15 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
                 )}
               </button>
             </div>
+            <p className="text-[11px] text-deadlock-muted leading-relaxed">
+              <span className="text-deadlock-accent font-semibold">💡 Astuce :</span> Entrez n'importe quel <strong className="text-gray-200">Code Ami Steam</strong> (dans Steam &gt; Amis &gt; Ajouter un ami, ex: <code className="text-deadlock-accent font-mono font-bold">123456789</code>), un <strong className="text-gray-200">SteamID64</strong> ou l'URL directe d'un profil Steam.
+            </p>
           </form>
 
           {errorMessage && (
-            <div className="p-2.5 rounded-lg bg-red-950/30 border border-red-800/50 text-red-400 text-xs">
-              {errorMessage}
+            <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/50 text-amber-200 text-xs flex flex-col gap-1 leading-relaxed">
+              <span className="font-bold text-amber-400">⚠️ Information de connexion</span>
+              <p>{errorMessage}</p>
             </div>
           )}
 

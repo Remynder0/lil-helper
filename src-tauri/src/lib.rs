@@ -15,6 +15,8 @@ pub fn run() {
             commands::delete_match,
             commands::export_matches,
             commands::import_matches,
+            commands::get_settings,
+            commands::save_settings,
             commands::detect_deadlock_log_path,
             commands::read_deadlock_log_events,
             commands::save_deadlock_debug_log,

@@ -14,104 +14,67 @@ use crate::models::MatchRecord;
 use crate::storage;
 use crate::log_watcher::{self, LogEvent};
 
-/// Retrieves the complete list of matches.
+/// Retrieves the complete list of matches for a specific account or default.
 #[tauri::command]
-pub fn get_matches(app: tauri::AppHandle) -> Result<Vec<MatchRecord>, String> {
-    let result = storage::load_matches(&app);
-    return result;
+pub fn get_matches(app: tauri::AppHandle, account_id: Option<u64>) -> Result<Vec<MatchRecord>, String> {
+    storage::load_matches(&app, account_id)
 }
 
-/// Saves a match record (creates new or updates existing).
+/// Saves a match record for a specific account or default (creates new or updates existing).
 #[tauri::command]
-pub fn save_match(app: tauri::AppHandle, match_record: MatchRecord) -> Result<MatchRecord, String> {
-    let result = storage::add_or_update_match(&app, match_record);
-    return result;
+pub fn save_match(app: tauri::AppHandle, match_record: MatchRecord, account_id: Option<u64>) -> Result<MatchRecord, String> {
+    storage::add_or_update_match(&app, match_record, account_id)
 }
 
 /// Deletes a match record by its ID string.
 #[tauri::command]
-pub fn delete_match(app: tauri::AppHandle, id: String) -> Result<bool, String> {
-    let result = storage::delete_match_by_id(&app, &id);
-    return result;
+pub fn delete_match(app: tauri::AppHandle, id: String, account_id: Option<u64>) -> Result<bool, String> {
+    storage::delete_match_by_id(&app, &id, account_id)
 }
 
-/// Exports all matches to a formatted JSON string.
+/// Exports all matches for a specific account to a formatted JSON string.
 #[tauri::command]
-pub fn export_matches(app: tauri::AppHandle) -> Result<String, String> {
-    // 1. Load matches
-    let matches: Vec<MatchRecord> = match storage::load_matches(&app) {
-        Ok(list) => list,
-        Err(error) => {
-            return Err(error);
-        }
-    };
-
-    // 2. Format as JSON string
-    let json_result = serde_json::to_string_pretty(&matches);
-    match json_result {
-        Ok(json_text) => {
-            return Ok(json_text);
-        }
-        Err(error) => {
-            let error_message = format!("Export formatting failed: {}", error);
-            return Err(error_message);
-        }
-    }
+pub fn export_matches(app: tauri::AppHandle, account_id: Option<u64>) -> Result<String, String> {
+    let matches = storage::load_matches(&app, account_id)?;
+    serde_json::to_string_pretty(&matches).map_err(|e| format!("Export formatting failed: {}", e))
 }
 
 /// Imports matches from a JSON string into current storage.
 #[tauri::command]
-pub fn import_matches(app: tauri::AppHandle, json_data: String) -> Result<usize, String> {
-    // 1. Parse JSON
+pub fn import_matches(app: tauri::AppHandle, json_data: String, account_id: Option<u64>) -> Result<usize, String> {
     let parse_result: Result<Vec<MatchRecord>, serde_json::Error> = serde_json::from_str(&json_data);
     let imported_list: Vec<MatchRecord> = match parse_result {
         Ok(list) => list,
         Err(error) => {
-            let error_message = format!("Invalid JSON format: {}", error);
-            return Err(error_message);
+            return Err(format!("Invalid JSON format: {}", error));
         }
     };
 
-    let imported_count: usize = imported_list.len();
+    let imported_count = imported_list.len();
+    let mut current_matches = storage::load_matches(&app, account_id)?;
 
-    // 2. Load existing matches
-    let mut current_matches: Vec<MatchRecord> = match storage::load_matches(&app) {
-        Ok(list) => list,
-        Err(error) => return Err(error),
-    };
-
-    // 3. Merge: if match ID exists, update it. Otherwise, add it.
     for record in imported_list {
-        let mut found_index: Option<usize> = None;
-        let mut i: usize = 0;
-        while i < current_matches.len() {
-            if current_matches[i].id == record.id {
-                found_index = Some(i);
-                break;
-            }
-            i = i + 1;
-        }
-
-        match found_index {
-            Some(idx) => {
-                current_matches[idx] = record;
-            }
-            None => {
-                current_matches.push(record);
-            }
+        if let Some(pos) = current_matches.iter().position(|m| m.id == record.id) {
+            current_matches[pos] = record;
+        } else {
+            current_matches.push(record);
         }
     }
 
-    // 4. Save merged list to disk
-    let save_result = storage::save_all_matches(&app, &current_matches);
-    match save_result {
-        Ok(()) => {
-            return Ok(imported_count);
-        }
-        Err(error) => {
-            return Err(error);
-        }
-    }
+    storage::save_all_matches(&app, &current_matches, account_id)?;
+    Ok(imported_count)
+}
+
+/// Retrieves stored application settings (Steam profile, preferences, paths).
+#[tauri::command]
+pub fn get_settings(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    storage::load_settings(&app)
+}
+
+/// Saves application settings atomically to settings.json.
+#[tauri::command]
+pub fn save_settings(app: tauri::AppHandle, settings: serde_json::Value) -> Result<(), String> {
+    storage::save_settings(&app, settings)
 }
 
 /// Tries to automatically detect the Deadlock console.log file path.

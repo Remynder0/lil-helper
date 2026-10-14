@@ -81,4 +81,25 @@ describe('storageMigration – Versioning de Schéma de Données', () => {
     expect(result.matches).toHaveLength(1);
     expect(result.matches[0].id).toBe('valid_1');
   });
+
+  it('saves and fetches app settings payload safely', async () => {
+    const { saveAppSettings, fetchAppSettings } = await import('../services/storage');
+    await saveAppSettings({
+      activeAccountId: 98765432,
+      profile: {
+        accountId: 98765432,
+        personaName: 'TestSteamUser',
+      },
+      settings: {
+        shieldDisplayMode: 'badges',
+        draftMode: 'ocr',
+        autoNavigateToDraft: true,
+      },
+    });
+
+    const loaded = await fetchAppSettings();
+    expect(loaded.activeAccountId).toBe(98765432);
+    expect(loaded.profile?.personaName).toBe('TestSteamUser');
+    expect(loaded.settings?.shieldDisplayMode).toBe('badges');
+  });
 });
