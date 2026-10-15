@@ -60,8 +60,8 @@ fn get_storage_path(app: &tauri::AppHandle, account_id: Option<u64>) -> Result<P
 
     let target_path = app_data_dir.join(&file_name);
 
-    // Auto-migration from legacy deadlock_matches.json to history.json
-    if !target_path.exists() {
+    // Auto-migration from legacy deadlock_matches.json to history.json (ONLY for default guest account)
+    if account_id.is_none() && !target_path.exists() {
         let old_local = app_data_dir.join("deadlock_matches.json");
         if old_local.exists() {
             let _ = fs::copy(&old_local, &target_path);

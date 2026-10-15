@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Match } from '../types/match';
 import {
   fetchAllMatches,
+  persistMatch,
   removeMatch,
   exportMatchesJson,
   importMatchesJson,
@@ -86,14 +87,23 @@ export const useMatchStore = create<MatchState>((set, get) => ({
       );
       return { matches: sorted };
     });
+
+    persistMatch(savedMatch, get().currentAccountId).catch((err) => {
+      console.warn('Failed to persist match or push to Supabase Cloud:', err);
+    });
   },
 
   deleteMatch: async (id: string): Promise<boolean> => {
-    if (id.startsWith('queue_')) {
-      const matchId = parseInt(id.replace('queue_', ''), 10);
+    if (id.startsWith('pending_') || id.startsWith('queue_')) {
+      const numStr = id.replace(/^(pending_|queue_)/, '');
+      const matchId = parseInt(numStr, 10);
       if (!isNaN(matchId)) {
         removeMatchFromQueue(matchId);
       }
+      set((state) => ({
+        matches: state.matches.filter((m) => m.id !== id && m.matchId !== matchId),
+        editingMatch: state.editingMatch?.id === id ? null : state.editingMatch,
+      }));
       return true;
     }
 
