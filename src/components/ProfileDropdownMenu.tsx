@@ -11,7 +11,11 @@ import {
   LogOut,
   FolderSync,
   Search,
+  Cloud,
 } from 'lucide-react';
+import { syncMatchesWithCloud } from '../services/storage';
+import { useToast } from './Toast';
+import { useMatchStore } from '../stores/useMatchStore';
 
 interface ProfileDropdownMenuProps {
   profile: ConnectedProfile;
@@ -37,6 +41,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const setImportByIdModalOpen = useUIStore((s) => s.setImportByIdModalOpen);
   const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
+  const toast = useToast();
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -143,6 +148,29 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             >
               <FolderSync className="w-4 h-4 text-blue-400 shrink-0" />
               <span>Switch Profile</span>
+            </button>
+
+            {/* Sync to Supabase Cloud */}
+            <button
+              type="button"
+              onClick={async () => {
+                setIsOpen(false);
+                try {
+                  const res = await syncMatchesWithCloud(profile.accountId, profile);
+                  if (res.success) {
+                    toast.success(res.message);
+                    await useMatchStore.getState().loadMatches(profile.accountId);
+                  } else {
+                    toast.error(res.message);
+                  }
+                } catch (err: any) {
+                  toast.error(err?.message || 'Cloud Sync failed');
+                }
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-[#3ecf8e] transition-colors text-left"
+            >
+              <Cloud className="w-4 h-4 text-[#3ecf8e] shrink-0" />
+              <span>Sync with Supabase Cloud</span>
             </button>
 
             <div className="h-px bg-deadlock-border/60 my-1" />

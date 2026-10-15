@@ -7,6 +7,7 @@ import {
   saveTrackedPendingMatch,
   saveAppSettings,
   fetchAppSettings,
+  syncMatchesWithCloud,
 } from '../services/storage';
 import { useMatchStore } from '../stores/useMatchStore';
 import {
@@ -19,6 +20,12 @@ import {
   removeMatchFromQueue,
   addMatchToQueue,
 } from '../services/matchQueue';
+import {
+  getSupabaseClient,
+  isSupabaseConfigured,
+  initializeSupabaseConfig,
+} from '../services/supabaseClient';
+import { fetchCloudMatchHistory } from '../services/cloudSync';
 
 export const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
@@ -31,16 +38,6 @@ export function useProfileSync() {
       return null;
     }
   });
-
-  // Hydrate profile from settings.json on mount
-  useEffect(() => {
-    fetchAppSettings().then((appSettings) => {
-      if (appSettings.profile) {
-        setProfile(appSettings.profile);
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(appSettings.profile));
-      }
-    }).catch(console.error);
-  }, []);
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -142,7 +139,6 @@ export function useProfileSync() {
               updateQueuedMatchStatus(item.matchId, 'failed', 'Profile was not part of this match.', false);
               removeMatchFromQueue(item.matchId);
             } else if (directResult.error === 'rate_limited') {
-              // Rate limit quota: do not count as a match attempt failure
               updateQueuedMatchStatus(
                 item.matchId,
                 'failed',
@@ -150,7 +146,6 @@ export function useProfileSync() {
                 false
               );
             } else {
-              // Real match failure (e.g. 503, 404, server error)
               updateQueuedMatchStatus(
                 item.matchId,
                 'failed',
@@ -168,11 +163,12 @@ export function useProfileSync() {
       const allNewMatches = [...addedMatches, ...recoveredMatches];
 
       if (allNewMatches.length > 0) {
-        await persistMatches(allNewMatches);
-        onMatchesUpdated((prev) => {
+        await persistMatches(allNewMatches, targetProfile.accountId);
+        syncMatchesWithCloud(targetProfile.accountId, targetProfile).catch(console.error);
+        onMatchesUpdated(() => {
           const map = new Map<string, Match>();
           allNewMatches.forEach((m) => map.set(m.id, m));
-          prev.forEach((m) => {
+          matches.forEach((m) => {
             if (!map.has(m.id)) {
               map.set(m.id, m);
             }
@@ -187,6 +183,7 @@ export function useProfileSync() {
           : '';
         setSyncStatusText(`+${allNewMatches.length} new ranked match${allNewMatches.length > 1 ? 'es' : ''} imported!${recoveredMsg}`);
       } else {
+        syncMatchesWithCloud(targetProfile.accountId, targetProfile).catch(console.error);
         setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
       }
 
@@ -201,7 +198,7 @@ export function useProfileSync() {
           targetProfile.accountId
         );
         if (updatedCount > 0) {
-          await persistMatches(updatedMatches);
+          await persistMatches(updatedMatches, targetProfile.accountId);
           onMatchesUpdated(() => updatedMatches);
         }
       }
@@ -261,8 +258,6 @@ export function useProfileSync() {
           return { added: false, matchId };
         }
 
-        // For all other cases (not_found, rate_limited, steam_unavailable, network_error, server_error):
-        // Add to queue as incomplete match so the user sees it in their history and can sync/parse replay
         saveTrackedPendingMatch(matchId, effectiveTimestamp, null, null, 'manual');
         addMatchToQueue(matchId, effectiveTimestamp, null, null, 'manual');
         setIsImportByIdModalOpen(false);
@@ -274,7 +269,7 @@ export function useProfileSync() {
 
       const imported = result.match;
 
-      await persistMatches([imported]);
+      await persistMatches([imported], profile.accountId);
       onMatchesUpdated((prev) => {
         const existingIdx = prev.findIndex((m) => m.id === imported.id || m.matchId === imported.matchId);
         let nextList: Match[];
@@ -314,14 +309,43 @@ export function useProfileSync() {
     onMatchesUpdated: (updater: (prev: Match[]) => Match[]) => void
   ) => {
     setProfile(newProfile);
+    setSyncStatusText(`Connecting to ${newProfile.personaName}...`);
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
     await saveAppSettings({ profile: newProfile, activeAccountId: newProfile.accountId });
 
-    // Switch match history to the connected profile
+    // 1. Switch match store to the selected account and load local matches
     await useMatchStore.getState().loadMatches(newProfile.accountId);
-    const newAccountMatches = useMatchStore.getState().matches;
+    let currentMatches = useMatchStore.getState().matches;
 
-    handleSyncMatches(newAccountMatches, onMatchesUpdated, newProfile);
+    // 2. If Supabase is configured, check if matches exist in Supabase Cloud
+    if (isSupabaseConfigured()) {
+      setSyncStatusText(`Checking history for ${newProfile.personaName}...`);
+      try {
+        const cloudResult = await fetchCloudMatchHistory(newProfile.accountId);
+        if (cloudResult.found && cloudResult.matches.length > 0) {
+          // Cloud has matches -> sync with cloud and reload into store
+          await syncMatchesWithCloud(newProfile.accountId, newProfile);
+          await useMatchStore.getState().loadMatches(newProfile.accountId);
+          currentMatches = useMatchStore.getState().matches;
+        }
+      } catch (cloudErr) {
+        console.warn('Cloud history query error during connection:', cloudErr);
+      }
+    }
+
+    // 3. If matches exist locally or in Supabase Cloud:
+    // DO NOT refresh from Deadlock API!
+    if (currentMatches.length > 0) {
+      onMatchesUpdated(() => currentMatches);
+      setSyncStatusText(`Loaded ${currentMatches.length} match${currentMatches.length > 1 ? 'es' : ''} from history.`);
+      setTimeout(() => setSyncStatusText(null), 4000);
+      return;
+    }
+
+    // 4. Only if no matches exist anywhere (first time connecting this profile):
+    // Refresh matches from Deadlock API
+    setSyncStatusText(`No history found. Fetching initial matches from Deadlock API...`);
+    await handleSyncMatches([], onMatchesUpdated, newProfile, true);
   };
 
   const handleDisconnectProfile = async () => {
@@ -330,9 +354,105 @@ export function useProfileSync() {
     await saveAppSettings({ profile: null, activeAccountId: null });
     setSyncStatusText(null);
 
+    // If Supabase session exists, sign out
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.auth.signOut().catch(console.error);
+      }
+    }
+
     // Switch back to default match history
     await useMatchStore.getState().loadMatches(null);
   };
+
+  // Hydrate profile on mount or process Steam OpenID authentication callback
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // 1. Check for Steam OpenID authentication error
+      const searchParams = new URLSearchParams(window.location.search);
+      const steamError = searchParams.get('error');
+      if (steamError) {
+        if (steamError === 'steam_auth_cancelled') {
+          setSyncStatusText('Steam sign-in was cancelled.');
+        } else if (steamError === 'steam_verification_failed') {
+          setSyncStatusText('Steam signature verification failed with Valve servers.');
+        } else {
+          setSyncStatusText('Steam authentication could not be completed.');
+        }
+        const cleanUrl = window.location.pathname + (window.location.hash || '');
+        window.history.replaceState(null, '', cleanUrl);
+      }
+
+      // 2. Check for Steam OpenID authentication success in URL hash
+      const hash = window.location.hash;
+      if (hash && hash.includes('steam_auth=success')) {
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+        const accountIdStr = hashParams.get('account_id');
+        const personaName = hashParams.get('persona_name');
+        const avatarUrl = hashParams.get('avatar_url') || '';
+        const profileUrl = hashParams.get('profile_url') || '';
+        const tokenHash = hashParams.get('token_hash');
+        const authType = hashParams.get('type') as any;
+
+        if (accountIdStr) {
+          const accountId = parseInt(accountIdStr, 10);
+          const newProfile: ConnectedProfile = {
+            accountId,
+            personaName: personaName || `Account #${accountId}`,
+            avatarUrl,
+            profileUrl,
+            lastSyncedAt: new Date().toISOString(),
+          };
+
+          // If Supabase token hash is present, verify OTP to establish authenticated session
+          if (tokenHash && isSupabaseConfigured()) {
+            const client = getSupabaseClient();
+            if (client) {
+              client.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: authType || 'magiclink',
+              }).then(({ error }) => {
+                if (error) {
+                  console.warn('Could not verify Supabase session token:', error.message);
+                }
+              }).catch(console.error);
+            }
+          }
+
+          // Clean URL hash without triggering navigation
+          window.history.replaceState(null, '', window.location.pathname);
+
+          // Connect the profile and sync matches
+          handleConnectProfile(newProfile, useMatchStore.getState().matches, (updater) => {
+            useMatchStore.getState().setMatches(updater(useMatchStore.getState().matches));
+          });
+
+          setSyncStatusText(`Connected to Steam as ${newProfile.personaName}!`);
+          return;
+        }
+      }
+    }
+
+    // 3. Fallback: Hydrate profile from settings.json / local storage
+    fetchAppSettings().then((appSettings) => {
+      if (appSettings.profile) {
+        setProfile(appSettings.profile);
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(appSettings.profile));
+      }
+    }).catch(console.error);
+
+    // 4. Initialize Supabase configuration and sync cloud history
+    initializeSupabaseConfig().then((configured) => {
+      if (configured) {
+        fetchAppSettings().then((appSettings) => {
+          if (appSettings.profile?.accountId) {
+            syncMatchesWithCloud(appSettings.profile.accountId, appSettings.profile).catch(console.error);
+          }
+        });
+      }
+    });
+  }, []);
 
   return {
     profile,

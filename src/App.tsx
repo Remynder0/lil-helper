@@ -7,6 +7,7 @@ import { ProfileConnectModal } from './components/ProfileConnectModal';
 import { LogDashboardView } from './components/LogDashboardView';
 import { AppHeader } from './components/AppHeader';
 import { ImportMatchByIdModal } from './components/ImportMatchByIdModal';
+import { DesktopDownloadBanner } from './components/DesktopDownloadBanner';
 import { useProfileSync } from './hooks/useProfileSync';
 import { useDeadlockGameState } from './hooks/useDeadlockGameState';
 import { PlayerGameState } from './services/logWatcher';
@@ -143,7 +144,12 @@ const AppInner: React.FC = () => {
   };
 
   const handleDeleteMatch = async (id: string) => {
-    await deleteMatch(id);
+    const success = await deleteMatch(id);
+    if (success) {
+      toast.success('Match deleted from history');
+    } else {
+      toast.error('Could not delete match');
+    }
   };
 
   // Export matches to a downloadable JSON file
@@ -290,6 +296,7 @@ const AppInner: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto p-6 2xl:p-8 flex flex-col gap-6 relative z-10 transition-all duration-300">
+        <DesktopDownloadBanner />
         {activeTab === 'log_match' && (
           editingMatch ? (
             <MatchForm
