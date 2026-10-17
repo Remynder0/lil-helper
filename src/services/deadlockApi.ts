@@ -671,25 +671,33 @@ export function convertToAppMatch(
         rankedRank = Math.floor(rankedBadge / 10);
         rankedSubrank = rankedBadge % 10;
       }
+      const initialShields = rankData.initial_demotion_protection_games ?? null;
+      // Anomaly fix: a shield CANNOT be consumed if the player has 0 shields remaining
+      const hasShieldsToConsume = initialShields === null ? true : initialShields > 0;
+      const consumedShield = hasShieldsToConsume && (rankData.consumed_demotion_protection ?? false);
+      rankedConsumedDemotionProtection = consumedShield;
+      rankedDemotionProtection = initialShields !== null
+        ? (consumedShield ? Math.max(0, initialShields - 1) : initialShields)
+        : null;
+
       if (
-        rankData.consumed_demotion_protection &&
+        consumedShield &&
         rankData.final_flat_progress !== undefined &&
         rankData.final_flat_progress !== null &&
         rankData.initial_flat_progress !== undefined &&
         rankData.initial_flat_progress !== null
       ) {
         rankedDelta = rankData.final_flat_progress - rankData.initial_flat_progress;
+        rankedProgress = rankData.final_flat_progress;
       } else {
         rankedDelta = rankData.desired_progress_change ?? historyEntry.ranked_delta ?? null;
+        if (rankData.initial_flat_progress !== undefined && rankData.initial_flat_progress !== null && rankedDelta !== null) {
+          rankedProgress = rankData.initial_flat_progress + rankedDelta;
+        } else {
+          rankedProgress = rankData.final_flat_progress ?? null;
+        }
       }
-      rankedProgress = rankData.final_flat_progress ?? null;
       rankedInitialProgress = rankData.initial_flat_progress ?? null;
-      const initialShields = rankData.initial_demotion_protection_games ?? null;
-      const consumedShield = rankData.consumed_demotion_protection ?? false;
-      rankedConsumedDemotionProtection = consumedShield;
-      rankedDemotionProtection = initialShields !== null
-        ? (consumedShield ? Math.max(0, initialShields - 1) : initialShields)
-        : null;
     }
   }
 
@@ -905,29 +913,39 @@ export async function backfillRankedDataForMatches(
             const rank = badge ? Math.floor(badge / 10) : null;
             const subrank = badge ? badge % 10 : null;
 
+            const initialShields =
+              rankData.initial_demotion_protection_games !== undefined &&
+              rankData.initial_demotion_protection_games !== null
+                ? rankData.initial_demotion_protection_games
+                : null;
+            const hasShieldsToConsume = initialShields === null ? true : initialShields > 0;
+            const consumedShield = hasShieldsToConsume && (rankData.consumed_demotion_protection ?? false);
+            const rankedDelta =
+              consumedShield &&
+              rankData.final_flat_progress !== undefined &&
+              rankData.final_flat_progress !== null &&
+              rankData.initial_flat_progress !== undefined &&
+              rankData.initial_flat_progress !== null
+                ? rankData.final_flat_progress - rankData.initial_flat_progress
+                : rankData.desired_progress_change ?? null;
+            const rankedProgress =
+              !consumedShield && rankData.initial_flat_progress !== undefined && rankData.initial_flat_progress !== null && rankedDelta !== null
+                ? rankData.initial_flat_progress + rankedDelta
+                : rankData.final_flat_progress ?? null;
+
             const updated: Match = {
               ...m,
               rankedBadge: badge,
               rankedRank: rank,
               rankedSubrank: subrank,
-              rankedDelta:
-                rankData.consumed_demotion_protection &&
-                rankData.final_flat_progress !== undefined &&
-                rankData.final_flat_progress !== null &&
-                rankData.initial_flat_progress !== undefined &&
-                rankData.initial_flat_progress !== null
-                  ? rankData.final_flat_progress - rankData.initial_flat_progress
-                  : rankData.desired_progress_change ?? null,
-              rankedProgress: rankData.final_flat_progress ?? null,
+              rankedDelta,
+              rankedProgress,
               rankedInitialProgress: rankData.initial_flat_progress ?? null,
               rankedDemotionProtection:
-                rankData.initial_demotion_protection_games !== undefined &&
-                rankData.initial_demotion_protection_games !== null
-                  ? (rankData.consumed_demotion_protection
-                      ? Math.max(0, rankData.initial_demotion_protection_games - 1)
-                      : rankData.initial_demotion_protection_games)
+                initialShields !== null
+                  ? (consumedShield ? Math.max(0, initialShields - 1) : initialShields)
                   : null,
-              rankedConsumedDemotionProtection: rankData.consumed_demotion_protection ?? false,
+              rankedConsumedDemotionProtection: consumedShield,
             };
             updatedMap.set(m.id, updated);
           }
@@ -1175,7 +1193,7 @@ export function buildRankStandingFromLocalMatch(
   const progressMax = 1000;
   const progressChange = match.rankedDelta ?? 0;
 
-  const defaultMaxProtection = subrank === 1 ? 5 : 2;
+  const defaultMaxProtection = subrank <= 2 ? 5 : 2;
   const demotionProtectionGames = match.rankedDemotionProtection ?? defaultMaxProtection;
   const maxDemotionProtectionGames = Math.max(defaultMaxProtection, demotionProtectionGames);
 

@@ -241,13 +241,20 @@ describe('calculateRankedProgression – Franchissement de paliers et promotions
     expect(result.rankedDemotionProtection).toBe(5);
   });
 
-  // Promotion vers un sous-rang supérieur différent de I (ex: 1 -> 2) : réinitialisation à 2 boucliers
-  // En cas d'échec : remainingShields n'a pas été remis à 2.
-  it('awards 2 demotion shields on promotion to non-Subrank-I', () => {
+  // Règle officielle Deadlock : promotions en Sous-rangs I et II attribuent 5 boucliers de protection
+  it('awards 5 demotion shields on promotion to Subrank II', () => {
     const matches = [prevMatch(900, 2, 1, 1)];
     const result = calculateRankedProgression('win', '2024-01-02T00:00:00Z', matches);
     expect(result.rankedProgress).toBe(1200);
     expect(result.rankedSubrank).toBe(2);
+    expect(result.rankedDemotionProtection).toBe(5);
+  });
+
+  it('awards 2 demotion shields on promotion to Subrank III-VI', () => {
+    const matches = [prevMatch(1900, 2, 1, 2)];
+    const result = calculateRankedProgression('win', '2024-01-02T00:00:00Z', matches);
+    expect(result.rankedProgress).toBe(2200);
+    expect(result.rankedSubrank).toBe(3);
     expect(result.rankedDemotionProtection).toBe(2);
   });
 });

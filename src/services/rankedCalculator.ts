@@ -161,10 +161,10 @@ export function calculateRankedProgression(
     newRank < initialRank || (newRank === initialRank && newSubrank < initialSubrank);
 
   if (isPromotion) {
-    remainingShields = newSubrank === 1 ? 5 : 2;
+    remainingShields = newSubrank <= 2 ? 5 : 2;
     detailsText += ` | Promotion Tier ${newRank}-${newSubrank} (${remainingShields} shields)`;
   } else if (isDemotion) {
-    remainingShields = newSubrank === 1 ? 5 : 2;
+    remainingShields = newSubrank <= 2 ? 5 : 2;
     detailsText += ` | Demotion Tier ${newRank}-${newSubrank} (${remainingShields} shields)`;
   }
 
