@@ -26,6 +26,7 @@ src-tauri/target/
 *.sw?
 *.traineddata
 deadlock-analyse.wiki/
+lil-helper.wiki/
 scratch/
 
 # Environment files
@@ -34,3 +35,6 @@ scratch/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Simulation artifacts
+MiroFish.md

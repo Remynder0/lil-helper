@@ -1,6 +1,6 @@
 # AGENT.md - AI Developer Guide
 
-This document defines the instructions, architectural standards, and workflow rules for any AI assistant or agent collaborating on the **Deadlock Draft & Match Analyzer** repository.
+This document defines the instructions, architectural standards, and workflow rules for any AI assistant or agent collaborating on the **Lil Helper — Deadlock Companion** repository.
 
 ---
 

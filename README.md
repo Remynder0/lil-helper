@@ -1,4 +1,4 @@
-# Deadlock Draft & Match Analyzer
+# Lil Helper — Deadlock Companion
 
 [![Tauri](https://img.shields.io/badge/Tauri-v2-blue?logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-2021+-orange?logo=rust)](https://www.rust-lang.org/)
@@ -76,7 +76,7 @@ This application provides:
 ## 📂 Project Structure
 
 ```
-deadlock-analyse/
+lil-helper/
 ├── src-tauri/                          # Rust backend (Tauri v2)
 │   ├── src/
 │   │   ├── main.rs                     # Application entrypoint & Tauri builder
@@ -155,8 +155,8 @@ deadlock-analyse/
 ### Development Setup
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Remynder0/deadlock-analyse.git
-cd deadlock-analyse
+git clone https://github.com/Remynder0/lil-helper.git
+cd lil-helper
 
 # 2. Install frontend dependencies
 npm install

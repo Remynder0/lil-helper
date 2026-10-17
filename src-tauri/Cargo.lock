@@ -781,22 +781,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deadlock-analyzer"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "boon-deadlock",
- "image",
- "screenshots",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "windows 0.62.2",
-]
-
-[[package]]
 name = "defmt"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2293,6 +2277,22 @@ dependencies = [
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
+]
+
+[[package]]
+name = "lil-helper"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "boon-deadlock",
+ "image",
+ "screenshots",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "windows 0.62.2",
 ]
 
 [[package]]

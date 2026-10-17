@@ -10,9 +10,9 @@ import { subscribeToCloudSync, getCloudSyncState, CloudSyncState } from '../serv
 import { syncMatchesWithCloud } from '../services/storage';
 import { useToast } from './Toast';
 import steamLogo from '../assets/steam-logo.svg';
-import victorianBadge from '../assets/victorian-metal/badge.svg';
 import artDecoDivider from '../assets/art-deco/divider.svg';
 import artDecoCartouche from '../assets/art-deco/cartouche.svg';
+import lilHelperLogo from '../assets/lil-helper.png';
 
 export type { AppTab };
 
@@ -86,9 +86,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto flex items-center justify-between">
         {/* Brand & Steampunk Apparatus Emblem */}
         <div className="flex items-center gap-3 relative z-10">
-          <div className="flex items-center gap-2">
-            {/* Prominent mechanical turning gears */}
-            <img src={victorianBadge} alt="" aria-hidden="true" className="w-8 h-8 shrink-0 animate-[spin_12s_linear_infinite] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" />
+          <div className="flex items-center gap-2.5">
+            <img src={lilHelperLogo} alt="Lil Helper" className="w-8 h-8 shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] object-contain" />
+            <div className="flex flex-col">
+              <span className="font-bold text-sm tracking-wide text-deadlock-steam leading-none">Lil Helper</span>
+              <span className="text-[10px] text-deadlock-muted tracking-wider font-mono">DEADLOCK COMPANION</span>
+            </div>
           </div>
         </div>
 

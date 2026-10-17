@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    deadlock_analyzer_lib::run()
+    lil_helper_lib::run()
 }

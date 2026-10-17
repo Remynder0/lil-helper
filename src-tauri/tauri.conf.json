@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Deadlock Analyzer",
+  "productName": "Lil Helper",
   "version": "0.1.0",
-  "identifier": "com.deadlock.analyzer",
+  "identifier": "com.deadlock.lilhelper",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Deadlock Draft & Match Analyzer",
+        "title": "Lil Helper — Deadlock Companion",
         "width": 1100,
         "height": 750,
         "minWidth": 900,

@@ -51,7 +51,7 @@ export const DesktopDownloadBanner: React.FC = () => {
 
         <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
           <a
-            href="https://github.com/Remynder0/deadlock-analyse/releases/latest"
+            href="https://github.com/Remynder0/lil-helper/releases/latest"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 rounded-xl bg-deadlock-accent text-deadlock-dark hover:bg-deadlock-brass font-black text-xs flex items-center gap-2 transition-all shadow-lg hover:shadow-deadlock-accent/30 cursor-pointer"

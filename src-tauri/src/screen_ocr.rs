@@ -104,7 +104,7 @@ pub(crate) fn find_deadlock_window(restore_if_minimized: bool) -> Option<Deadloc
                     let class_lower = class_name.to_lowercase();
 
                     let is_match = title_lower == "deadlock"
-                        || (title_lower.contains("deadlock") && !title_lower.contains("analyzer"))
+                        || (title_lower.contains("deadlock") && !title_lower.contains("analyzer") && !title_lower.contains("helper"))
                         || (class_lower == "sdl_app" && !title.is_empty() && title != "Menu")
                         || title_lower == "citadel";
 
@@ -237,7 +237,7 @@ pub fn capture_screen_right_half(capture_right_only: bool) -> Result<String, Str
         None
     };
 
-    // Restore focus back to Deadlock Analyzer (or whatever was active previously)
+    // Restore focus back to Lil Helper (or whatever was active previously)
     if !prev_foreground.0.is_null() {
         unsafe {
             let _ = SetForegroundWindow(prev_foreground);

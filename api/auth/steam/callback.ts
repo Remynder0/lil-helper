@@ -138,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Steam Sign In - Deadlock Analyzer</title>
+  <title>Steam Sign In - Lil Helper</title>
   <style>
     body { background: #0f141a; color: #e6e6e6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     .card { text-align: center; background: #18202c; padding: 40px; border-radius: 20px; border: 1px solid #e8c06a; max-width: 440px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); }
@@ -153,12 +153,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <div class="card">
     <h2>Steam Sign-In Successful!</h2>
     <div class="badge">Connected as ${personaName}</div>
-    <p>Your authentication has been synchronized with the <strong>Deadlock Analyzer Desktop App</strong>.</p>
+    <p>Your authentication has been synchronized with the <strong>Lil Helper Desktop App</strong>.</p>
     <p>You may now safely close this browser tab.</p>
     <div style="margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
       <button id="close-btn" onclick="attemptClose()" class="btn">Close Tab</button>
       <div id="manual-notice" style="display:none; background:rgba(232,192,106,0.12); border:1px solid rgba(232,192,106,0.4); border-radius:12px; padding:12px 16px; font-size:12px; color:#e8c06a; max-width:360px; line-height:1.5;">
-        Browser security prevents scripts from auto-closing tabs. Please close this tab manually with <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #555; font-family:monospace; color:#fff;">Ctrl + W</kbd> and return to Deadlock Analyzer.
+        Browser security prevents scripts from auto-closing tabs. Please close this tab manually with <kbd style="background:#222; padding:2px 6px; border-radius:4px; border:1px solid #555; font-family:monospace; color:#fff;">Ctrl + W</kbd> and return to Lil Helper.
       </div>
     </div>
   </div>

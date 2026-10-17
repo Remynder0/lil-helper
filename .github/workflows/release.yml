@@ -1,4 +1,4 @@
-name: 'Release Deadlock Analyzer'
+name: 'Release Lil Helper'
 
 on:
   push:
@@ -45,9 +45,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: 'Deadlock Analyzer v__VERSION__'
+          releaseName: 'Lil Helper v__VERSION__'
           releaseBody: |
-            ## Deadlock Analyzer Pre-Release
+            ## Lil Helper Pre-Release
             
             ### Included in this build:
             - **Live Deadlock Console & Event Log Monitor**:

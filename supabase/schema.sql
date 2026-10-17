@@ -1,5 +1,5 @@
 -- ==============================================================================
--- DEADLOCK ANALYZER - SUPABASE DATABASE SCHEMA
+-- LIL HELPER - SUPABASE DATABASE SCHEMA
 -- ==============================================================================
 
 -- 1. Table principale pour l'historique des matchs par compte Steam

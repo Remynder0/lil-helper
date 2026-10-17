@@ -4,7 +4,7 @@
  * ============================================================================
  *
  * 🎯 CE QUE CE FICHIER TESTE :
- *  - Le moteur d'analyse statistique globale de Deadlock Analyse :
+ *  - Le moteur d'analyse statistique globale de Lil Helper :
  *      * Calcul du taux de victoire global (winRate) : les matchs annulés ('cancel')
  *        doivent STRICTEMENT être exclus du dénominateur (décidés = victoires + défaites).
  *      * Calcul chronologique des séries de victoires (bestWinStreak) et de défaites (worstLoseStreak) :

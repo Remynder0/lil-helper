@@ -391,7 +391,7 @@ const AppInner: React.FC = () => {
 };
 
 export const App: React.FC = () => (
-  <ErrorBoundary section="Deadlock Analyzer Application">
+  <ErrorBoundary section="Lil Helper Application">
     <ToastProvider>
       <AppInner />
     </ToastProvider>
