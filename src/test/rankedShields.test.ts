@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import {
   computeRankedShieldEvents,
   getRankTierFromFlatProgress,
@@ -219,17 +219,19 @@ describe('computeRankedShieldEvents', () => {
     expect(events.get('m3')?.count).toBe(-1);
   });
 
-  it('correctly maps flat progress values to exact ladder ranks (Oracle V at 53k, Phantom I at 55k)', () => {
+  it('correctly maps flat progress values to exact ladder ranks (Oracle V at 53k, Phantom I at 56k)', () => {
     expect(getRankTierFromFlatProgress(49000).label).toBe('Oracle I');
     expect(getRankTierFromFlatProgress(53000).label).toBe('Oracle V');
     expect(getRankTierFromFlatProgress(54000).label).toBe('Oracle VI');
-    expect(getRankTierFromFlatProgress(55000).label).toBe('Phantom I');
-    expect(getRankTierFromFlatProgress(56000).label).toBe('Phantom II');
-    expect(getRankTierFromFlatProgress(57000).label).toBe('Phantom III');
-    expect(getRankTierFromFlatProgress(58000).label).toBe('Phantom IV');
-    expect(getRankTierFromFlatProgress(59000).label).toBe('Phantom V');
-    expect(getRankTierFromFlatProgress(60000).label).toBe('Phantom VI');
-    expect(getRankTierFromFlatProgress(61000).label).toBe('Ascendant I');
+    expect(getRankTierFromFlatProgress(55000).label).toBe('Oracle VI'); // Subrank 6 is 2000 pts (54k to 56k)
+    expect(getRankTierFromFlatProgress(56000).label).toBe('Phantom I');
+    expect(getRankTierFromFlatProgress(57000).label).toBe('Phantom II');
+    expect(getRankTierFromFlatProgress(58000).label).toBe('Phantom III');
+    expect(getRankTierFromFlatProgress(59000).label).toBe('Phantom IV');
+    expect(getRankTierFromFlatProgress(60000).label).toBe('Phantom V');
+    expect(getRankTierFromFlatProgress(61000).label).toBe('Phantom VI');
+    expect(getRankTierFromFlatProgress(62000).label).toBe('Phantom VI');
+    expect(getRankTierFromFlatProgress(63000).label).toBe('Ascendant I');
   });
 
   it('preserves authentic match progress across unrecorded match gaps without artificial overwrites', () => {

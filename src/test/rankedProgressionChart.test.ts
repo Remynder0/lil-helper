@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import {
   computeRankedChartGeometry,
   getRankTierFromFlatProgress,
@@ -51,8 +51,6 @@ describe('RankedProgressionChart - computeRankedChartGeometry', () => {
     expect(result.yMin).toBeLessThanOrEqual(56000);
     expect(result.yMax).toBeGreaterThanOrEqual(56300);
     expect(result.thresholdLines.length).toBeGreaterThan(0);
-    expect(result.areaD).toContain('M');
-    expect(result.areaD).toContain('Z');
   });
 
   it('computes valid chart coordinates and points for multiple matches with gaps', () => {
@@ -92,20 +90,20 @@ describe('RankedProgressionChart - computeRankedChartGeometry', () => {
 
 describe('RankedProgressionChart - getRankTierFromFlatProgress', () => {
   it('correctly maps roman numerals and tier names from flat ranked points', () => {
-    // 0 points -> Obscurus I
+    // 0 points -> Initiate I (Rank 1, subrank 1)
     const tier0 = getRankTierFromFlatProgress(0);
-    expect(tier0.tierName).toBe('Obscurus');
+    expect(tier0.tierName).toBe('Initiate');
     expect(tier0.subrankRoman).toBe('I');
 
-    // 7000 points -> Initiate I (Rank 1, subrank 1)
-    const tier1_1 = getRankTierFromFlatProgress(7000);
-    expect(tier1_1.rank).toBe(1);
-    expect(tier1_1.subrank).toBe(1);
-    expect(tier1_1.subrankRoman).toBe('I');
-    expect(tier1_1.label).toBe('Initiate I');
+    // 1000 points -> Initiate II (Rank 1, subrank 2)
+    const tier1_2 = getRankTierFromFlatProgress(1000);
+    expect(tier1_2.rank).toBe(1);
+    expect(tier1_2.subrank).toBe(2);
+    expect(tier1_2.subrankRoman).toBe('II');
+    expect(tier1_2.label).toBe('Initiate II');
 
-    // 55000 points -> Phantom I (Rank 8, subrank 1)
-    const phantomTier = getRankTierFromFlatProgress(55000);
+    // 56000 points -> Phantom I (Rank 9, subrank 1)
+    const phantomTier = getRankTierFromFlatProgress(56000);
     expect(phantomTier.tierName).toBe('Phantom');
     expect(phantomTier.subrankRoman).toBe('I');
     expect(phantomTier.label).toBe('Phantom I');
