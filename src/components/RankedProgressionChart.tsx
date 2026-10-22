@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Match } from '../types/match';
 import type { Hero } from '../data/heroes';
-import { DEADLOCK_RANK_NAMES } from '../services/deadlockApi';
 import {
   loadUserSettings,
   saveUserSettings,
@@ -15,221 +14,40 @@ import {
 } from 'lucide-react';
 import artDecoCorner from '../assets/art-deco/corner.svg';
 
-export const ROMAN_NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+import { DEADLOCK_RANK_NAMES } from '../services/deadlockApi';
+import {
+  getRankTierFromFlatProgress,
+  ROMAN_NUMERALS,
+  RankedShieldEvent,
+  processRankedMatches,
+  plotRankedPoints,
+  PlottedPoint as RankedChartPoint,
+  RankedThresholdLine,
+  PlottedChartGeometry as RankedChartData,
+  ETERNUS_PERCENTILE_THRESHOLDS,
+  getEternusSubrankFromPercentile,
+} from "../services/rankedChart";
+import { RANKED_CHART_CONFIG } from '../config';
 
-export interface RankedShieldEvent {
-  matchId: string;
-  type: 'gained' | 'used';
-  count: number;
-  reason: string;
-  subrankLabel: string;
-  shieldsRemaining?: number;
-}
+export {
+  getRankTierFromFlatProgress,
+  ROMAN_NUMERALS,
+  type RankedShieldEvent,
+  type RankedChartPoint,
+  type RankedThresholdLine,
+  type RankedChartData,
+  ETERNUS_PERCENTILE_THRESHOLDS,
+  getEternusSubrankFromPercentile,
+};
 
-/**
- * Maps a Deadlock flat ladder progress value to its exact rank and subrank.
- * In Deadlock's official ranked ladder:
- * - Initiate I begins at 7,000 flat progress.
- * - Each tier contains 6 subranks (I, II, III, IV, V, VI).
- * - Each subrank is exactly 1,000 points (6,000 points per tier).
- * 
- * Example subrank floors:
- * - 49,000 pts: Oracle I
- * - 53,000 pts: Oracle V
- * - 54,000 pts: Oracle VI
- * - 55,000 pts: Phantom I
- * - 56,000 pts: Phantom II
- * - 57,000 pts: Phantom III
- * - 58,000 pts: Phantom IV
- * - 59,000 pts: Phantom V
- * - 60,000 pts: Phantom VI
- * - 61,000 pts: Ascendant I
- */
-export function getRankTierFromFlatProgress(flatProgress: number): {
-  rank: number;
-  subrank: number;
-  tierName: string;
-  subrankRoman: string;
-  label: string;
-} {
-  const s = Math.floor(flatProgress / 1000);
-  const totalSubrankIndex = s - 7;
-
-  if (totalSubrankIndex < 0) {
-    return {
-      rank: 0,
-      subrank: 1,
-      tierName: DEADLOCK_RANK_NAMES[0] || 'Obscurus',
-      subrankRoman: 'I',
-      label: `${flatProgress.toLocaleString()} pts`,
-    };
-  }
-
-  const rank = Math.min(11, Math.floor(totalSubrankIndex / 6) + 1);
-  const subrank = Math.min(6, (totalSubrankIndex % 6) + 1);
-  const tierName = DEADLOCK_RANK_NAMES[rank] || `Tier ${rank}`;
-  const subrankRoman = ROMAN_NUMERALS[subrank] || String(subrank);
-
-  return {
-    rank,
-    subrank,
-    tierName,
-    subrankRoman,
-    label: `${tierName} ${subrankRoman}`,
-  };
-}
-
-export interface RankedChartPoint {
-  match: Match;
-  index: number;
-  startProgress: number;
-  endProgress: number;
-  effectiveDelta: number;
-  shieldEvent?: RankedShieldEvent;
-  x: number;
-  y: number;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-}
-
-export interface RankedThresholdLine {
-  y: number;
-  val: number;
-  label: string;
-}
-
-export interface RankedChartData {
-  width: number;
-  height: number;
-  padding: { top: number; right: number; bottom: number; left: number };
-  points: RankedChartPoint[];
-  finalEndpoint: { x: number; y: number; progress: number } | null;
-  areaD: string;
-  thresholdLines: RankedThresholdLine[];
-  yMin: number;
-  yMax: number;
-}
-
-/**
- * Computes the geometry, coordinates, SVG paths, and threshold lines for the ranked evolution chart.
- */
 export function computeRankedChartGeometry(
   filteredMatches: Match[],
-  shieldEventsMap: Map<string, RankedShieldEvent>,
-  matchDeltasMap: Map<string, number>
-): RankedChartData | null {
-  if (filteredMatches.length === 0) return null;
-
-  const allProgressValues: number[] = [];
-  const matchPointsData = filteredMatches.map((m, idx) => {
-    const effectiveDelta = matchDeltasMap.get(m.id) ?? (m.rankedDelta || 0);
-    const startProgress =
-      m.rankedInitialProgress !== null && m.rankedInitialProgress !== undefined
-        ? m.rankedInitialProgress
-        : m.rankedProgress !== null && m.rankedProgress !== undefined
-        ? m.rankedProgress - effectiveDelta
-        : 0;
-    const endProgress =
-      m.rankedProgress !== null && m.rankedProgress !== undefined
-        ? m.rankedProgress
-        : startProgress + effectiveDelta;
-
-    allProgressValues.push(startProgress, endProgress);
-
-    const shieldEvent = shieldEventsMap.get(m.id);
-    return {
-      match: m,
-      index: idx,
-      startProgress,
-      endProgress,
-      effectiveDelta,
-      shieldEvent,
-    };
-  });
-
-  const minVal = Math.min(...allProgressValues);
-  const maxVal = Math.max(...allProgressValues);
-
-  // Boundaries snapped to subrank boundaries
-  const yMin = Math.max(0, Math.floor((minVal - 200) / 1000) * 1000);
-  const yMax = Math.ceil((maxVal + 300) / 1000) * 1000;
-  const yRange = Math.max(1000, yMax - yMin);
-
-  const width = 860;
-  const height = 280;
-  const padding = { top: 30, right: 35, bottom: 40, left: 80 };
-
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-
-  const n = filteredMatches.length;
-
-  const points: RankedChartPoint[] = matchPointsData.map((item, idx) => {
-    const startX = n === 1 ? padding.left + 0.15 * chartW : padding.left + (idx / n) * chartW;
-    const endX = n === 1 ? padding.left + 0.85 * chartW : padding.left + ((idx + 1) / n) * chartW;
-    const startY = padding.top + chartH - ((item.startProgress - yMin) / yRange) * chartH;
-    const endY = padding.top + chartH - ((item.endProgress - yMin) / yRange) * chartH;
-
-    return {
-      ...item,
-      x: startX,
-      y: startY,
-      startX,
-      startY,
-      endX,
-      endY,
-    };
-  });
-
-  const finalEndpoint =
-    points.length > 0
-      ? {
-          x: points[points.length - 1].endX,
-          y: points[points.length - 1].endY,
-          progress: points[points.length - 1].endProgress,
-        }
-      : null;
-
-  // Filled area path with direct lines
-  let areaD = '';
-  if (points.length > 0 && finalEndpoint) {
-    let d = `M ${points[0].startX} ${points[0].startY}`;
-    for (let i = 0; i < points.length; i++) {
-      d += ` L ${points[i].endX} ${points[i].endY}`;
-      if (i < points.length - 1 && points[i].endY !== points[i + 1].startY) {
-        d += ` L ${points[i + 1].startX} ${points[i + 1].startY}`;
-      }
-    }
-    d += ` L ${finalEndpoint.x} ${padding.top + chartH}`;
-    d += ` L ${points[0].startX} ${padding.top + chartH} Z`;
-    areaD = d;
-  }
-
-  // Generate horizontal subrank threshold grid lines displaying accurate subrank names
-  const thresholdLines: RankedThresholdLine[] = [];
-  const minStep = Math.floor(yMin / 1000);
-  const maxStep = Math.ceil(yMax / 1000);
-
-  for (let s = minStep; s <= maxStep; s++) {
-    const v = s * 1000;
-    const y = padding.top + chartH - ((v - yMin) / yRange) * chartH;
-    const rankInfo = getRankTierFromFlatProgress(v);
-    thresholdLines.push({ y, val: v, label: rankInfo.label });
-  }
-
-  return {
-    width,
-    height,
-    padding,
-    points,
-    finalEndpoint,
-    areaD,
-    thresholdLines,
-    yMin,
-    yMax,
-  };
+  _shieldEventsMap: Map<string, RankedShieldEvent>,
+  _matchDeltasMap: Map<string, number>,
+  tierOnlyThresholds?: boolean
+) {
+  const { processedMatches } = processRankedMatches(filteredMatches);
+  return plotRankedPoints(processedMatches, { tierOnlyThresholds });
 }
 
 export interface RankedHeroFilterOption {
@@ -250,21 +68,16 @@ export interface RankedProgressionChartProps {
   matchDeltasMap: Map<string, number>;
   selectedMatch: Match | null;
   onSelectMatch: (match: Match | null) => void;
-  // Range filter controls
-  rangeFilter: 'chunk50' | 'last10' | 'last20';
-  onRangeFilterChange: (mode: 'chunk50' | 'last10' | 'last20') => void;
-  activeChunkIndex: number;
-  onChunkIndexChange: (index: number) => void;
+  // Range filter controls (sliding window game-by-game or 'all')
+  rangeFilter: 'window' | 'last50' | 'last20' | 'all';
+  onRangeFilterChange: (mode: 'window' | 'last50' | 'last20' | 'all') => void;
+  windowStartIndex: number;
+  onWindowStartIndexChange: (index: number) => void;
+  windowSize?: number;
   // Hero highlight filter
   selectedHeroId: number | null;
-  onSelectHeroId: (heroId: number | null) => void;
-  rankedHeroes: RankedHeroFilterOption[];
-  // Current standing for final endpoint tooltip
-  currentStanding?: {
-    tierName: string;
-    subrankRoman: string;
-    progressInSubrank: number;
-  };
+  onSelectHeroId?: (heroId: number | null) => void;
+  rankedHeroes?: RankedHeroFilterOption[];
 }
 
 export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
@@ -276,18 +89,17 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
   onSelectMatch,
   rangeFilter,
   onRangeFilterChange,
-  activeChunkIndex,
-  onChunkIndexChange,
+  windowStartIndex,
+  onWindowStartIndexChange,
+  windowSize = RANKED_CHART_CONFIG.TIMELINE_SLIDING_WINDOW_MATCH_COUNT,
   selectedHeroId,
-  onSelectHeroId,
-  rankedHeroes,
-  currentStanding,
 }) => {
-  // 50-match pagination chunks navigation calculation
-  const CHUNK_SIZE = 50;
-  const totalChunks = Math.max(1, Math.ceil(totalRanked / CHUNK_SIZE));
-  const chunkStart = totalRanked === 0 ? 0 : activeChunkIndex * CHUNK_SIZE + 1;
-  const chunkEnd = Math.min(totalRanked, (activeChunkIndex + 1) * CHUNK_SIZE);
+  // Sliding window calculation based on windowSize (or actual filtered matches length if provided)
+  const effectiveWindowSize = Math.max(1, windowSize);
+  const maxStartIndex = Math.max(0, totalRanked - effectiveWindowSize);
+  const activeStartIndex = Math.min(Math.max(0, windowStartIndex), maxStartIndex);
+  const windowStart = totalRanked === 0 ? 0 : activeStartIndex + 1;
+  const windowEnd = Math.min(totalRanked, activeStartIndex + filteredMatches.length);
 
   // Hover states for interactive tooltips
   const [hoveredPoint, setHoveredPoint] = useState<{
@@ -298,12 +110,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
     startProgress?: number;
     endProgress?: number;
     effectiveDelta?: number;
-  } | null>(null);
-
-  const [hoveredFinalPoint, setHoveredFinalPoint] = useState<{
-    x: number;
-    y: number;
-    progress: number;
   } | null>(null);
 
   const [hoveredGap, setHoveredGap] = useState<{
@@ -334,11 +140,40 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
 
   const showFloatingBadges = shieldDisplayMode === 'badges';
   const showTooltipShields = shieldDisplayMode === 'tooltip';
+  const isAllMode = rangeFilter === 'all';
 
   // SVG Chart Geometry calculations
   const chartData = useMemo(() => {
-    return computeRankedChartGeometry(filteredMatches, shieldEventsMap, matchDeltasMap);
-  }, [filteredMatches, shieldEventsMap, matchDeltasMap]);
+    return computeRankedChartGeometry(filteredMatches, shieldEventsMap, matchDeltasMap, isAllMode);
+  }, [filteredMatches, shieldEventsMap, matchDeltasMap, isAllMode]);
+
+  // Distinct visible subranks in the current chart view (highest visible tier at index 0)
+  const visibleSubranks = useMemo(() => {
+    if (!chartData?.verticalTransitions?.length) return [];
+    const set = new Set(chartData.verticalTransitions.map((vt) => vt.toSubrank));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [chartData?.verticalTransitions]);
+
+  // Check if there are any rank/subrank transitions in the current filtered window
+  const visibleTransitionsInWindow = useMemo(() => {
+    if (!chartData?.verticalTransitions || filteredMatches.length === 0) return [];
+    const matchIdsInWindow = new Set(filteredMatches.map((m) => m.id));
+    return chartData.verticalTransitions.filter((vt) =>
+      matchIdsInWindow.has(chartData.points[vt.index]?.match.id)
+    );
+  }, [chartData, filteredMatches]);
+
+  // Fallback standing label for window if no transition is present (only applicable in Eternus / rank 11)
+  const windowStandingLabel = useMemo(() => {
+    if (filteredMatches.length === 0) return null;
+    const last = filteredMatches[filteredMatches.length - 1];
+    const rank = last.rankedRank || (last.rankedBadge ? Math.floor(last.rankedBadge / 10) : 1);
+    if (rank < 11) return null; // Only show for Eternus (Tier 11) where subrank transitions might be outside the 30-game window
+    const subrank = last.rankedSubrank ?? (last.rankedBadge ? last.rankedBadge % 10 : 1);
+    const tierName = DEADLOCK_RANK_NAMES[rank] || `Tier ${rank}`;
+    const subRoman = ROMAN_NUMERALS[subrank] || String(subrank);
+    return `${tierName} ${subRoman}`;
+  }, [filteredMatches]);
 
   return (
     <div className="steam-glass steam-panel rounded-xl p-5 border border-deadlock-border/80 shadow-xl flex flex-col gap-4 relative">
@@ -363,50 +198,41 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          {/* Range Filter Buttons: 50-match Tranches with Arrows + Quick Last 20 / Last 10 */}
+          {/* Quick Preset Buttons (All / Timeline (X) / Last 50 / Last 20) */}
           <div className="flex items-center bg-deadlock-dark/80 p-0.5 rounded-lg border border-deadlock-border/60">
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={() => {
-                  onRangeFilterChange('chunk50');
-                  onChunkIndexChange(Math.max(0, activeChunkIndex - 1));
-                }}
-                disabled={activeChunkIndex <= 0}
-                title="Previous 50 matches (older)"
-                className="p-1 rounded-l-md text-deadlock-muted hover:text-deadlock-steam disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onRangeFilterChange('chunk50')}
-                className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-                  rangeFilter === 'chunk50'
-                    ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
-                    : 'text-deadlock-muted hover:text-deadlock-steam'
-                }`}
-              >
-                {totalChunks > 1
-                  ? `Matches ${chunkStart}–${chunkEnd} of ${totalRanked}`
-                  : `Matches 1–${totalRanked} (${totalRanked})`}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRangeFilterChange('chunk50');
-                  onChunkIndexChange(Math.min(totalChunks - 1, activeChunkIndex + 1));
-                }}
-                disabled={activeChunkIndex >= totalChunks - 1}
-                title="Next 50 matches (newer)"
-                className="p-1 rounded-r-md text-deadlock-muted hover:text-deadlock-steam disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="h-3.5 w-[1px] bg-deadlock-border/40 mx-0.5" />
-
+            <button
+              type="button"
+              onClick={() => onRangeFilterChange('all')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                rangeFilter === 'all'
+                  ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
+              }`}
+            >
+              Global View
+            </button>
+            <button
+              type="button"
+              onClick={() => onRangeFilterChange('window')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                rangeFilter === 'window'
+                  ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
+              }`}
+            >
+              Timeline ({effectiveWindowSize})
+            </button>
+            <button
+              type="button"
+              onClick={() => onRangeFilterChange('last50')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                rangeFilter === 'last50'
+                  ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
+                  : 'text-deadlock-muted hover:text-deadlock-steam'
+              }`}
+            >
+              Last {RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_PRIMARY_COUNT}
+            </button>
             <button
               type="button"
               onClick={() => onRangeFilterChange('last20')}
@@ -416,18 +242,7 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                   : 'text-deadlock-muted hover:text-deadlock-steam'
               }`}
             >
-              Last 20
-            </button>
-            <button
-              type="button"
-              onClick={() => onRangeFilterChange('last10')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                rangeFilter === 'last10'
-                  ? 'bg-deadlock-accent/25 text-deadlock-accent font-bold'
-                  : 'text-deadlock-muted hover:text-deadlock-steam'
-              }`}
-            >
-              Last 10
+              Last {RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_SECONDARY_COUNT}
             </button>
           </div>
 
@@ -459,37 +274,27 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
               Tooltip
             </button>
           </div>
-
-          {/* Hero Highlight Selector (keeps curve intact, grays out non-matching matches) */}
-          {rankedHeroes.length > 1 && (
-            <select
-              value={selectedHeroId || ''}
-              onChange={(e) => onSelectHeroId(e.target.value ? Number(e.target.value) : null)}
-              className={`bg-deadlock-dark/80 border rounded-lg px-2.5 py-1 text-[11px] text-deadlock-steam focus:outline-none transition-colors ${
-                selectedHeroId ? 'border-deadlock-accent text-deadlock-accent font-bold' : 'border-deadlock-border/80'
-              }`}
-            >
-              <option value="">Highlight Hero (All)</option>
-              {rankedHeroes.map((item) => (
-                <option key={item.heroId} value={item.heroId}>
-                  {item.hero?.name || `#${item.heroId}`} ({item.totalDelta > 0 ? `+${item.totalDelta}` : item.totalDelta} pts · {item.count}g)
-                </option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 
       {/* SVG Interactive Chart */}
       {chartData && (
         <div className="relative w-full h-[320px] 2xl:h-[420px] bg-deadlock-dark/60 rounded-xl border border-deadlock-border/60 p-2 overflow-visible select-none z-20">
+          {/* Persistent watermarked standing badge in top-right when no transition is visible in current window */}
+          {!isAllMode && visibleTransitionsInWindow.length === 0 && windowStandingLabel && (
+            <div className="absolute top-4 right-4 z-30 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-lg bg-deadlock-dark/85 border border-deadlock-brass/50 shadow-md backdrop-blur-sm">
+              <span className="w-2 h-2 rounded-full bg-deadlock-accent animate-pulse" />
+              <span className="text-[10px] font-mono text-deadlock-muted uppercase tracking-wider">Standing:</span>
+              <span className="text-xs font-bold font-display text-deadlock-steam">{windowStandingLabel}</span>
+            </div>
+          )}
+
           <svg
             viewBox={`0 0 ${chartData.width} ${chartData.height}`}
             className="w-full h-full overflow-visible"
             preserveAspectRatio="none"
             onMouseLeave={() => {
               setHoveredPoint(null);
-              setHoveredFinalPoint(null);
               setHoveredGap(null);
             }}
           >
@@ -508,145 +313,211 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
               </linearGradient>
             </defs>
 
-            {/* Horizontal Subrank Threshold Lines displaying ONLY Subrank Names */}
-            {chartData.thresholdLines.map((line, idx) => (
-              <g key={idx}>
-                <line
-                  x1={chartData.padding.left}
-                  y1={line.y}
-                  x2={chartData.width - chartData.padding.right}
-                  y2={line.y}
-                  stroke="#b87333"
-                  strokeWidth={1.2}
-                  strokeDasharray="4 3"
-                  strokeOpacity={0.55}
-                />
-                <text
-                  x={chartData.padding.left - 10}
-                  y={line.y + 3.5}
-                  textAnchor="end"
-                  className="font-mono text-[9px] fill-deadlock-accent font-bold"
-                >
-                  {line.label}
-                </text>
-              </g>
-            ))}
+            {/* Horizontal Subrank Threshold Lines displaying Subrank Names when not in Global View */}
+            {chartData.thresholdLines.map((line, idx) => {
+              const tierRankNumber = Math.min(11, Math.floor(line.val / 7000) + 1);
+              return (
+                <g key={idx}>
+                  <line
+                    x1={isAllMode ? chartData.padding.left - 55 : chartData.padding.left}
+                    y1={line.y}
+                    x2={chartData.width - chartData.padding.right}
+                    y2={line.y}
+                    stroke="#b87333"
+                    strokeWidth={isAllMode ? 1.4 : 1.2}
+                    strokeDasharray={isAllMode ? '5 3' : '4 3'}
+                    strokeOpacity={isAllMode ? 0.45 : 0.55}
+                  />
+                  {!isAllMode ? (
+                    <text
+                      x={chartData.padding.left - 10}
+                      y={line.y + 3.5}
+                      textAnchor="end"
+                      className="font-mono text-[9px] fill-deadlock-accent font-bold"
+                    >
+                      {line.label}
+                    </text>
+                  ) : (
+                    // In Global View: display rank tier badge icon + tier name on the left axis
+                    <g transform={`translate(${chartData.padding.left - 55}, ${line.y - 11})`}>
+                      <image
+                        href={`https://api.deadlock-api.com/v1/assets/ranks/${tierRankNumber}/1/image`}
+                        x={0}
+                        y={0}
+                        width={20}
+                        height={20}
+                        preserveAspectRatio="xMidYMid meet"
+                      />
+                      <text
+                        x={24}
+                        y={14}
+                        className="font-mono text-[9px] fill-deadlock-accent font-bold tracking-wider"
+                      >
+                        {line.label}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
 
             {/* Area Fill */}
             {chartData.areaD && (
               <path
                 d={chartData.areaD}
                 fill="url(#rankedGradient)"
-                opacity={selectedHeroId ? 0.25 : 1}
+                opacity={selectedHeroId ? 0.25 : 0.85}
                 className="transition-opacity duration-300"
               />
             )}
 
-            {/* Evolution Curve Segments: each trait represents the gain/loss of the match */}
-            {chartData.points.map((pt, idx) => {
+            {/* Traits de liaison reliant les points consécutifs sans césure */}
+            {chartData.segments?.map((seg) => {
               const isHeroMatch =
-                selectedHeroId === null || pt.match.myHeroId === selectedHeroId;
-              const isWin = pt.effectiveDelta > 0 || pt.match.result === 'win';
-              const isLoss = pt.effectiveDelta < 0 || pt.match.result === 'loss';
+                selectedHeroId === null || seg.match.myHeroId === selectedHeroId;
 
               return (
-                <g key={`seg-group-${idx}`}>
-                  {/* Inter-match gap connector (dashed line / pointillés when matches are missing) */}
-                  {idx > 0 && chartData.points[idx - 1].endProgress !== pt.startProgress && (() => {
-                    const prevPt = chartData.points[idx - 1];
-                    const gapPoints = pt.startProgress - prevPt.endProgress;
-                    return (
-                      <g key={`gap-group-${idx}`}>
-                        {/* Transparent hover hit area for gap line */}
-                        <line
-                          x1={prevPt.endX}
-                          y1={prevPt.endY}
-                          x2={pt.startX}
-                          y2={pt.startY}
-                          stroke="transparent"
-                          strokeWidth={16}
-                          className="cursor-pointer"
-                          onMouseEnter={() => {
-                            setHoveredPoint(null);
-                            setHoveredFinalPoint(null);
-                            setHoveredGap({
-                              x: pt.startX,
-                              y: (prevPt.endY + pt.startY) / 2,
-                              gapPoints,
-                              prevMatch: prevPt.match,
-                              nextMatch: pt.match,
-                            });
-                          }}
-                        >
-                          <title>{`Missing match gap: ${gapPoints > 0 ? '+' : ''}${gapPoints} pts`}</title>
-                        </line>
+                <line
+                  key={`seg-${seg.index}`}
+                  x1={seg.x1}
+                  y1={seg.y1}
+                  x2={seg.x2}
+                  y2={seg.y2}
+                  stroke={
+                    !isHeroMatch
+                      ? '#5a4e3c'
+                      : seg.isWin
+                      ? '#5f8f7a'
+                      : seg.isLoss
+                      ? '#a94442'
+                      : '#e8c06a'
+                  }
+                  strokeWidth={isHeroMatch ? (selectedHeroId ? 3.5 : 2.5) : 1.5}
+                  strokeOpacity={isHeroMatch ? 1 : 0.3}
+                  strokeDasharray={!isHeroMatch ? '3 3' : undefined}
+                  strokeLinecap="round"
+                  style={
+                    isHeroMatch
+                      ? {
+                          filter: seg.isWin
+                            ? 'drop-shadow(0 2px 6px rgba(95,143,122,0.45))'
+                            : seg.isLoss
+                            ? 'drop-shadow(0 2px 6px rgba(169,68,66,0.45))'
+                            : 'drop-shadow(0 2px 6px rgba(232,192,106,0.4))',
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
 
-                        {/* Distinct glowing dashed line indicating missing matches */}
-                        <line
-                          x1={prevPt.endX}
-                          y1={prevPt.endY}
-                          x2={pt.startX}
-                          y2={pt.startY}
-                          stroke="#f59e0b"
-                          strokeWidth={2}
-                          strokeDasharray="4 4"
-                          strokeOpacity={0.9}
-                          strokeLinecap="round"
-                          style={{
-                            filter: 'drop-shadow(0 0 5px rgba(245, 158, 11, 0.75))',
-                          }}
-                        />
+            {/* Traits verticaux de césure / ellipse marquant les sauts de points anormaux (masqués en Global View) */}
+            {!isAllMode && chartData.gaps?.map((gap) => (
+              <g
+                key={`gap-caesura-${gap.index}`}
+                className="cursor-pointer group"
+                onMouseEnter={() => {
+                  setHoveredPoint(null);
+                  setHoveredGap({
+                    x: gap.x,
+                    y: (gap.prevY + gap.nextY) / 2,
+                    gapPoints: gap.gapPoints,
+                    prevMatch: gap.prevMatch,
+                    nextMatch: gap.nextMatch,
+                  });
+                }}
+              >
+                {/* Hit area invisible pour faciliter le survol et afficher l'infobulle */}
+                <rect
+                  x={gap.x - 14}
+                  y={chartData.padding.top}
+                  width={28}
+                  height={chartData.height - chartData.padding.top - chartData.padding.bottom}
+                  fill="transparent"
+                />
 
-                        {/* Gap endpoint marker at the start of the jump */}
-                        <circle
-                          cx={prevPt.endX}
-                          cy={prevPt.endY}
-                          r={2.5}
-                          fill="#f59e0b"
-                          stroke="#110f0c"
-                          strokeWidth={1}
-                        />
-                      </g>
-                    );
-                  })()}
+                {/* Traits verticaux parallèles de césure / ellipse */}
+                <line
+                  x1={gap.x - 3.5}
+                  y1={chartData.padding.top}
+                  x2={gap.x - 3.5}
+                  y2={chartData.height - chartData.padding.bottom}
+                  stroke="#f59e0b"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  strokeOpacity={0.65}
+                  className="group-hover:stroke-amber-300 group-hover:opacity-100 transition-all"
+                />
+                <line
+                  x1={gap.x + 3.5}
+                  y1={chartData.padding.top}
+                  x2={gap.x + 3.5}
+                  y2={chartData.height - chartData.padding.bottom}
+                  stroke="#f59e0b"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  strokeOpacity={0.65}
+                  className="group-hover:stroke-amber-300 group-hover:opacity-100 transition-all"
+                />
 
-                  {/* Match Gain / Loss Trait */}
+                {/* Emblème central de césure / ellipse avec double barre oblique // */}
+                <g transform={`translate(${gap.x}, ${(chartData.padding.top + chartData.height - chartData.padding.bottom) / 2})`}>
+                  <circle r={8.5} fill="#181512" stroke="#f59e0b" strokeWidth={1} strokeOpacity={0.8} />
+                  <line x1={-2.5} y1={4.5} x2={-0.5} y2={-4.5} stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" />
+                  <line x1={1.5} y1={4.5} x2={3.5} y2={-4.5} stroke="#f59e0b" strokeWidth={1.4} strokeLinecap="round" />
+                </g>
+              </g>
+            ))}
+
+            {/* Traits verticaux de transition de rang / sous-rang (percentile-based Eternus) */}
+            {!isAllMode && chartData.verticalTransitions?.map((vt) => {
+              // Level based ONLY on subranks actually present and visible in the current view:
+              // The highest visible subrank is at the top (y=12), the next lower visible is below (+20px).
+              // Identical subranks are strictly on the exact same height!
+              const levelIndex = visibleSubranks.indexOf(vt.toSubrank);
+              const badgeY = 12 + Math.max(0, levelIndex) * 20;
+
+              return (
+                <g key={`vt-${vt.index}`} className="pointer-events-none">
                   <line
-                    x1={pt.startX}
-                    y1={pt.startY}
-                    x2={pt.endX}
-                    y2={pt.endY}
-                    stroke={
-                      !isHeroMatch
-                        ? '#5a4e3c'
-                        : isWin
-                        ? '#5f8f7a'
-                        : isLoss
-                        ? '#a94442'
-                        : '#e8c06a'
-                    }
-                    strokeWidth={isHeroMatch ? (selectedHeroId ? 3.5 : 2.5) : 1.5}
-                    strokeOpacity={isHeroMatch ? 1 : 0.3}
-                    strokeDasharray={!isHeroMatch ? '3 3' : undefined}
-                    strokeLinecap="round"
-                    style={
-                      isHeroMatch
-                        ? {
-                            filter: isWin
-                              ? 'drop-shadow(0 2px 6px rgba(95,143,122,0.45))'
-                              : isLoss
-                              ? 'drop-shadow(0 2px 6px rgba(169,68,66,0.45))'
-                              : 'drop-shadow(0 2px 6px rgba(232,192,106,0.4))',
-                          }
-                        : undefined
-                    }
+                    x1={vt.x}
+                    y1={badgeY + 8}
+                    x2={vt.x}
+                    y2={chartData.height - chartData.padding.bottom}
+                    stroke={vt.type === 'promotion' ? '#38bdf8' : '#fb7185'}
+                    strokeWidth={1.5}
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.7}
                   />
+                  <g transform={`translate(${vt.x}, ${badgeY})`}>
+                    <rect
+                      x={-34}
+                      y={-8}
+                      width={68}
+                      height={16}
+                      rx={3}
+                      fill="#110f0c"
+                      stroke={vt.type === 'promotion' ? '#38bdf8' : '#fb7185'}
+                      strokeWidth={1}
+                      strokeOpacity={0.85}
+                    />
+                    <text
+                      x={0}
+                      y={3}
+                      textAnchor="middle"
+                      className={`font-mono text-[9px] font-black tracking-wider ${
+                        vt.type === 'promotion' ? 'fill-sky-300' : 'fill-rose-300'
+                      }`}
+                    >
+                      {vt.label}
+                    </text>
+                  </g>
                 </g>
               );
             })}
 
             {/* Vertical guideline on hover */}
-            {hoveredPoint && (
+            {!isAllMode && hoveredPoint && (
               <line
                 x1={hoveredPoint.x}
                 y1={chartData.padding.top}
@@ -660,7 +531,7 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
             )}
 
             {/* Interactive Match Points on Curve (at start of match: "au moment de la game") */}
-            {chartData.points.map((pt) => {
+            {!isAllMode && chartData.points.map((pt) => {
               const isWin = pt.effectiveDelta > 0 || pt.match.result === 'win';
               const isSelectedHero = selectedHeroId === null || pt.match.myHeroId === selectedHeroId;
               const isHovered = hoveredPoint?.index === pt.index;
@@ -692,7 +563,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                         onSelectMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
                       }}
                       onMouseEnter={() => {
-                        setHoveredFinalPoint(null);
                         setHoveredGap(null);
                         setHoveredPoint({
                           match: pt.match,
@@ -754,7 +624,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                         onSelectMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
                       }}
                       onMouseEnter={() => {
-                        setHoveredFinalPoint(null);
                         setHoveredGap(null);
                         setHoveredPoint({
                           match: pt.match,
@@ -819,7 +688,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                       onSelectMatch(selectedMatch?.id === pt.match.id ? null : pt.match);
                     }}
                     onMouseEnter={() => {
-                      setHoveredFinalPoint(null);
                       setHoveredGap(null);
                       setHoveredPoint({
                         match: pt.match,
@@ -868,41 +736,10 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                 </g>
               );
             })}
-
-            {/* Final Endpoint: Current Standing at the end of the last match */}
-            {chartData.finalEndpoint && (
-              <g>
-                <circle
-                  cx={chartData.finalEndpoint.x}
-                  cy={chartData.finalEndpoint.y}
-                  r="12"
-                  fill="transparent"
-                  className="cursor-pointer"
-                  onMouseEnter={() => {
-                    setHoveredPoint(null);
-                    setHoveredGap(null);
-                    setHoveredFinalPoint({
-                      x: chartData.finalEndpoint!.x,
-                      y: chartData.finalEndpoint!.y,
-                      progress: chartData.finalEndpoint!.progress,
-                    });
-                  }}
-                />
-                <circle
-                  cx={chartData.finalEndpoint.x}
-                  cy={chartData.finalEndpoint.y}
-                  r={hoveredFinalPoint ? 6 : 4.5}
-                  fill="#e8c06a"
-                  stroke="#110f0c"
-                  strokeWidth={1.5}
-                  className="transition-all duration-150 pointer-events-none drop-shadow-[0_0_8px_rgba(232,192,106,0.9)]"
-                />
-              </g>
-            )}
           </svg>
 
           {/* Steampunk Minimalist Tooltip on Hover */}
-          {hoveredPoint && (() => {
+          {!isAllMode && hoveredPoint && (() => {
             const xPercent = (hoveredPoint.x / chartData.width) * 100;
             const showBelow = hoveredPoint.y < chartData.height * 0.45;
             const isNearLeft = xPercent < 15;
@@ -918,18 +755,25 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
               hoveredPoint.effectiveDelta ??
               (matchDeltasMap.get(hoveredPoint.match.id) ?? (hoveredPoint.match.rankedDelta || 0));
             const isPositive = delta > 0;
-            const startProg =
-              hoveredPoint.startProgress ?? (hoveredPoint.match.rankedInitialProgress ?? 0);
-            const rankTier =
-              hoveredPoint.match.rankedRank ||
-              (hoveredPoint.match.rankedBadge ? Math.floor(hoveredPoint.match.rankedBadge / 10) : 1);
-            const subrank =
-              hoveredPoint.match.rankedSubrank ??
-              (hoveredPoint.match.rankedBadge ? hoveredPoint.match.rankedBadge % 10 : 1);
-            const subrankRoman = ROMAN_NUMERALS[subrank] || String(subrank);
-            const tierName = DEADLOCK_RANK_NAMES[rankTier] || 'Initiate';
-            const progressInSub = startProg % 1000;
-            const standingText = `${tierName} ${subrankRoman} · ${progressInSub} pts`;
+            const currentProg =
+              hoveredPoint.endProgress ?? (hoveredPoint.match.rankedProgress ?? 0);
+            const isEternus =
+              currentProg >= 70000 ||
+              hoveredPoint.match.rankedRank === 11 ||
+              (hoveredPoint.match.rankedBadge ? Math.floor(hoveredPoint.match.rankedBadge / 10) === 11 : false);
+
+            let standingText: string;
+            if (isEternus) {
+              const subrank =
+                hoveredPoint.match.rankedSubrank ??
+                (hoveredPoint.match.rankedBadge ? hoveredPoint.match.rankedBadge % 10 : 1);
+              const subrankRoman = ROMAN_NUMERALS[subrank] || 'I';
+              standingText = `Eternus ${subrankRoman} · ${currentProg.toLocaleString()} pts`;
+            } else {
+              const rankInfo = getRankTierFromFlatProgress(currentProg);
+              const progressInSub = currentProg % 1000;
+              standingText = `${rankInfo.label} · ${progressInSub} pts`;
+            }
             const hoveredShield = showTooltipShields ? shieldEventsMap.get(hoveredPoint.match.id) : null;
 
             return (
@@ -980,42 +824,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
             );
           })()}
 
-          {/* Current Standing Tooltip on Hovering Final Endpoint */}
-          {hoveredFinalPoint && (() => {
-            const xPercent = (hoveredFinalPoint.x / chartData.width) * 100;
-            const showBelow = hoveredFinalPoint.y < chartData.height * 0.45;
-            const verticalClass = showBelow ? 'translate-y-3' : '-translate-y-full -translate-y-3';
-            const fallbackRank = getRankTierFromFlatProgress(hoveredFinalPoint.progress);
-            const tierName = currentStanding?.tierName || fallbackRank.tierName;
-            const subrankRoman = currentStanding?.subrankRoman || fallbackRank.subrankRoman;
-            const progressInSubrank =
-              currentStanding !== undefined
-                ? currentStanding.progressInSubrank
-                : hoveredFinalPoint.progress % 1000;
-
-            return (
-              <div
-                className={`absolute z-50 pointer-events-none transition-all duration-75 transform -translate-x-full ${verticalClass}`}
-                style={{
-                  left: `${xPercent}%`,
-                  top: `${(hoveredFinalPoint.y / chartData.height) * 100}%`,
-                }}
-              >
-                <div className="bg-deadlock-dark/95 backdrop-blur-md border border-deadlock-brass/80 shadow-2xl rounded-lg px-2.5 py-1.5 flex flex-col items-center gap-0.5 text-center drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] whitespace-nowrap">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-deadlock-accent">
-                    Current Standing
-                  </span>
-                  <span className="font-mono text-xs font-bold text-deadlock-steam leading-tight">
-                    {tierName} {subrankRoman} · {progressInSubrank} / 1,000 pts
-                  </span>
-                  <span className="font-mono text-[9px] text-deadlock-muted leading-tight">
-                    {hoveredFinalPoint.progress.toLocaleString()} ladder points
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
-
           {/* Missing Match Gap Tooltip on Hovering Gap Line */}
           {hoveredGap && (() => {
             const xPercent = (hoveredGap.x / chartData.width) * 100;
@@ -1059,24 +867,78 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
         </div>
       )}
 
+      {/* Timeline Slider Bar along the full width directly underneath the graph */}
+      {!isAllMode && totalRanked > effectiveWindowSize && (
+        <div className="flex items-center gap-3 px-3 py-2 bg-deadlock-dark/70 rounded-xl border border-deadlock-border/70 text-xs font-mono relative z-10 shadow-inner">
+          <button
+            type="button"
+            onClick={() => {
+              if (rangeFilter !== 'window') onRangeFilterChange('window');
+              onWindowStartIndexChange(Math.max(0, activeStartIndex - 1));
+            }}
+            disabled={activeStartIndex <= 0}
+            title="Previous match (-1 game)"
+            className="p-1 rounded text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-[10px] text-deadlock-muted uppercase tracking-wider hidden sm:inline select-none">
+            Oldest
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={maxStartIndex}
+            step={1}
+            value={activeStartIndex}
+            onChange={(e) => {
+              if (rangeFilter !== 'window') onRangeFilterChange('window');
+              onWindowStartIndexChange(Number(e.target.value));
+            }}
+            className="flex-1 h-2 bg-deadlock-card rounded-lg appearance-none cursor-pointer accent-[#e8c06a]"
+          />
+          <span className="text-[10px] text-deadlock-muted uppercase tracking-wider hidden sm:inline select-none">
+            Recent
+          </span>
+          <span className="text-[11px] font-bold text-deadlock-accent whitespace-nowrap px-2.5 py-0.5 rounded bg-deadlock-card/90 border border-deadlock-border/70 shadow-sm">
+            Matches {windowStart}–{windowEnd} of {totalRanked}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (rangeFilter !== 'window') onRangeFilterChange('window');
+              onWindowStartIndexChange(Math.min(maxStartIndex, activeStartIndex + 1));
+            }}
+            disabled={activeStartIndex >= maxStartIndex}
+            title="Next match (+1 game)"
+            className="p-1 rounded text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Chart Legend */}
       <div className="flex items-center justify-between flex-wrap gap-3 pt-3 px-1 text-[11px] font-mono text-deadlock-muted border-t border-deadlock-border/40 relative z-10">
         <div className="flex items-center gap-4 flex-wrap">
-          <span className="flex items-center gap-1.5" title="Point shows player rank standing at match start">
+          <span className="flex items-center gap-1.5" title="Point indicates player rank standing after match">
             <span className="w-2.5 h-2.5 rounded-full border border-deadlock-accent bg-deadlock-dark" />
-            <span>Point: Standing at Game</span>
+            <span>Point: Standing after Match</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3.5 h-1 rounded bg-[#5f8f7a]" />
-            <span>Victory Trait (+pts)</span>
+            <span>Win (+pts)</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3.5 h-1 rounded bg-[#a94442]" />
-            <span>Defeat Trait (-pts)</span>
+            <span>Loss (-pts)</span>
           </span>
           <span className="flex items-center gap-1.5" title="Discontinuity between recorded matches">
-            <span className="w-3.5 h-0 border-b-2 border-dashed border-amber-400" />
-            <span>Missing Matches Gap</span>
+            <span className="flex items-center gap-0.5 h-3">
+              <span className="w-[1.5px] h-3 bg-amber-400" />
+              <span className="w-[1.5px] h-3 bg-amber-400" />
+            </span>
+            <span>Unrecorded Match Gap</span>
           </span>
           {showFloatingBadges && (
             <>
@@ -1089,12 +951,6 @@ export const RankedProgressionChart: React.FC<RankedProgressionChartProps> = ({
                 <span>Shield Consumed</span>
               </span>
             </>
-          )}
-          {chartData?.finalEndpoint && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#e8c06a] border border-[#110f0c]" />
-              <span>Current Standing</span>
-            </span>
           )}
         </div>
         <span className="text-[10px] text-deadlock-muted/70 italic">

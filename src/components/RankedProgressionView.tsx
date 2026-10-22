@@ -21,6 +21,8 @@ import {
   Clock,
   X,
 } from 'lucide-react';
+import { processRankedMatches } from '../services/rankedChart';
+import { RANKED_CHART_CONFIG } from '../config';
 import {
   RankedProgressionChart,
   getRankTierFromFlatProgress,
@@ -52,127 +54,18 @@ export interface RankedShieldAnalysis {
  * - Defeats at subrank floor (delta 0) or with explicit consumed_demotion_protection consume a shield
  */
 export function computeRankedShieldEvents(matches: Match[]): RankedShieldAnalysis {
-  const events = new Map<string, RankedShieldEvent>();
-  let runningShields = 5; // Default reset for subranks 1 & 2
-
-  for (let i = 0; i < matches.length; i++) {
-    const curr = matches[i];
-    const prev = i > 0 ? matches[i - 1] : null;
-
-    const currProgress = curr.rankedProgress ?? 0;
-    const currRank = curr.rankedRank ?? (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : 1);
-    const currSubrank = curr.rankedSubrank ?? (curr.rankedBadge ? curr.rankedBadge % 10 : 1);
-    const currTierName = DEADLOCK_RANK_NAMES[currRank] || `Tier ${currRank}`;
-    const currSubrankRoman = ROMAN_NUMERALS[currSubrank] || String(currSubrank);
-    const currSubrankLabel = `${currTierName} ${currSubrankRoman}`;
-
-    const prevRank = prev ? (prev.rankedRank ?? (prev.rankedBadge ? Math.floor(prev.rankedBadge / 10) : 1)) : null;
-    const prevSubrank = prev ? (prev.rankedSubrank ?? (prev.rankedBadge ? prev.rankedBadge % 10 : 1)) : null;
-
-    if (i === 0) {
-      runningShields = curr.rankedDemotionProtection ?? (currSubrank <= 2 ? 5 : 2);
-    }
-
-    // Detect rank/subrank changes
-    const isPromotion =
-      prev !== null &&
-      (currRank > (prevRank ?? 0) || (currRank === prevRank && currSubrank > (prevSubrank ?? 0)));
-
-    const isDemotion =
-      prev !== null &&
-      (currRank < (prevRank ?? 0) || (currRank === prevRank && currSubrank < (prevSubrank ?? 0)));
-
-    // Rule: each new subrank resets shields (5 for subrank I & II, 2 for subranks III-VI)
-    if (isPromotion) {
-      const resetCount = currSubrank <= 2 ? 5 : 2;
-      runningShields = resetCount;
-      events.set(curr.id, {
-        matchId: curr.id,
-        type: 'gained',
-        count: resetCount,
-        reason: `Promotion to ${currSubrankLabel} (${resetCount} shields reset)`,
-        subrankLabel: currSubrankLabel,
-        shieldsRemaining: runningShields,
-      });
-      continue;
-    }
-
-    if (isDemotion) {
-      // Demoted into a new subrank: shields reset as well
-      const resetCount = currSubrank <= 2 ? 5 : 2;
-      runningShields = resetCount;
-      events.set(curr.id, {
-        matchId: curr.id,
-        type: 'gained',
-        count: resetCount,
-        reason: `Demotion to ${currSubrankLabel} (${resetCount} shields reset)`,
-        subrankLabel: currSubrankLabel,
-        shieldsRemaining: runningShields,
-      });
-      continue;
-    }
-
-    // Inside the same subrank: check if demotion protection was used
-    const isLoss = curr.result === 'loss' || (curr.rankedDelta || 0) < 0;
-    const explicitConsumed = curr.rankedConsumedDemotionProtection === true;
-    const isLossAtFloor = isLoss && curr.rankedDelta === 0;
-
-    const explicitProtectionDecreased =
-      isLoss &&
-      prev?.rankedDemotionProtection !== undefined &&
-      prev?.rankedDemotionProtection !== null &&
-      curr.rankedDemotionProtection !== undefined &&
-      curr.rankedDemotionProtection !== null &&
-      curr.rankedDemotionProtection < prev.rankedDemotionProtection;
-
-    // Inferred shield consumption when explicit flag is null/missing:
-    let inferredConsumed = false;
-    if (
-      isLoss &&
-      !explicitConsumed &&
-      !isLossAtFloor &&
-      !explicitProtectionDecreased &&
-      curr.rankedConsumedDemotionProtection !== false &&
-      prev?.rankedProgress !== null &&
-      prev?.rankedProgress !== undefined
-    ) {
-      const subrankFloor = Math.floor(prev.rankedProgress / 1000) * 1000;
-      const initialProg = curr.rankedInitialProgress ?? prev.rankedProgress;
-      if (
-        (initialProg === subrankFloor && currProgress === subrankFloor) ||
-        (initialProg > subrankFloor && currProgress === subrankFloor && (curr.rankedDelta || -300) < -(initialProg - subrankFloor))
-      ) {
-        inferredConsumed = true;
-      }
-    }
-
-    const shieldUsed = explicitConsumed || isLossAtFloor || explicitProtectionDecreased || inferredConsumed;
-
-    if (shieldUsed) {
-      runningShields = Math.max(0, runningShields - 1);
-      events.set(curr.id, {
-        matchId: curr.id,
-        type: 'used',
-        count: -1,
-        reason: 'Demotion protection activated (shield consumed)',
-        subrankLabel: currSubrankLabel,
-        shieldsRemaining: runningShields,
-      });
-    } else if (curr.rankedDemotionProtection !== undefined && curr.rankedDemotionProtection !== null) {
-      runningShields = curr.rankedDemotionProtection;
-    }
-  }
-
-  return { events, activeShields: Math.min(5, Math.max(0, runningShields)) };
+  const { processedMatches, shieldEventsMap } = processRankedMatches(matches);
+  const activeShields = processedMatches.length > 0 ? processedMatches[processedMatches.length - 1].runningShields : 5;
+  return { events: shieldEventsMap, activeShields };
 }
 
 export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
   matches,
   profile,
 }) => {
-  // Filter range: 'chunk50' (slices of 50 with arrows) | 'last20' | 'last10'
-  const [rangeFilter, setRangeFilter] = useState<'chunk50' | 'last10' | 'last20'>('chunk50');
-  const [chunkIndex, setChunkIndex] = useState<number | null>(null);
+  // Filter range: 'window' (sliding window) | 'last50' | 'last20' | 'all'
+  const [rangeFilter, setRangeFilter] = useState<'window' | 'last50' | 'last20' | 'all'>('window');
+  const [windowStartIndex, setWindowStartIndex] = useState<number | null>(null);
   // Selected hero filter: highlights corresponding sections and grays out others
   const [selectedHeroId, setSelectedHeroId] = useState<number | null>(null);
   // Selected match on chart click to display full game details underneath
@@ -195,53 +88,32 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [matches]);
 
-  // Shield events map: determines for each match if a shield was gained or used
-  const shieldAnalysis = useMemo(() => {
-    return computeRankedShieldEvents(rankedMatchesChronological);
+  // Traitement séquentiel officiel : détection de gaps, boucliers et deltas effectifs
+  const processedRankedData = useMemo(() => {
+    return processRankedMatches(rankedMatchesChronological);
   }, [rankedMatchesChronological]);
 
-  const shieldEventsMap = shieldAnalysis.events;
+  const shieldEventsMap = processedRankedData.shieldEventsMap;
+  const matchDeltasMap = processedRankedData.matchDeltasMap;
 
-  // Effective points delta per match, correctly reflecting points absorbed by demotion protection.
-  // Never computes deltas across preceding matches because missing matches can create unrecorded gaps.
-  const matchDeltasMap = useMemo(() => {
-    const deltas = new Map<string, number>();
-
-    for (let i = 0; i < rankedMatchesChronological.length; i++) {
-      const m = rankedMatchesChronological[i];
-      const shieldEvent = shieldEventsMap.get(m.id);
-      const isShieldUsed = shieldEvent?.type === 'used';
-
-      if (
-        m.rankedProgress !== undefined &&
-        m.rankedProgress !== null &&
-        m.rankedInitialProgress !== undefined &&
-        m.rankedInitialProgress !== null
-      ) {
-        deltas.set(m.id, m.rankedProgress - m.rankedInitialProgress);
-      } else if (m.rankedDelta !== undefined && m.rankedDelta !== null) {
-        deltas.set(m.id, m.rankedDelta);
-      } else if (isShieldUsed) {
-        // Demotion protection absorbed defeat at subrank floor -> 0 points lost
-        deltas.set(m.id, 0);
-      } else {
-        deltas.set(m.id, 0);
-      }
+  const runningShieldsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const pm of processedRankedData.processedMatches) {
+      map.set(pm.match.id, pm.runningShields);
     }
+    return map;
+  }, [processedRankedData]);
 
-    return deltas;
-  }, [rankedMatchesChronological, shieldEventsMap]);
-
-  // 50-match pagination chunks navigation calculation
-  const CHUNK_SIZE = 50;
+  // Sliding window calculation (game-by-game scrolling) driven by centralized config
+  const slidingWindowMatchCount = RANKED_CHART_CONFIG.TIMELINE_SLIDING_WINDOW_MATCH_COUNT;
   const totalRanked = rankedMatchesChronological.length;
-  const totalChunks = Math.max(1, Math.ceil(totalRanked / CHUNK_SIZE));
-  const activeChunkIndex =
-    chunkIndex !== null
-      ? Math.min(Math.max(0, chunkIndex), totalChunks - 1)
-      : totalChunks - 1;
-  const chunkStart = totalRanked === 0 ? 0 : activeChunkIndex * CHUNK_SIZE + 1;
-  const chunkEnd = Math.min(totalRanked, (activeChunkIndex + 1) * CHUNK_SIZE);
+  const maxStartIndex = Math.max(0, totalRanked - slidingWindowMatchCount);
+  const activeStartIndex =
+    windowStartIndex !== null
+      ? Math.min(Math.max(0, windowStartIndex), maxStartIndex)
+      : maxStartIndex;
+  const windowStart = totalRanked === 0 ? 0 : activeStartIndex + 1;
+  const windowEnd = Math.min(totalRanked, activeStartIndex + slidingWindowMatchCount);
 
   // Played heroes in ranked with total points won/lost
   const rankedHeroes = useMemo(() => {
@@ -282,18 +154,18 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
   // Apply range filter to full data series (all matches kept in timeline, hero selection will gray out unselected)
   const filteredMatches = useMemo(() => {
     let list = [...rankedMatchesChronological];
-    if (rangeFilter === 'last10') {
-      list = list.slice(-10);
-    } else if (rangeFilter === 'last20') {
-      list = list.slice(-20);
+    if (rangeFilter === 'last20') {
+      list = list.slice(-RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_SECONDARY_COUNT);
+    } else if (rangeFilter === 'last50') {
+      list = list.slice(-RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_PRIMARY_COUNT);
+    } else if (rangeFilter === 'all') {
+      // return all matches (macro curve mode)
     } else {
-      // 50-match tranche mode
-      const start = activeChunkIndex * CHUNK_SIZE;
-      const end = Math.min(totalRanked, (activeChunkIndex + 1) * CHUNK_SIZE);
-      list = list.slice(start, end);
+      // sliding window mode driven by centralized config
+      list = list.slice(activeStartIndex, activeStartIndex + slidingWindowMatchCount);
     }
     return list;
-  }, [rankedMatchesChronological, rangeFilter, activeChunkIndex, totalRanked]);
+  }, [rankedMatchesChronological, rangeFilter, activeStartIndex, totalRanked, slidingWindowMatchCount]);
 
   // Key KPI stats
   const stats = useMemo(() => {
@@ -363,7 +235,10 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     // Shields stats
     const totalShieldsGained = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'gained').length;
     const totalShieldsUsed = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'used').length;
-    const activeShields = latest.rankedDemotionProtection ?? shieldAnalysis.activeShields;
+    const latestShieldCount = processedRankedData.processedMatches.length > 0
+      ? processedRankedData.processedMatches[processedRankedData.processedMatches.length - 1].runningShields
+      : 5;
+    const activeShields = latest.rankedDemotionProtection ?? latestShieldCount;
 
     return {
       currentProgress,
@@ -392,7 +267,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       totalShieldsUsed,
       activeShields,
     };
-  }, [rankedMatchesChronological, filteredMatches, shieldEventsMap, shieldAnalysis, matchDeltasMap]);
+  }, [rankedMatchesChronological, filteredMatches, shieldEventsMap, processedRankedData, matchDeltasMap]);
 
 
   if (rankedMatchesChronological.length === 0) {
@@ -463,9 +338,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
                   Net Points Balance
                 </span>
-                {rangeFilter !== 'chunk50' && (
+                {rangeFilter !== 'window' && (
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-accent/40 text-deadlock-accent font-bold">
-                    {rangeFilter === 'last10' ? 'Last 10' : 'Last 20'}
+                    {rangeFilter === 'all'
+                      ? 'Global View'
+                      : rangeFilter === 'last50'
+                      ? `Last ${RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_PRIMARY_COUNT}`
+                      : `Last ${RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_SECONDARY_COUNT}`}
                   </span>
                 )}
               </div>
@@ -486,9 +365,11 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <span className="text-xs font-normal text-deadlock-muted">pts</span>
               </div>
               <p className="text-[11px] text-deadlock-muted mt-0.5 text-center">
-                {rangeFilter === 'chunk50'
-                  ? totalChunks > 1
-                    ? `Over matches ${chunkStart}–${chunkEnd} of ${totalRanked}`
+                {rangeFilter === 'all'
+                  ? `Across all ${stats.totalRanked} recorded matches`
+                  : rangeFilter === 'window'
+                  ? totalRanked > slidingWindowMatchCount
+                    ? `Over matches ${windowStart}–${windowEnd} of ${totalRanked}`
                     : `Over ${stats.totalRanked} recorded ranked matches`
                   : `Over last ${stats.visibleMatchesCount} matches`}
               </p>
@@ -502,9 +383,13 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
                   Points Dynamic
                 </span>
-                {rangeFilter !== 'chunk50' && (
+                {rangeFilter !== 'window' && (
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-deadlock-dark border border-deadlock-accent/40 text-deadlock-accent font-bold">
-                    {rangeFilter === 'last10' ? 'Last 10' : 'Last 20'}
+                    {rangeFilter === 'all'
+                      ? 'Global View'
+                      : rangeFilter === 'last50'
+                      ? `Last ${RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_PRIMARY_COUNT}`
+                      : `Last ${RANKED_CHART_CONFIG.PRESET_LAST_MATCHES_SECONDARY_COUNT}`}
                   </span>
                 )}
               </div>
@@ -559,20 +444,12 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
         onSelectMatch={setSelectedMatch}
         rangeFilter={rangeFilter}
         onRangeFilterChange={setRangeFilter}
-        activeChunkIndex={activeChunkIndex}
-        onChunkIndexChange={setChunkIndex}
+        windowStartIndex={activeStartIndex}
+        onWindowStartIndexChange={setWindowStartIndex}
+        windowSize={slidingWindowMatchCount}
         selectedHeroId={selectedHeroId}
         onSelectHeroId={setSelectedHeroId}
         rankedHeroes={rankedHeroes}
-        currentStanding={
-          stats
-            ? {
-                tierName: stats.currentTierName,
-                subrankRoman: stats.currentSubrankRoman,
-                progressInSubrank: stats.progressInSubrank,
-              }
-            : undefined
-        }
       />
 
       {/* 3. SELECTED GAME DETAILS (displayed on graph point click) */}
@@ -631,22 +508,71 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                       {SIDE_LABELS[selectedMatch.side]}
                     </span>
                     {(() => {
+                      const count = runningShieldsMap.get(selectedMatch.id) ?? selectedMatch.rankedDemotionProtection ?? 0;
+                      const matchSubrank = selectedMatch.rankedSubrank ?? (selectedMatch.rankedBadge ? (selectedMatch.rankedBadge % 10) : 1);
+                      const maxShields = matchSubrank <= 2 ? 5 : 2;
                       const matchShield = shieldEventsMap.get(selectedMatch.id);
-                      if (!matchShield) return null;
-                      if (matchShield.type === 'gained') {
-                        return (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded border font-mono text-[10px] font-black uppercase tracking-wider bg-cyan-950/70 border-cyan-400/80 text-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.25)]">
-                            <Shield className="w-3 h-3 fill-cyan-400 text-cyan-300" />
-                            <Shield className="w-3 h-3 fill-cyan-400 text-cyan-300" />
-                            <span className="ml-0.5">Shields Reset (+{matchShield.count})</span>
-                          </span>
-                        );
-                      }
+                      const isReset = matchShield?.type === 'gained';
+                      const isConsumed = matchShield?.type === 'used';
+
+                      const titleText = isReset
+                        ? `Shields Reset (+${matchShield?.count || maxShields}) — ${count} / ${maxShields} Protection Shields`
+                        : isConsumed
+                        ? `Demotion Protection Shield Consumed — ${count} / ${maxShields} Protection Shields Remaining`
+                        : `${count} / ${maxShields} Demotion Protection Shields Remaining`;
+
                       return (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded border font-mono text-[10px] font-black uppercase tracking-wider bg-rose-950/70 border-rose-400/80 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.25)]">
-                          <Shield className="w-3 h-3 fill-rose-500 text-rose-300" />
-                          <span className="ml-0.5">-1 Shield</span>
-                        </span>
+                        <div
+                          className={`steam-glass px-2.5 py-1 rounded-lg border flex items-center justify-center bg-deadlock-dark/60 shadow-inner transition-colors ${
+                            isReset
+                              ? 'border-sky-400/80 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                              : isConsumed
+                              ? 'border-rose-500/70 shadow-[0_0_12px_rgba(244,63,94,0.35)]'
+                              : 'border-deadlock-brass/30'
+                          }`}
+                          title={titleText}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {Array.from({ length: maxShields }).map((_, i) => {
+                              const isFilled = i < count;
+                              const isJustConsumed = isConsumed && i === count;
+
+                              if (isJustConsumed) {
+                                return (
+                                  <Shield
+                                    key={i}
+                                    className="w-4 h-4 fill-rose-950/80 text-rose-400 stroke-rose-500 stroke-2 drop-shadow-[0_0_8px_rgba(244,63,94,0.95)] animate-pulse"
+                                  />
+                                );
+                              }
+
+                              if (isReset && isFilled) {
+                                return (
+                                  <Shield
+                                    key={i}
+                                    className="w-4 h-4 fill-sky-500/80 text-sky-200 stroke-sky-300 stroke-[1.5] drop-shadow-[0_0_8px_rgba(56,189,248,0.9)]"
+                                  />
+                                );
+                              }
+
+                              if (isFilled) {
+                                return (
+                                  <Shield
+                                    key={i}
+                                    className="w-4 h-4 fill-emerald-400 text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                                  />
+                                );
+                              }
+
+                              return (
+                                <Shield
+                                  key={i}
+                                  className="w-4 h-4 text-zinc-500/60 fill-zinc-900/60 stroke-[1.5]"
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })()}
                   </div>
@@ -741,11 +667,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                           accentColor={selectedMatch.side}
                           isHighlighted={isDuo}
                         />
-                        {isDuo && (
-                          <span className="absolute -bottom-1 px-1 py-0.2 bg-cyan-500 text-black font-black text-[7px] rounded uppercase tracking-wider font-mono shadow-[0_0_6px_rgba(6,182,212,0.8)]">
-                            Duo
-                          </span>
-                        )}
+                        
                       </div>
                     );
                   })}
