@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { HeroAvatar } from './HeroAvatar';
-import { HeroPicker } from './HeroPicker';
-import { getHeroById } from '../data/heroes';
-import artDecoBadge from '../assets/art-deco/badge.svg';
-import victorianDivider from '../assets/victorian-metal/divider.svg';
+import { HeroAvatar } from '../HeroAvatar';
+import { HeroPicker } from '../HeroPicker';
+import { getHeroById } from '../../data/heroes';
+import artDecoBadge from '../../assets/art-deco/badge.svg';
+import victorianDivider from '../../assets/victorian-metal/divider.svg';
 import {
   Match,
   MatchDraftInput,
@@ -13,8 +13,8 @@ import {
   LaneOutcome,
   LANE_OUTCOME_LABELS,
   validateMatchInput,
-} from '../types/match';
-import { persistMatch } from '../services/storage';
+} from '../../types/match';
+import { persistMatch } from '../../services/storage/storage';
 import { Shield, Sparkles, Trophy, Skull, Ban, CheckCircle, AlertCircle, RotateCcw, Save, Compass, Swords, Users } from 'lucide-react';
 
 interface MatchFormProps {

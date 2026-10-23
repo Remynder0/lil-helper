@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Disc, FileSearch, Loader2, CheckCircle, AlertCircle, AlertTriangle, X } from 'lucide-react';
-import { Match } from '../types/match';
-import { useDemParser } from '../hooks/useDemParser';
-import { persistMatch } from '../services/storage';
-import { removeMatchFromQueue } from '../services/matchQueue';
+import { Match } from '../../types/match';
+import { useDemParser } from '../../hooks/useDemParser';
+import { persistMatch } from '../../services/storage/storage';
+import { removeMatchFromQueue } from '../../services/logs/matchQueue';
 
 interface ReplayRecoveryModalProps {
   isOpen: boolean;

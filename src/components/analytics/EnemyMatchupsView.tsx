@@ -1,30 +1,34 @@
-import React, { useState, useMemo } from 'react';
-import { Match } from '../types/match';
-import { HeroAvatar } from './HeroAvatar';
+import React, { useState, useMemo } from "react";
+import { Match } from "../../types/match";
+import { HeroAvatar } from "../HeroAvatar";
 import {
-  calculateAllySynergies,
-  AllySynergyStat,
+  calculateEnemyMatchups,
+  EnemyMatchupStat,
   getSampleThreshold,
-} from '../services/analytics';
-import { getHeroById } from '../data/heroes';
+} from "../../services/analytics";
+import { getHeroById } from "../../data/heroes";
 import {
-  Users,
-  Sparkles,
-  HeartCrack,
+  Swords,
+  Skull,
+  ShieldCheck,
   ChevronDown,
   ChevronUp,
   Filter,
-} from 'lucide-react';
+} from "lucide-react";
 
-interface AllySynergiesViewProps {
+interface EnemyMatchupsViewProps {
   matches: Match[];
 }
 
-type SortField = 'matches' | 'winRate' | 'wins';
+type SortField = "matches" | "winRate" | "wins";
 
-export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches }) => {
-  const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
-  const [sortField, setSortField] = useState<SortField>('matches');
+export const EnemyMatchupsView: React.FC<EnemyMatchupsViewProps> = ({
+  matches,
+}) => {
+  const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<
+    number | null
+  >(null);
+  const [sortField, setSortField] = useState<SortField>("matches");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
@@ -37,39 +41,44 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
       .filter((h): h is NonNullable<typeof h> => h !== undefined);
   }, [matches]);
 
-  // Calculate synergies based on the selected hero or overall
-  const synergies = useMemo(() => {
-    return calculateAllySynergies(matches, selectedPlayerHeroId);
+  // Calculate matchups based on the selected hero or overall
+  const matchups = useMemo(() => {
+    return calculateEnemyMatchups(matches, selectedPlayerHeroId);
   }, [matches, selectedPlayerHeroId]);
 
-  // Sort synergies
-  const sortedSynergies = useMemo(() => {
-    return [...synergies].sort((a, b) => {
+  // Sort matchups
+  const sortedMatchups = useMemo(() => {
+    return [...matchups].sort((a, b) => {
       let diff = 0;
-      if (sortField === 'matches') diff = b.matchesWith - a.matchesWith;
-      else if (sortField === 'winRate') diff = b.winRate - a.winRate;
-      else if (sortField === 'wins') diff = b.wins - a.wins;
+      if (sortField === "matches") diff = b.matchesAgainst - a.matchesAgainst;
+      else if (sortField === "winRate") diff = b.winRate - a.winRate;
+      else if (sortField === "wins") diff = b.wins - a.wins;
       return sortAsc ? -diff : diff;
     });
-  }, [synergies, sortField, sortAsc]);
+  }, [matchups, sortField, sortAsc]);
 
-  // Calculate Highlights (prioritize representative synergies with at least threshold games)
+  // Calculate Highlights (prioritize representative matchups with at least threshold games)
   const qualifiedForHighlights = useMemo(() => {
-    const repSynergies = synergies.filter((s) => s.matchesWith >= threshold);
-    if (repSynergies.length >= 2) return repSynergies;
-    return synergies.filter((s) => s.wins + s.losses >= 1);
-  }, [synergies, threshold]);
+    const repMatchups = matchups.filter((m) => m.matchesAgainst >= threshold);
+    if (repMatchups.length >= 2) return repMatchups;
+    return matchups.filter((m) => m.wins + m.losses >= 1);
+  }, [matchups, threshold]);
 
-  const bestSynergies = useMemo(() => {
+  // Calculate Nemeses (lowest winrate with at least 2 matches against, or at least 1)
+  const nemeses = useMemo(() => {
     return [...qualifiedForHighlights]
-      .sort((a, b) => b.winRate - a.winRate || b.matchesWith - a.matchesWith)
+      .sort(
+        (a, b) => a.winRate - b.winRate || b.matchesAgainst - a.matchesAgainst,
+      )
       .slice(0, 3);
   }, [qualifiedForHighlights]);
 
-  // Calculate Anti-Synergies (worst teammates)
-  const antiSynergies = useMemo(() => {
+  // Favorable matchups (highest winrate)
+  const favorable = useMemo(() => {
     return [...qualifiedForHighlights]
-      .sort((a, b) => a.winRate - b.winRate || b.matchesWith - a.matchesWith)
+      .sort(
+        (a, b) => b.winRate - a.winRate || b.matchesAgainst - a.matchesAgainst,
+      )
       .slice(0, 3);
   }, [qualifiedForHighlights]);
 
@@ -82,7 +91,9 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
     }
   };
 
-  const selectedHeroObj = selectedPlayerHeroId ? getHeroById(selectedPlayerHeroId) : null;
+  const selectedHeroObj = selectedPlayerHeroId
+    ? getHeroById(selectedPlayerHeroId)
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,8 +108,8 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
           </div>
           <span className="text-xs text-deadlock-muted">
             {selectedHeroObj
-              ? `Showing synergies specifically when you play ${selectedHeroObj.name}`
-              : 'Showing synergies across all your played heroes'}
+              ? `Showing matchups specifically when you play ${selectedHeroObj.name}`
+              : "Showing matchups across all your played heroes"}
           </span>
         </div>
 
@@ -109,8 +120,8 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
             onClick={() => setSelectedPlayerHeroId(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               selectedPlayerHeroId === null
-                ? 'bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm'
-                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
+                ? "bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm"
+                : "bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30"
             }`}
           >
             All Heroes ({matches.length} matches)
@@ -118,7 +129,9 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
 
           {playedHeroes.map((hero) => {
             const isSelected = selectedPlayerHeroId === hero.id;
-            const heroMatchCount = matches.filter((m) => m.myHeroId === hero.id).length;
+            const heroMatchCount = matches.filter(
+              (m) => m.myHeroId === hero.id,
+            ).length;
             return (
               <button
                 key={hero.id}
@@ -126,55 +139,59 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                 onClick={() => setSelectedPlayerHeroId(hero.id)}
                 className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border transition-all ${
                   isSelected
-                    ? 'bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40'
-                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
+                    ? "bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40"
+                    : "bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30"
                 }`}
               >
                 <HeroAvatar heroId={hero.id} size="xs" />
                 <span className="font-medium">{hero.name}</span>
-                <span className="text-[10px] opacity-70 font-mono">({heroMatchCount})</span>
+                <span className="text-[10px] opacity-70 font-mono">
+                  ({heroMatchCount})
+                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* HIGHLIGHT CARDS: Best Synergies vs Anti-Synergies */}
+      {/* HIGHLIGHT CARDS: Nemeses vs Favorable Matchups */}
       {qualifiedForHighlights.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Best Synergies Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-win/5 rounded-full blur-2xl pointer-events-none" />
+          {/* Nemeses Card */}
+          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-loss/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-loss/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-deadlock-win" />
-                <h3 className="font-bold text-sm text-green-300 uppercase tracking-wide">
-                  Top Synergies (Best Teammates)
+                <Skull className="w-4 h-4 text-deadlock-loss" />
+                <h3 className="font-bold text-sm text-red-300 uppercase tracking-wide">
+                  Top Nemeses (Hardest Opponents)
                 </h3>
               </div>
-              <span className="text-[11px] text-deadlock-muted">Highest Winrate</span>
+              <span className="text-[11px] text-deadlock-muted">
+                Lowest Winrate
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {bestSynergies.map((syn) => {
-                const isRep = syn.matchesWith >= threshold;
+              {nemeses.map((nemesis) => {
+                const isRep = nemesis.matchesAgainst >= threshold;
                 return (
                   <div
-                    key={syn.allyHeroId}
+                    key={nemesis.enemyHeroId}
                     className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
                       !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
                     }`}
                     title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                   >
-                    <HeroAvatar heroId={syn.allyHeroId} size="sm" />
+                    <HeroAvatar heroId={nemesis.enemyHeroId} size="sm" />
                     <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                      {syn.allyHero?.name}
+                      {nemesis.enemyHero?.name}
                     </span>
-                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
-                      {syn.winRate}% WR
+                    <div className="text-[11px] font-mono font-bold text-deadlock-loss">
+                      {nemesis.winRate}% WR
                     </div>
                     <div className="text-[10px] text-deadlock-muted font-mono">
-                      {syn.wins}W - {syn.losses}L
+                      {nemesis.wins}W - {nemesis.losses}L
                     </div>
                   </div>
                 );
@@ -182,39 +199,41 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
             </div>
           </div>
 
-          {/* Anti-Synergies Card */}
-          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+          {/* Favorable Matchups Card */}
+          <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-win/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-deadlock-win/5 rounded-full blur-2xl pointer-events-none" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <HeartCrack className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-sm text-amber-300 uppercase tracking-wide">
-                  Anti-Synergies (Lowest Success)
+                <ShieldCheck className="w-4 h-4 text-deadlock-win" />
+                <h3 className="font-bold text-sm text-green-300 uppercase tracking-wide">
+                  Favorable Matchups (Best Records)
                 </h3>
               </div>
-              <span className="text-[11px] text-deadlock-muted">Lowest Winrate</span>
+              <span className="text-[11px] text-deadlock-muted">
+                Highest Winrate
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 mt-1">
-              {antiSynergies.map((anti) => {
-                const isRep = anti.matchesWith >= threshold;
+              {favorable.map((fav) => {
+                const isRep = fav.matchesAgainst >= threshold;
                 return (
                   <div
-                    key={anti.allyHeroId}
+                    key={fav.enemyHeroId}
                     className={`bg-deadlock-card/80 border border-deadlock-border/60 rounded-lg p-2.5 flex flex-col items-center text-center gap-1.5 transition-all duration-200 ${
                       !isRep ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100' : ''
                     }`}
                     title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                   >
-                    <HeroAvatar heroId={anti.allyHeroId} size="sm" />
+                    <HeroAvatar heroId={fav.enemyHeroId} size="sm" />
                     <span className="font-bold text-xs text-deadlock-steam truncate max-w-full">
-                      {anti.allyHero?.name}
+                      {fav.enemyHero?.name}
                     </span>
-                    <div className="text-[11px] font-mono font-bold text-amber-400">
-                      {anti.winRate}% WR
+                    <div className="text-[11px] font-mono font-bold text-deadlock-win">
+                      {fav.winRate}% WR
                     </div>
                     <div className="text-[10px] text-deadlock-muted font-mono">
-                      {anti.wins}W - {anti.losses}L
+                      {fav.wins}W - {fav.losses}L
                     </div>
                   </div>
                 );
@@ -224,13 +243,14 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
         </div>
       )}
 
-      {/* FULL SYNERGY TABLE */}
+      {/* FULL MATCHUP TABLE */}
       <div className="bg-deadlock-panel/80 backdrop-blur-sm steam-card border border-deadlock-border/80 rounded-xl overflow-hidden flex flex-col">
         <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-deadlock-muted" />
+            <Swords className="w-4 h-4 text-deadlock-muted" />
             <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
-              Ally Synergy Matrix ({sortedSynergies.length} Allies Played With)
+              Enemy Hero Matchup Matrix ({sortedMatchups.length} Opponents
+              Faced)
             </h3>
           </div>
           <span className="text-xs text-deadlock-muted">
@@ -238,58 +258,67 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
           </span>
         </div>
 
-        {sortedSynergies.length === 0 ? (
+        {sortedMatchups.length === 0 ? (
           <div className="p-8 text-center text-xs text-deadlock-muted">
-            No ally data recorded for this hero selection.
+            No enemy data recorded for this hero selection.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Ally Hero</th>
+                  <th className="py-3 px-4 font-semibold">Enemy Hero</th>
                   <th
-                    onClick={() => handleSort('matches')}
+                    onClick={() => handleSort("matches")}
                     className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                   >
                     <div className="flex items-center gap-1">
-                      <span>Matches Together</span>
-                      {sortField === 'matches' && (
-                        sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                      )}
+                      <span>Matches Against</span>
+                      {sortField === "matches" &&
+                        (sortAsc ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ))}
                     </div>
                   </th>
                   <th
-                    onClick={() => handleSort('wins')}
+                    onClick={() => handleSort("wins")}
                     className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
                   >
                     <div className="flex items-center gap-1">
-                      <span>Record Together (W / L / C)</span>
-                      {sortField === 'wins' && (
-                        sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                      )}
+                      <span>Your Record (W / L / C)</span>
+                      {sortField === "wins" &&
+                        (sortAsc ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ))}
                     </div>
                   </th>
                   <th
-                    onClick={() => handleSort('winRate')}
+                    onClick={() => handleSort("winRate")}
                     className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors text-right"
                   >
                     <div className="flex items-center justify-end gap-1">
-                      <span>Win Rate Together</span>
-                      {sortField === 'winRate' && (
-                        sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                      )}
+                      <span>Your Win Rate</span>
+                      {sortField === "winRate" &&
+                        (sortAsc ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
+                        ))}
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-deadlock-border/40">
-                {sortedSynergies.map((s: AllySynergyStat) => {
-                  const decided = s.wins + s.losses;
-                  const isRep = s.matchesWith >= threshold;
+                {sortedMatchups.map((m: EnemyMatchupStat) => {
+                  const decided = m.wins + m.losses;
+                  const isRep = m.matchesAgainst >= threshold;
                   return (
                     <tr
-                      key={s.allyHeroId}
+                      key={m.enemyHeroId}
                       className={`transition-all duration-200 ${
                         !isRep
                           ? 'opacity-35 blur-[1.5px] hover:blur-none hover:opacity-100'
@@ -297,35 +326,41 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                       }`}
                       title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
                     >
-                      {/* Ally Hero info */}
+                      {/* Enemy Hero info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <HeroAvatar heroId={s.allyHeroId} size="xs" />
+                          <HeroAvatar heroId={m.enemyHeroId} size="xs" />
                           <div>
                             <div className="font-bold text-deadlock-steam text-sm">
-                              {s.allyHero?.name || `Hero #${s.allyHeroId}`}
+                              {m.enemyHero?.name || `Hero #${m.enemyHeroId}`}
                             </div>
                             <div className="text-[11px] text-deadlock-muted capitalize">
-                              {s.allyHero?.heroType || s.allyHero?.role || 'Unknown'}
+                              {m.enemyHero?.heroType ||
+                                m.enemyHero?.role ||
+                                "Unknown"}
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Matches Together */}
+                      {/* Matches Against */}
                       <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
-                        {s.matchesWith}
+                        {m.matchesAgainst}
                       </td>
 
                       {/* Record */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-deadlock-win font-bold font-mono">{s.wins}W</span>
+                          <span className="text-deadlock-win font-bold font-mono">
+                            {m.wins}W
+                          </span>
                           <span className="text-deadlock-muted">-</span>
-                          <span className="text-deadlock-loss font-bold font-mono">{s.losses}L</span>
-                          {s.cancels > 0 && (
+                          <span className="text-deadlock-loss font-bold font-mono">
+                            {m.losses}L
+                          </span>
+                          {m.cancels > 0 && (
                             <span className="text-deadlock-muted font-mono">
-                              - {s.cancels}C
+                              - {m.cancels}C
                             </span>
                           )}
                         </div>
@@ -337,21 +372,23 @@ export const AllySynergiesView: React.FC<AllySynergiesViewProps> = ({ matches })
                           <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
                             <div
                               className={`h-full ${
-                                s.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'
+                                m.winRate >= 50
+                                  ? "bg-deadlock-win"
+                                  : "bg-deadlock-loss"
                               }`}
-                              style={{ width: `${s.winRate}%` }}
+                              style={{ width: `${m.winRate}%` }}
                             />
                           </div>
                           <span
                             className={`font-mono font-bold text-sm ${
                               decided > 0
-                                ? s.winRate >= 50
-                                  ? 'text-deadlock-win'
-                                  : 'text-deadlock-loss'
-                                : 'text-deadlock-muted'
+                                ? m.winRate >= 50
+                                  ? "text-deadlock-win"
+                                  : "text-deadlock-loss"
+                                : "text-deadlock-muted"
                             }`}
                           >
-                            {decided > 0 ? `${s.winRate}%` : 'N/A'}
+                            {decided > 0 ? `${m.winRate}%` : "N/A"}
                           </span>
                         </div>
                       </td>

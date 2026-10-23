@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import occultCorner from '../assets/occult/corner.svg';
-import { Match, Side, LaneColor, LANE_LABELS } from '../types/match';
-import { HeroPicker } from './HeroPicker';
-import { getCachedBestDraftActions } from '../services/analytics';
-import { ParsedGameContext } from '../services/logWatcher';
-import { scanEscapeMenuDraft } from '../services/screenOcr';
-import { ActiveSlot } from './draft/types';
-import { DraftHeader } from './draft/DraftHeader';
-import { DraftLanesBoard } from './draft/DraftLanesBoard';
-import { DraftDecisionTree } from './draft/DraftDecisionTree';
-import { OcrInspectorModal } from './draft/OcrInspectorModal';
-import { useDraftSession } from '../hooks/useDraftSession';
+import occultCorner from '../../assets/occult/corner.svg';
+import { Match, Side, LaneColor, LANE_LABELS } from '../../types/match';
+import { HeroPicker } from '../HeroPicker';
+import { getCachedBestDraftActions } from '../../services/analytics';
+import { ParsedGameContext } from '../../services/logs/logWatcher';
+import { scanEscapeMenuDraft } from '../../services/ocr/screenOcr';
+import { ActiveSlot } from './types';
+import { DraftHeader } from './DraftHeader';
+import { DraftLanesBoard } from './DraftLanesBoard';
+import { DraftDecisionTree } from './DraftDecisionTree';
+import { OcrInspectorModal } from './OcrInspectorModal';
+import { useDraftSession } from '../../hooks/useDraftSession';
 
 interface DraftAssistantViewProps {
   matches: Match[];

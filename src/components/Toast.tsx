@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { API_AND_TELEMETRY_CONFIG } from '../config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,8 @@ interface ToastCardProps {
 }
 
 const ToastCard: React.FC<ToastCardProps> = ({ toast, onDismiss }) => {
-  const duration = toast.duration ?? 4000;
+  const duration =
+    toast.duration ?? API_AND_TELEMETRY_CONFIG.DEFAULT_TOAST_AUTO_DISMISS_DURATION_MS;
   const { border, icon: iconColor, bar } = styles[toast.type];
 
   // Animate progress bar shrink
@@ -172,7 +174,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const push = useCallback((type: ToastType, message: string, duration = 4000) => {
+  const push = useCallback(
+    (
+      type: ToastType,
+      message: string,
+      duration: number = API_AND_TELEMETRY_CONFIG.DEFAULT_TOAST_AUTO_DISMISS_DURATION_MS
+    ) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setToasts((prev) => [...prev, { id, type, message, duration }]);
     // Auto-dismiss

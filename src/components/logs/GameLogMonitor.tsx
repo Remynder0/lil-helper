@@ -19,7 +19,7 @@ import {
   detectDeadlockLogPath,
   readDeadlockLogEvents,
   saveDeadlockDebugLog,
-} from '../services/logWatcher';
+} from '../../services/logs/logWatcher';
 
 interface GameLogMonitorProps {
   onMatchDetected?: (matchId: number) => void;

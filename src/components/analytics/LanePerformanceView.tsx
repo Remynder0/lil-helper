@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Match } from '../types/match';
-import { HeroAvatar } from './HeroAvatar';
+import { Match } from '../../types/match';
+import { HeroAvatar } from '../HeroAvatar';
 import {
   calculateLaneAnalytics,
   LaneAnalyticsSummary,
-} from '../services/analytics';
-import { getHeroById } from '../data/heroes';
+} from '../../services/analytics';
+import { getHeroById } from '../../data/heroes';
 import {
   Compass,
   Swords,

@@ -1,20 +1,20 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Match } from '../types/match';
-import type { Hero } from '../data/heroes';
+import { Match } from '../../types/match';
+import type { Hero } from '../../data/heroes';
 import {
   loadUserSettings,
   saveUserSettings,
   ShieldDisplayMode,
-} from '../services/userSettings';
+} from '../../services/storage/userSettings';
 import {
   BarChart2,
   ChevronLeft,
   ChevronRight,
   Shield,
 } from 'lucide-react';
-import artDecoCorner from '../assets/art-deco/corner.svg';
+import artDecoCorner from '../../assets/art-deco/corner.svg';
 
-import { DEADLOCK_RANK_NAMES } from '../services/deadlockApi';
+import { DEADLOCK_RANK_NAMES } from '../../services/api/deadlockApi';
 import {
   getRankTierFromFlatProgress,
   ROMAN_NUMERALS,
@@ -26,8 +26,8 @@ import {
   PlottedChartGeometry as RankedChartData,
   ETERNUS_PERCENTILE_THRESHOLDS,
   getEternusSubrankFromPercentile,
-} from "../services/rankedChart";
-import { RANKED_CHART_CONFIG } from '../config';
+} from "../../services/ranked/rankedChart";
+import { RANKED_CHART_CONFIG } from '../../config';
 
 export {
   getRankTierFromFlatProgress,

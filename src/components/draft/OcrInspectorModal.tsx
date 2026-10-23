@@ -1,6 +1,6 @@
 import React from 'react';
 import { Terminal, Eye, X } from 'lucide-react';
-import { ScreenScanResult } from '../../services/screenOcr';
+import { ScreenScanResult } from '../../services/ocr/screenOcr';
 
 interface OcrInspectorModalProps {
   isOpen: boolean;

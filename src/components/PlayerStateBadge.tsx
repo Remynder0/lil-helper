@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlayerGameState } from '../services/logWatcher';
+import { PlayerGameState } from '../services/logs/logWatcher';
 import { getHeroById, findHeroByName } from '../data/heroes';
 import { Swords, Home, WifiOff, Brain } from 'lucide-react';
 

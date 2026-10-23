@@ -5,10 +5,10 @@ import {
   LANE_LABELS,
   LANE_OUTCOME_LABELS,
   SIDE_LABELS,
-} from '../types/match';
-import { getHeroById } from '../data/heroes';
-import { DEADLOCK_RANK_NAMES } from '../services/deadlockApi';
-import { HeroAvatar } from './HeroAvatar';
+} from '../../types/match';
+import { getHeroById } from '../../data/heroes';
+import { DEADLOCK_RANK_NAMES } from '../../services/api/deadlockApi';
+import { HeroAvatar } from '../HeroAvatar';
 import {
   Trophy,
   TrendingUp,
@@ -21,8 +21,8 @@ import {
   Clock,
   X,
 } from 'lucide-react';
-import { processRankedMatches } from '../services/rankedChart';
-import { RANKED_CHART_CONFIG } from '../config';
+import { processRankedMatches } from '../../services/ranked/rankedChart';
+import { RANKED_CHART_CONFIG } from '../../config';
 import {
   RankedProgressionChart,
   getRankTierFromFlatProgress,

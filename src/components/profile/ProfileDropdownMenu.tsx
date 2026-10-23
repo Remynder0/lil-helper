@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ConnectedProfile } from '../types/match';
-import { useUIStore } from '../stores/useUIStore';
+import { ConnectedProfile } from '../../types/match';
+import { useUIStore } from '../../stores/useUIStore';
 import {
   Activity,
   Download,
@@ -13,9 +13,9 @@ import {
   Search,
   Cloud,
 } from 'lucide-react';
-import { syncMatchesWithCloud } from '../services/storage';
-import { useToast } from './Toast';
-import { useMatchStore } from '../stores/useMatchStore';
+import { syncMatchesWithCloud } from '../../services/storage/storage';
+import { useToast } from '../Toast';
+import { useMatchStore } from '../../stores/useMatchStore';
 
 interface ProfileDropdownMenuProps {
   profile: ConnectedProfile;

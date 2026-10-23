@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Match } from '../types/match';
-import { HeroAvatar } from './HeroAvatar';
+import { Match } from '../../types/match';
+import { HeroAvatar } from '../HeroAvatar';
 import {
   getCachedEnemyMatchups,
   getCachedAllySynergies,
   EnemyMatchupStat,
   AllySynergyStat,
   getSampleThreshold,
-} from '../services/analytics';
-import { getHeroById } from '../data/heroes';
+} from '../../services/analytics';
+import { getHeroById } from '../../data/heroes';
 import {
   Swords,
   Users,

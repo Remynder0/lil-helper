@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ConnectedProfile } from '../types/match';
-import { searchSteamProfiles, SteamProfileSearchResult } from '../services/deadlockApi';
-import { isTauriEnvironment, syncMatchesWithCloud } from '../services/storage';
-import { getCloudSyncState, subscribeToCloudSync, CloudSyncState } from '../services/cloudSync';
-import steamLogo from '../assets/steam-logo.svg';
+import { ConnectedProfile } from '../../types/match';
+import { searchSteamProfiles, SteamProfileSearchResult } from '../../services/api/deadlockApi';
+import { isTauriEnvironment, syncMatchesWithCloud } from '../../services/storage/storage';
+import { getCloudSyncState, subscribeToCloudSync, CloudSyncState } from '../../services/storage/cloudSync';
+import steamLogo from '../../assets/steam-logo.svg';
 import { Search, User, Check, X, Loader2, Cloud, ExternalLink } from 'lucide-react';
 
 interface ProfileConnectModalProps {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Download, Monitor, X, ExternalLink, Sparkles } from 'lucide-react';
-import { isTauriEnvironment } from '../services/storage';
+import { isTauriEnvironment } from '../services/storage/storage';
 
 export const DesktopDownloadBanner: React.FC = () => {
   const [isDismissed, setIsDismissed] = useState(() => {

@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import artDecoCorner from '../assets/art-deco/corner.svg';
-import { Match, ConnectedProfile } from '../types/match';
-import { HeroAvatar } from './HeroAvatar';
+import artDecoCorner from '../../assets/art-deco/corner.svg';
+import { Match, ConnectedProfile } from '../../types/match';
+import { HeroAvatar } from '../HeroAvatar';
 import { HeroMatchupsAndSynergiesView } from './HeroMatchupsAndSynergiesView';
 import { LanePerformanceView } from './LanePerformanceView';
-import { RankedProgressionView } from './RankedProgressionView';
+import { RankedProgressionView } from '../ranked/RankedProgressionView';
 import {
   getCachedGlobalStats,
   getCachedPatronStats,
@@ -14,7 +14,7 @@ import {
   formatStreakDateRange,
   HeroPerformance,
   getSampleThreshold,
-} from '../services/analytics';
+} from '../../services/analytics';
 import {
   Flame,
   TrendingDown,
