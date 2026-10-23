@@ -1,3 +1,5 @@
+import { API_AND_TELEMETRY_CONFIG } from '../../config';
+
 export interface ApiLogEntry {
   id: string;
   timestamp: string;
@@ -14,7 +16,7 @@ export interface ApiLogEntry {
 }
 
 const STORAGE_KEY = 'deadlock_api_requests_log_v1';
-const MAX_LOGS = 20;
+const MAX_LOGS = API_AND_TELEMETRY_CONFIG.MAX_RETAINED_API_TELEMETRY_LOGS;
 
 type ApiLogListener = (logs: ApiLogEntry[]) => void;
 const listeners = new Set<ApiLogListener>();
