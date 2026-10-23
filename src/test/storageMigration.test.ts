@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { migrateMatchData, CURRENT_STORAGE_SCHEMA_VERSION } from '../services/storage';
+import { migrateMatchData, CURRENT_STORAGE_SCHEMA_VERSION } from '../services/storage/storage';
 
 describe('storageMigration – Versioning de Schéma de Données', () => {
   it('migrates legacy raw array format (v1) into current versioned schema', () => {
@@ -83,7 +83,7 @@ describe('storageMigration – Versioning de Schéma de Données', () => {
   });
 
   it('saves and fetches app settings payload safely', async () => {
-    const { saveAppSettings, fetchAppSettings } = await import('../services/storage');
+    const { saveAppSettings, fetchAppSettings } = await import('../services/storage/storage');
     await saveAppSettings({
       activeAccountId: 98765432,
       profile: {

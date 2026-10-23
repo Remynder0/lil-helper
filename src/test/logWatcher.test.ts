@@ -34,8 +34,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseDeadlockLogEvents } from '../services/logWatcher';
-import type { LogEvent } from '../services/logWatcher';
+import { parseDeadlockLogEvents } from '../services/logs/logWatcher';
+import type { LogEvent } from '../services/logs/logWatcher';
 
 /**
  * Utilitaire pour simuler un événement de log unitaire.

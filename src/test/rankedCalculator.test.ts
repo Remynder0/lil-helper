@@ -30,7 +30,7 @@ import {
   calculateRankedProgression,
   calculateWinStreakBefore,
   WINSTREAK_POINTS,
-} from '../services/rankedCalculator';
+} from '../services/ranked/rankedCalculator';
 import { Match } from '../types/match';
 
 /**

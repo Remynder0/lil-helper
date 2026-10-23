@@ -8,24 +8,25 @@ import {
   saveAppSettings,
   fetchAppSettings,
   syncMatchesWithCloud,
-} from '../services/storage';
+} from '../services/storage/storage';
 import { useMatchStore } from '../stores/useMatchStore';
 import {
   syncRankedMatchesForAccount,
   fetchSingleMatchResultById,
   backfillRankedDataForMatches,
-} from '../services/deadlockApi';
+} from '../services/api/deadlockApi';
 import {
   updateQueuedMatchStatus,
   removeMatchFromQueue,
   addMatchToQueue,
-} from '../services/matchQueue';
+} from '../services/logs/matchQueue';
 import {
   getSupabaseClient,
   isSupabaseConfigured,
   initializeSupabaseConfig,
-} from '../services/supabaseClient';
-import { fetchCloudMatchHistory } from '../services/cloudSync';
+} from '../services/storage/supabaseClient';
+import { fetchCloudMatchHistory } from '../services/storage/cloudSync';
+import { API_AND_TELEMETRY_CONFIG } from '../config';
 
 export const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
 
@@ -55,7 +56,10 @@ export function useProfileSync() {
       const lastSync = localStorage.getItem('last_api_refresh_timestamp');
       if (lastSync) {
         const elapsedSec = Math.floor((Date.now() - parseInt(lastSync, 10)) / 1000);
-        return Math.max(0, 120 - elapsedSec);
+        return Math.max(
+          0,
+          API_AND_TELEMETRY_CONFIG.MANUAL_API_REFRESH_COOLDOWN_SECONDS - elapsedSec
+        );
       }
     } catch {}
     return 0;
@@ -203,10 +207,10 @@ export function useProfileSync() {
         }
       }
 
-      // Update lastSyncedAt and trigger 2-minute cooldown (120s)
+      // Update lastSyncedAt and trigger cooldown
       const now = Date.now();
       localStorage.setItem('last_api_refresh_timestamp', String(now));
-      setCooldownRemaining(120);
+      setCooldownRemaining(API_AND_TELEMETRY_CONFIG.MANUAL_API_REFRESH_COOLDOWN_SECONDS);
 
       const updatedProfile: ConnectedProfile = {
         ...targetProfile,

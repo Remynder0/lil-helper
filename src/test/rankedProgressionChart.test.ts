@@ -3,7 +3,7 @@ import {
   computeRankedChartGeometry,
   getRankTierFromFlatProgress,
   ROMAN_NUMERALS,
-} from '../components/RankedProgressionChart';
+} from '../components/ranked/RankedProgressionChart';
 import { Match } from '../types/match';
 
 describe('RankedProgressionChart - computeRankedChartGeometry', () => {

@@ -1,6 +1,7 @@
 import { Match } from '../../types/match';
 import { getHeroById } from '../../data/heroes';
 import { GlobalStats, PatronStats, HeroPerformance, FamiliarFaceStat } from './types';
+import { ANALYTICS_SAMPLE_CONFIG } from '../../config';
 
 /**
  * Calculates global statistics over a list of matches.
@@ -125,7 +126,9 @@ export function calculatePatronStats(matches: Match[]): PatronStats {
  * - Starting from 100 total games (>= 100): threshold = 10 games.
  */
 export function getSampleThreshold(totalMatches: number): number {
-  return totalMatches < 100 ? 5 : 10;
+  return totalMatches < ANALYTICS_SAMPLE_CONFIG.MATURE_ACCOUNT_TOTAL_MATCHES_THRESHOLD
+    ? ANALYTICS_SAMPLE_CONFIG.HERO_REPRESENTATIVE_MIN_GAMES_INITIAL
+    : ANALYTICS_SAMPLE_CONFIG.HERO_REPRESENTATIVE_MIN_GAMES_MATURE;
 }
 
 /**
@@ -137,9 +140,13 @@ export function getSampleThreshold(totalMatches: number): number {
  * - If >= 100 total games: threshold = 5 games.
  */
 export function getLaneSampleThreshold(totalMatches: number): number {
-  if (totalMatches < 50) return 2;
-  if (totalMatches < 100) return 3;
-  return 5;
+  if (totalMatches < ANALYTICS_SAMPLE_CONFIG.LANE_INTERMEDIATE_ACCOUNT_TOTAL_MATCHES_THRESHOLD) {
+    return ANALYTICS_SAMPLE_CONFIG.LANE_REPRESENTATIVE_MIN_GAMES_INITIAL;
+  }
+  if (totalMatches < ANALYTICS_SAMPLE_CONFIG.MATURE_ACCOUNT_TOTAL_MATCHES_THRESHOLD) {
+    return ANALYTICS_SAMPLE_CONFIG.LANE_REPRESENTATIVE_MIN_GAMES_INTERMEDIATE;
+  }
+  return ANALYTICS_SAMPLE_CONFIG.LANE_REPRESENTATIVE_MIN_GAMES_MATURE;
 }
 
 export function isSampleRepresentative(sampleCount: number, totalMatches: number): boolean {
@@ -148,10 +155,11 @@ export function isSampleRepresentative(sampleCount: number, totalMatches: number
 
 export function getSampleThresholdExplanation(totalMatches: number): string {
   const threshold = getSampleThreshold(totalMatches);
-  if (totalMatches < 100) {
-    return `Threshold of representativeness: ${threshold} games (active because < 100 games in total: ${totalMatches}/100)`;
+  const matureThreshold = ANALYTICS_SAMPLE_CONFIG.MATURE_ACCOUNT_TOTAL_MATCHES_THRESHOLD;
+  if (totalMatches < matureThreshold) {
+    return `Threshold of representativeness: ${threshold} games (active because < ${matureThreshold} games in total: ${totalMatches}/${matureThreshold})`;
   }
-  return `Threshold of representativeness: ${threshold} games (active because ≥ 100 games in total: ${totalMatches})`;
+  return `Threshold of representativeness: ${threshold} games (active because ≥ ${matureThreshold} games in total: ${totalMatches})`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { findHeroBySource2Name } from '../data/heroes';
+import { findHeroBySource2Name } from '../../data/heroes';
 
 export interface LogEvent {
   timestamp: string;

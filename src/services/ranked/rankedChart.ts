@@ -1,6 +1,7 @@
-import { Match } from "../types/match";
-import { DEADLOCK_RANK_NAMES } from "./deadlockApi";
+import { Match } from "../../types/match";
+import { DEADLOCK_RANK_NAMES } from "../api/deadlockApi";
 import { calculateRankedProgression } from "./rankedCalculator";
+import { RANKED_CHART_CONFIG } from "../../config";
 
 // ============================================================================
 // 1. RANK TIERS & SUBRANKS DEFINITION
@@ -405,8 +406,13 @@ export function createPlottingContext(
 ): PlottingContext {
   const width = options?.width ?? 860;
   const height = options?.height ?? 280;
-  // Increased top padding to 55 to comfortably accommodate hierarchical Eternus badges without collision
-  const padding = options?.padding ?? { top: 55, right: 35, bottom: 40, left: 80 };
+  // Top padding configured via RANKED_CHART_CONFIG to accommodate hierarchical Eternus badges without collision
+  const padding = options?.padding ?? {
+    top: RANKED_CHART_CONFIG.SVG_CHART_HEADER_TOP_PADDING_PIXELS,
+    right: 35,
+    bottom: 40,
+    left: 80,
+  };
 
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
@@ -422,11 +428,13 @@ export function createPlottingContext(
 
   const toY = (val: number) => padding.top + chartH - ((val - yMin) / yRange) * chartH;
 
-  // X distribution with 2.2x enlarged spacing on timeline gaps
+  // X distribution with expanded spacing on timeline gaps
   const cumWeights: number[] = [0];
   for (let i = 1; i < n; i++) {
     const isGap = processedMatches[i].isGapBefore;
-    const intervalWeight = isGap ? 2.2 : 1.0;
+    const intervalWeight = isGap
+      ? RANKED_CHART_CONFIG.TIMELINE_GAP_SPACING_EXPANSION_MULTIPLIER
+      : 1.0;
     cumWeights.push(cumWeights[i - 1] + intervalWeight);
   }
   const totalWeight = cumWeights[n - 1] || 1;

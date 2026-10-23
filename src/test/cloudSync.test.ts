@@ -4,12 +4,12 @@ import {
   getSupabaseClient,
   configureSupabase,
   resetSupabaseConfig,
-} from '../services/supabaseClient';
+} from '../services/storage/supabaseClient';
 import {
   fetchCloudMatchHistory,
   pushCloudMatchHistory,
-} from '../services/cloudSync';
-import { fetchAllMatches, persistMatch } from '../services/storage';
+} from '../services/storage/cloudSync';
+import { fetchAllMatches, persistMatch } from '../services/storage/storage';
 import { Match } from '../types/match';
 
 describe('CloudSync & Supabase Priority Architecture', () => {

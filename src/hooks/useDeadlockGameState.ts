@@ -6,23 +6,20 @@ import {
   readDeadlockLogEvents,
   parseDeadlockLogEvents,
   isDeadlockGameRunning,
-} from '../services/logWatcher';
+} from '../services/logs/logWatcher';
+import { GAME_LOG_POLLING_CONFIG } from '../config';
 
 const DEFAULT_LOG_PATH =
   'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Deadlock\\game\\citadel\\console.log';
 
 /**
- * Adaptive polling intervals in milliseconds.
- * - Active match/draft: fast updates for immediate lane & hero detection.
- * - Hideout / Idle: moderate pace to detect match launches without wasting CPU.
- * - Disconnected: slow heartbeat to check if Deadlock was launched.
- * - Background / Tab hidden: throttled to minimize resource usage.
+ * Adaptive polling intervals in milliseconds (configured centrally in src/config.ts).
  */
 export const ADAPTIVE_POLL_INTERVALS = {
-  ACTIVE_MATCH: 2000,
-  HIDEOUT: 4000,
-  DISCONNECTED: 10000,
-  BACKGROUND: 15000,
+  ACTIVE_MATCH: GAME_LOG_POLLING_CONFIG.ACTIVE_MATCH_LOG_POLL_INTERVAL_MS,
+  HIDEOUT: GAME_LOG_POLLING_CONFIG.HIDEOUT_IDLE_LOG_POLL_INTERVAL_MS,
+  DISCONNECTED: GAME_LOG_POLLING_CONFIG.DISCONNECTED_HEARTBEAT_POLL_INTERVAL_MS,
+  BACKGROUND: GAME_LOG_POLLING_CONFIG.BACKGROUND_HIDDEN_WINDOW_POLL_INTERVAL_MS,
 } as const;
 
 function calculatePollingDelay(state: PlayerGameState, isVisible: boolean): number {

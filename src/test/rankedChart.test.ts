@@ -6,7 +6,7 @@ import {
   plotRankedPoints,
   getEternusSubrankFromPercentile,
   ETERNUS_PERCENTILE_THRESHOLDS,
-} from "../services/rankedChart";
+} from "../services/ranked/rankedChart";
 import { Match } from "../types/match";
 
 const createMockMatch = (partial: Partial<Match>): Match => ({

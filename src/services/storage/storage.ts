@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Match, ConnectedProfile } from '../types/match';
+import { Match, ConnectedProfile } from '../../types/match';
 import type { UserSettings } from './userSettings';
 import { fetchCloudMatchHistory, pushCloudMatchHistory, getCloudSyncState } from './cloudSync';
 import { isSupabaseConfigured, initializeSupabaseConfig } from './supabaseClient';

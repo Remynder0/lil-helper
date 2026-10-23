@@ -7,11 +7,11 @@ import {
   exportMatchesJson,
   importMatchesJson,
   setActiveStorageAccountId,
-} from '../services/storage';
+} from '../services/storage/storage';
 import {
   removeMatchFromQueue,
   QueuedMatch,
-} from '../services/matchQueue';
+} from '../services/logs/matchQueue';
 
 interface MatchState {
   matches: Match[];

@@ -32,7 +32,7 @@ import {
   saveDraftSessionState,
   resetDraftSessionState,
   INITIAL_DRAFT_SESSION_STATE,
-} from '../services/draftStorage';
+} from '../services/storage/draftStorage';
 
 // ─── Setup ──────────────────────────────────────────────────────────────────
 

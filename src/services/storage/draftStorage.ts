@@ -1,5 +1,5 @@
-import { Side, LaneColor } from '../types/match';
-import { ScreenScanResult } from './screenOcr';
+import { Side, LaneColor } from '../../types/match';
+import { ScreenScanResult } from '../ocr/screenOcr';
 
 export interface DraftSessionState {
   side: Side;

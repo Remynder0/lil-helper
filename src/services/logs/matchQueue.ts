@@ -2,7 +2,7 @@ import {
   getTrackedPendingMatches,
   saveTrackedPendingMatch,
   removeTrackedPendingMatch,
-} from './storage';
+} from '../storage/storage';
 
 export type QueueMatchStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'not_ranked';
 

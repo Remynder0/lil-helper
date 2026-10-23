@@ -2,7 +2,7 @@
 import {
   computeRankedShieldEvents,
   getRankTierFromFlatProgress,
-} from '../components/RankedProgressionView';
+} from '../components/ranked/RankedProgressionView';
 import { Match } from '../types/match';
 
 describe('computeRankedShieldEvents', () => {

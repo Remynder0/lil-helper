@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { createWorker } from 'tesseract.js';
-import { HEROES, Hero } from '../data/heroes';
-import { Side } from '../types/match';
+import { HEROES, Hero } from '../../data/heroes';
+import { Side } from '../../types/match';
 import { saveOcrCapture } from './ocrHistory';
 
 export interface HeroMatchDetail {
@@ -56,7 +56,7 @@ import {
   ENEMIES_HEADER_REGEX,
   ENEMY_FALLBACK_REGEX,
   detectFactionBilingual,
-} from './ocr/ocrDictionaries';
+} from './ocrDictionaries';
 
 interface CandidateMatch {
   hero: Hero;

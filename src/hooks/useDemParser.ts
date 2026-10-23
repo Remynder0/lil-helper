@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { DemParseResult, RankedTodoContext } from '../types/demTypes';
-import { convertDemResultToMatch } from '../services/deadlockApi';
-import { calculateRankedProgression } from '../services/rankedCalculator';
+import { convertDemResultToMatch } from '../services/api/deadlockApi';
+import { calculateRankedProgression } from '../services/ranked/rankedCalculator';
 import { Match } from '../types/match';
 
 export type DemParserState = 'idle' | 'detecting' | 'parsing' | 'success' | 'error';

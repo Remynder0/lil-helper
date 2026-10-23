@@ -39,7 +39,7 @@ export interface RankedTodoContext {
   previousMatchDelta: number | null;
   previousMatchShields: number | null;
   /** Progression calculée automatiquement selon les règles Deadlock */
-  calculated?: import('../services/rankedCalculator').CalculatedRankedProgression;
+  calculated?: import('../services/ranked/rankedCalculator').CalculatedRankedProgression;
 }
 
 /**

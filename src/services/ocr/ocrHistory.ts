@@ -1,4 +1,5 @@
-import { Side } from '../types/match';
+import { Side } from '../../types/match';
+import { API_AND_TELEMETRY_CONFIG } from '../../config';
 
 export interface OcrHeroDetail {
   id: number;
@@ -22,7 +23,7 @@ export interface OcrCaptureEntry {
 }
 
 const STORAGE_KEY = 'deadlock_ocr_captures_log_v1';
-const MAX_CAPTURES = 10;
+const MAX_CAPTURES = API_AND_TELEMETRY_CONFIG.MAX_RETAINED_OCR_DIAGNOSTIC_CAPTURES;
 
 type OcrHistoryListener = (captures: OcrCaptureEntry[]) => void;
 const listeners = new Set<OcrHistoryListener>();

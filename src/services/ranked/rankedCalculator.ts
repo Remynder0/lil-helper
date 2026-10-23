@@ -4,7 +4,7 @@
  * de boucliers de rétrogradation selon les règles officielles du jeu.
  */
 
-import { Match, MatchResult } from '../types/match';
+import { Match, MatchResult } from '../../types/match';
 
 /**
  * Barème des victoires consécutives selon Deadlock :

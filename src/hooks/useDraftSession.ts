@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Side, LaneColor } from '../types/match';
-import { ParsedGameContext } from '../services/logWatcher';
-import { ScreenScanResult } from '../services/screenOcr';
-import { loadUserSettings, saveUserSettings } from '../services/userSettings';
+import { ParsedGameContext } from '../services/logs/logWatcher';
+import { ScreenScanResult } from '../services/ocr/screenOcr';
+import { loadUserSettings, saveUserSettings } from '../services/storage/userSettings';
 import {
   loadDraftSessionState,
   saveDraftSessionState,
   resetDraftSessionState,
-} from '../services/draftStorage';
+} from '../services/storage/draftStorage';
 
 export interface UseDraftSessionReturn {
   side: Side;

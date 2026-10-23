@@ -1,4 +1,4 @@
-import { Match, ConnectedProfile } from '../types/match';
+import { Match, ConnectedProfile } from '../../types/match';
 import { getSupabaseClient, isSupabaseConfigured, getSupabaseAnonKey } from './supabaseClient';
 import { migrateMatchData } from './storage';
 
