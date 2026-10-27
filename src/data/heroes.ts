@@ -146,8 +146,8 @@ export const HEROES: Hero[] = [
     "key": "deadman_danny",
     "name": "Deadman Danny",
     "className": "hero_deadpack",
-    "role": "Unknown",
-    "heroType": "brawler",
+    "role": "marksman",
+    "heroType": "marksman",
     "iconUrl": "/heroes/deadman_danny.webp",
     "backgroundUrl": "/heroes/backgrounds/deadman_danny_bg.webp",
     "tags": [
@@ -156,8 +156,8 @@ export const HEROES: Hero[] = [
       "Explosive"
     ],
     "gunTag": "",
-    "complexity": 3,
-    "hideoutRichPresence": null
+    "complexity": 2,
+    "hideoutRichPresence": "Testing Fine Fairfax Products In The Hideout"
   },
   {
     "id": 64,
@@ -434,8 +434,8 @@ export const HEROES: Hero[] = [
     "key": "nurse_harrow",
     "name": "Nurse Harrow",
     "className": "hero_nurse",
-    "role": "Unknown",
-    "heroType": "brawler",
+    "role": "marksman",
+    "heroType": "marksman",
     "iconUrl": "/heroes/nurse_harrow.webp",
     "backgroundUrl": "/heroes/backgrounds/nurse_harrow_bg.webp",
     "tags": [
@@ -443,9 +443,9 @@ export const HEROES: Hero[] = [
       "Terrifying",
       "Savior"
     ],
-    "gunTag": "",
-    "complexity": 3,
-    "hideoutRichPresence": null
+    "gunTag": "Projectile",
+    "complexity": 1,
+    "hideoutRichPresence": "Conducting Rounds In The Hideout"
   },
   {
     "id": 67,
@@ -704,8 +704,8 @@ export const HEROES: Hero[] = [
     "key": "violet",
     "name": "Violet",
     "className": "hero_artist",
-    "role": "Unknown",
-    "heroType": "brawler",
+    "role": "mystic",
+    "heroType": "mystic",
     "iconUrl": "/heroes/violet.webp",
     "backgroundUrl": "/heroes/backgrounds/violet_bg.webp",
     "tags": [
@@ -713,9 +713,9 @@ export const HEROES: Hero[] = [
       "Nimble",
       "Creative"
     ],
-    "gunTag": "",
-    "complexity": 3,
-    "hideoutRichPresence": null
+    "gunTag": "Projectile",
+    "complexity": 1,
+    "hideoutRichPresence": "Painting In The Hideout"
   },
   {
     "id": 35,
