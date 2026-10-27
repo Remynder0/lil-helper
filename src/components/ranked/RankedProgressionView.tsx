@@ -21,7 +21,7 @@ import {
   Clock,
   X,
 } from 'lucide-react';
-import { processRankedMatches } from '../../services/ranked/rankedChart';
+import { processRankedMatches, getMaxShieldsForRank } from '../../services/ranked/rankedChart';
 import { RANKED_CHART_CONFIG } from '../../config';
 import {
   RankedProgressionChart,
@@ -167,6 +167,14 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     return list;
   }, [rankedMatchesChronological, rangeFilter, activeStartIndex, totalRanked, slidingWindowMatchCount]);
 
+  const processedMatchesById = useMemo(() => {
+    const map = new Map<string, (typeof processedRankedData.processedMatches)[number]>();
+    for (const pm of processedRankedData.processedMatches) {
+      map.set(pm.match.id, pm);
+    }
+    return map;
+  }, [processedRankedData]);
+
   // Key KPI stats
   const stats = useMemo(() => {
     if (rankedMatchesChronological.length === 0) {
@@ -174,18 +182,28 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     }
 
     const latest = rankedMatchesChronological[rankedMatchesChronological.length - 1];
-    const currentProgress = latest.rankedProgress ?? 0;
-    const currentRank = latest.rankedRank || (latest.rankedBadge ? Math.floor(latest.rankedBadge / 10) : 1);
-    // Subrank is directly derived from match rankedSubrank or rankedBadge % 10
-    const currentSubrank = latest.rankedSubrank ?? (latest.rankedBadge ? latest.rankedBadge % 10 : 1);
+    const latestProcessed =
+      processedRankedData.processedMatches.length > 0
+        ? processedRankedData.processedMatches[processedRankedData.processedMatches.length - 1]
+        : null;
+    const currentProgress = latestProcessed?.endProgress ?? latest.rankedProgress ?? 0;
+    const currentRank =
+      latestProcessed?.rank ??
+      (latest.rankedRank || (latest.rankedBadge ? Math.floor(latest.rankedBadge / 10) : 1));
+    const currentSubrank =
+      latestProcessed?.subrank ??
+      (latest.rankedSubrank ?? (latest.rankedBadge ? latest.rankedBadge % 10 : 1));
     const currentBadge = currentRank * 10 + currentSubrank;
     const currentTierName = DEADLOCK_RANK_NAMES[currentRank] || `Tier ${currentRank}`;
     const currentSubrankRoman = ROMAN_NUMERALS[currentSubrank] || (currentSubrank > 0 ? String(currentSubrank) : '');
+    const isCurrentEternus = currentRank === 11 || currentProgress >= 70000;
 
-    // Progress within current subrank (1000 points per subrank)
+    // Progress within current subrank (1000 points per subrank in non-Eternus tiers)
     const progressInSubrank = currentProgress % 1000;
     const progressMaxSubrank = 1000;
-    const subrankPercent = Math.min(100, Math.round((progressInSubrank / progressMaxSubrank) * 100));
+    const subrankPercent = isCurrentEternus
+      ? 100
+      : Math.min(100, Math.round((progressInSubrank / progressMaxSubrank) * 100));
 
     // Net delta across visible matches in graph (adapts to range filter: chunk50 / last 20 / last 10)
     const visibleDelta = filteredMatches.reduce(
@@ -221,12 +239,19 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       (max, m) => ((m.rankedProgress || 0) > (max.rankedProgress || 0) ? m : max),
       rankedMatchesChronological[0]
     );
-    const peakProgress = peakMatch?.rankedProgress ?? 0;
+    const peakProcessed = peakMatch ? processedMatchesById.get(peakMatch.id) : null;
+    const peakProgress = peakProcessed?.endProgress ?? peakMatch?.rankedProgress ?? 0;
     const peakRank =
-      peakMatch?.rankedRank ?? (peakMatch?.rankedBadge ? Math.floor(peakMatch.rankedBadge / 10) : currentRank);
-    const peakSubrank = peakMatch?.rankedSubrank ?? (peakMatch?.rankedBadge ? peakMatch.rankedBadge % 10 : 1);
+      peakProcessed?.rank ??
+      peakMatch?.rankedRank ??
+      (peakMatch?.rankedBadge ? Math.floor(peakMatch.rankedBadge / 10) : currentRank);
+    const peakSubrank =
+      peakProcessed?.subrank ??
+      peakMatch?.rankedSubrank ??
+      (peakMatch?.rankedBadge ? peakMatch.rankedBadge % 10 : 1);
     const peakTierName = DEADLOCK_RANK_NAMES[peakRank] || `Tier ${peakRank}`;
     const peakSubrankRoman = ROMAN_NUMERALS[peakSubrank] || (peakSubrank > 0 ? String(peakSubrank) : '');
+    const isPeakEternus = peakRank === 11 || peakProgress >= 70000;
 
     const totalWins = rankedMatchesChronological.filter((m) => m.result === 'win').length;
     const totalLosses = rankedMatchesChronological.filter((m) => m.result === 'loss').length;
@@ -235,10 +260,12 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
     // Shields stats
     const totalShieldsGained = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'gained').length;
     const totalShieldsUsed = Array.from(shieldEventsMap.values()).filter((e) => e.type === 'used').length;
-    const latestShieldCount = processedRankedData.processedMatches.length > 0
-      ? processedRankedData.processedMatches[processedRankedData.processedMatches.length - 1].runningShields
-      : 5;
-    const activeShields = latest.rankedDemotionProtection ?? latestShieldCount;
+    const currentMaxShields = getMaxShieldsForRank(currentRank, currentSubrank);
+    const latestShieldCount = latestProcessed ? latestProcessed.runningShields : currentMaxShields;
+    const activeShields =
+      currentMaxShields === 0
+        ? 0
+        : (latestProcessed ? latestProcessed.runningShields : (latest.rankedDemotionProtection ?? latestShieldCount));
 
     return {
       currentProgress,
@@ -247,6 +274,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       currentSubrank,
       currentTierName,
       currentSubrankRoman,
+      isCurrentEternus,
       progressInSubrank,
       progressMaxSubrank,
       subrankPercent,
@@ -258,6 +286,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       peakProgress,
       peakTierName,
       peakSubrankRoman,
+      isPeakEternus,
       totalWins,
       totalLosses,
       winRate,
@@ -267,7 +296,7 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
       totalShieldsUsed,
       activeShields,
     };
-  }, [rankedMatchesChronological, filteredMatches, shieldEventsMap, processedRankedData, matchDeltasMap]);
+  }, [rankedMatchesChronological, filteredMatches, shieldEventsMap, processedRankedData, processedMatchesById, matchDeltasMap]);
 
 
   if (rankedMatchesChronological.length === 0) {
@@ -317,7 +346,9 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                   <span className="text-deadlock-accent font-serif">{stats.currentSubrankRoman}</span>
                 </div>
                 <span className="text-[11px] font-mono text-deadlock-accent font-bold">
-                  {stats.progressInSubrank} / 1,000 pts
+                  {stats.isCurrentEternus
+                    ? `${stats.currentProgress.toLocaleString()} pts`
+                    : `${stats.progressInSubrank} / 1,000 pts`}
                 </span>
               </div>
             </div>
@@ -427,7 +458,9 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                 <span className="text-deadlock-accent font-serif">{stats.peakSubrankRoman}</span>
               </div>
               <div className="text-xs font-mono font-bold text-deadlock-accent mt-0.5 text-center">
-                {stats.peakProgress % 1000} / 1,000 pts
+                {stats.isPeakEternus
+                  ? `${stats.peakProgress.toLocaleString()} pts`
+                  : `${stats.peakProgress % 1000} / 1,000 pts`}
               </div>
             </div>
           </div>
@@ -459,21 +492,26 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
         const isWin = selectedMatch.result === 'win';
         const durationM = selectedMatch.durationSeconds ? Math.floor(selectedMatch.durationSeconds / 60) : 0;
         const durationS = selectedMatch.durationSeconds ? selectedMatch.durationSeconds % 60 : 0;
-        const delta = matchDeltasMap.get(selectedMatch.id) ?? (selectedMatch.rankedDelta || 0);
+        const selectedProcessed = processedMatchesById.get(selectedMatch.id);
+        const delta = selectedProcessed?.effectiveDelta ?? matchDeltasMap.get(selectedMatch.id) ?? (selectedMatch.rankedDelta || 0);
         const isPositive = delta > 0;
-        const progress = selectedMatch.rankedProgress || 0;
+        const progress = selectedProcessed?.endProgress ?? selectedMatch.rankedProgress ?? 0;
         const initialProgress =
-          selectedMatch.rankedInitialProgress !== null && selectedMatch.rankedInitialProgress !== undefined
+          selectedProcessed?.startProgress ??
+          (selectedMatch.rankedInitialProgress !== null && selectedMatch.rankedInitialProgress !== undefined
             ? selectedMatch.rankedInitialProgress
-            : progress - delta;
+            : progress - delta);
         const rankTier =
-          selectedMatch.rankedRank ||
-          (selectedMatch.rankedBadge ? Math.floor(selectedMatch.rankedBadge / 10) : 1);
+          selectedProcessed?.rank ??
+          (selectedMatch.rankedRank ||
+            (selectedMatch.rankedBadge ? Math.floor(selectedMatch.rankedBadge / 10) : 1));
         const subrank =
-          selectedMatch.rankedSubrank ??
-          (selectedMatch.rankedBadge ? selectedMatch.rankedBadge % 10 : 1);
+          selectedProcessed?.subrank ??
+          (selectedMatch.rankedSubrank ??
+            (selectedMatch.rankedBadge ? selectedMatch.rankedBadge % 10 : 1));
         const subrankRoman = ROMAN_NUMERALS[subrank] || '';
         const tierName = DEADLOCK_RANK_NAMES[rankTier] || 'Initiate';
+        const isMatchEternus = rankTier === 11 || progress >= 70000;
         const progressInSub = initialProgress % 1000;
         const enemySide = selectedMatch.side === 'hidden_king' ? 'archmother' : 'hidden_king';
 
@@ -508,9 +546,11 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                       {SIDE_LABELS[selectedMatch.side]}
                     </span>
                     {(() => {
+                      const maxShields = getMaxShieldsForRank(rankTier, subrank);
+                      if (maxShields === 0) {
+                        return null;
+                      }
                       const count = runningShieldsMap.get(selectedMatch.id) ?? selectedMatch.rankedDemotionProtection ?? 0;
-                      const matchSubrank = selectedMatch.rankedSubrank ?? (selectedMatch.rankedBadge ? (selectedMatch.rankedBadge % 10) : 1);
-                      const maxShields = matchSubrank <= 2 ? 5 : 2;
                       const matchShield = shieldEventsMap.get(selectedMatch.id);
                       const isReset = matchShield?.type === 'gained';
                       const isConsumed = matchShield?.type === 'used';
@@ -614,10 +654,21 @@ export const RankedProgressionView: React.FC<RankedProgressionViewProps> = ({
                     {isPositive ? `+${delta}` : delta} pts
                   </span>
                   <span className="text-xs font-mono text-deadlock-steam font-semibold">
-                    {tierName} {subrankRoman} · {progressInSub} pts
-                    <span className="text-deadlock-muted font-normal text-[10px] ml-1">
-                      → {progress % 1000} pts ({progress.toLocaleString()} ladder)
-                    </span>
+                    {isMatchEternus ? (
+                      <>
+                        {tierName} {subrankRoman} · {initialProgress.toLocaleString()} pts
+                        <span className="text-deadlock-muted font-normal text-[10px] ml-1">
+                          → {progress.toLocaleString()} pts
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {tierName} {subrankRoman} · {progressInSub} pts
+                        <span className="text-deadlock-muted font-normal text-[10px] ml-1">
+                          → {progress % 1000} pts ({progress.toLocaleString()} ladder)
+                        </span>
+                      </>
+                    )}
                   </span>
                 </div>
 

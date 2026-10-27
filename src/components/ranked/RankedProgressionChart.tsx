@@ -42,11 +42,21 @@ export {
 
 export function computeRankedChartGeometry(
   filteredMatches: Match[],
-  _shieldEventsMap: Map<string, RankedShieldEvent>,
-  _matchDeltasMap: Map<string, number>,
+  shieldEventsMap: Map<string, RankedShieldEvent>,
+  matchDeltasMap: Map<string, number>,
   tierOnlyThresholds?: boolean
 ) {
   const { processedMatches } = processRankedMatches(filteredMatches);
+  if (shieldEventsMap.size > 0 || matchDeltasMap.size > 0) {
+    for (const pm of processedMatches) {
+      if (matchDeltasMap.has(pm.match.id)) {
+        pm.effectiveDelta = matchDeltasMap.get(pm.match.id)!;
+      }
+      if (shieldEventsMap.size > 0) {
+        pm.shieldEvent = shieldEventsMap.get(pm.match.id);
+      }
+    }
+  }
   return plotRankedPoints(processedMatches, { tierOnlyThresholds });
 }
 

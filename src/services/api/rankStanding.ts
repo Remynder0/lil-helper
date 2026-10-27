@@ -112,20 +112,31 @@ export function buildRankStandingFromLocalMatch(
   }
 
   const currentProgress = match.rankedProgress;
-  const rank = match.rankedRank || (match.rankedBadge ? Math.floor(match.rankedBadge / 10) : 1);
-  const subrank = Math.min(6, Math.max(1, Math.floor((currentProgress % 6000) / 1000) + 1));
+  const rank =
+    currentProgress >= 70000
+      ? 11
+      : (match.rankedRank || (match.rankedBadge ? Math.floor(match.rankedBadge / 10) : Math.min(11, Math.floor(currentProgress / 7000) + 1)));
+  const rem = currentProgress % 7000;
+  const computedSubrank =
+    rem < 1000 ? 1 : rem < 2000 ? 2 : rem < 3000 ? 3 : rem < 4000 ? 4 : rem < 5000 ? 5 : 6;
+  const subrank =
+    rank === 11
+      ? (match.rankedSubrank ?? (match.rankedBadge ? match.rankedBadge % 10 : 1))
+      : computedSubrank;
   const badge = rank * 10 + subrank;
   const tierName = DEADLOCK_RANK_NAMES[rank] || `Rank ${rank}`;
   const subrankRoman = ROMAN_NUMERALS[subrank] || (subrank > 0 ? String(subrank) : '');
   const badgeImageUrl = `https://api.deadlock-api.com/v1/assets/ranks/${rank}/${subrank}/image`;
 
-  const progress = currentProgress % 1000;
-  const progressMax = 1000;
+  const isEternus = rank === 11 || currentProgress >= 70000;
+  const progress = isEternus ? currentProgress : currentProgress % 1000;
+  const progressMax = isEternus ? 0 : 1000;
   const progressChange = match.rankedDelta ?? 0;
 
-  const defaultMaxProtection = subrank <= 2 ? 5 : 2;
-  const demotionProtectionGames = match.rankedDemotionProtection ?? defaultMaxProtection;
-  const maxDemotionProtectionGames = Math.max(defaultMaxProtection, demotionProtectionGames);
+  const isAboveEternusI = rank === 11 && subrank > 1;
+  const defaultMaxProtection = isAboveEternusI ? 0 : (subrank <= 2 ? 5 : 2);
+  const demotionProtectionGames = isAboveEternusI ? 0 : (match.rankedDemotionProtection ?? defaultMaxProtection);
+  const maxDemotionProtectionGames = isAboveEternusI ? 0 : Math.max(defaultMaxProtection, demotionProtectionGames);
 
   const totalRankedPlayers = badgeDist.reduce((sum, item) => sum + (item.unique_players || 0), 0);
   const playersAbove = badgeDist
@@ -203,16 +214,22 @@ export async function fetchPlayerRankStanding(
     lastMatch?.player_rank_final_flat_progress ??
     lastMatch?.player_rank_initial_flat_progress ??
     0;
-  // Progress within subrank (each subrank has 1,000 points in Deadlock)
-  const progress = rawFlatProgress % 1000;
-  const progressMax = 1000;
+  const isEternus = rank === 11 || rawFlatProgress >= 70000;
+  // Progress within subrank (each subrank has 1,000 points in Deadlock; Eternus uses absolute ladder points)
+  const progress = isEternus ? rawFlatProgress : rawFlatProgress % 1000;
+  const progressMax = isEternus ? 0 : 1000;
   const progressChange = lastMatch?.player_rank_desired_progress_change ?? 0;
 
+  const isAboveEternusI = rank === 11 && subrank > 1;
   const rawProtection = lastMatch?.player_rank_initial_demotion_protection_games ?? 0;
   const consumed = lastMatch?.player_rank_consumed_demotion_protection ?? false;
-  const demotionProtectionGames = consumed ? Math.max(0, rawProtection - 1) : rawProtection;
-  const defaultMaxProtection = subrank === 1 ? 5 : 2;
-  const maxDemotionProtectionGames = Math.max(defaultMaxProtection, rawProtection, demotionProtectionGames);
+  const demotionProtectionGames = isAboveEternusI
+    ? 0
+    : (consumed ? Math.max(0, rawProtection - 1) : rawProtection);
+  const defaultMaxProtection = isAboveEternusI ? 0 : (subrank <= 2 ? 5 : 2);
+  const maxDemotionProtectionGames = isAboveEternusI
+    ? 0
+    : Math.max(defaultMaxProtection, rawProtection, demotionProtectionGames);
 
   const calibrationGamesRemaining = lastMatch?.player_rank_initial_calibration_games ?? 0;
 

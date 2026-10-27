@@ -75,8 +75,23 @@ export const HistoryRankStandingCards: React.FC<HistoryRankStandingCardsProps> =
             </span>
           </h2>
 
-          {/* Subrank progress bar */}
-          {rankStanding.progressMax > 0 && (
+          {/* Subrank progress bar or Eternus absolute points */}
+          {rankStanding.rank === 11 ? (
+            <div className="flex flex-col gap-1 mt-1 w-48 sm:w-56">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-deadlock-muted">Standing</span>
+                <span className="text-deadlock-accent font-bold">
+                  {(rankStanding.flatProgress ?? rankStanding.progress).toLocaleString()} pts
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-deadlock-dark/80 overflow-hidden border border-deadlock-border/40">
+                <div
+                  className="h-full bg-gradient-to-r from-deadlock-brass to-deadlock-accent transition-all duration-500 rounded-full"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          ) : rankStanding.progressMax > 0 ? (
             <div className="flex flex-col gap-1 mt-1 w-48 sm:w-56">
               <div
                 className="flex items-center justify-between text-[10px] font-mono"
@@ -101,38 +116,40 @@ export const HistoryRankStandingCards: React.FC<HistoryRankStandingCardsProps> =
                 />
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
       {/* Right section: Demotion Protection Shields & Global Server Percentile */}
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 relative z-10 w-full md:w-auto justify-start md:justify-end">
-        {/* Demotion Protection Shields (Icon-only, no text label) */}
-        <div
-          className="steam-glass px-3.5 py-2.5 rounded-xl border border-deadlock-brass/30 flex items-center justify-center bg-deadlock-dark/50 shadow-inner"
-          title={`${rankStanding.demotionProtectionGames ?? 0} / ${rankStanding.maxDemotionProtectionGames || (rankStanding.subrank === 1 ? 5 : 2)} Demotion Protection`}
-        >
-          <div className="flex items-center gap-1.5">
-            {Array.from({
-              length:
-                rankStanding.maxDemotionProtectionGames ||
-                (rankStanding.subrank === 1 ? 5 : 2),
-            }).map((_, i) => {
-              const isFilled = i < (rankStanding.demotionProtectionGames ?? 0);
-              return isFilled ? (
-                <Shield
-                  key={i}
-                  className="w-6 h-6 fill-emerald-400 text-emerald-300 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-transform hover:scale-110"
-                />
-              ) : (
-                <Shield
-                  key={i}
-                  className="w-6 h-6 text-zinc-500/60 fill-zinc-900/60 stroke-[1.5] transition-transform hover:scale-110"
-                />
-              );
-            })}
+        {/* Demotion Protection Shields (hidden above Eternus I) */}
+        {!(rankStanding.rank === 11 && rankStanding.subrank > 1) && (
+          <div
+            className="steam-glass px-3.5 py-2.5 rounded-xl border border-deadlock-brass/30 flex items-center justify-center bg-deadlock-dark/50 shadow-inner"
+            title={`${rankStanding.demotionProtectionGames ?? 0} / ${rankStanding.maxDemotionProtectionGames || (rankStanding.subrank <= 2 ? 5 : 2)} Demotion Protection`}
+          >
+            <div className="flex items-center gap-1.5">
+              {Array.from({
+                length:
+                  rankStanding.maxDemotionProtectionGames ||
+                  (rankStanding.subrank <= 2 ? 5 : 2),
+              }).map((_, i) => {
+                const isFilled = i < (rankStanding.demotionProtectionGames ?? 0);
+                return isFilled ? (
+                  <Shield
+                    key={i}
+                    className="w-6 h-6 fill-emerald-400 text-emerald-300 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-transform hover:scale-110"
+                  />
+                ) : (
+                  <Shield
+                    key={i}
+                    className="w-6 h-6 text-zinc-500/60 fill-zinc-900/60 stroke-[1.5] transition-transform hover:scale-110"
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Global Server Percentile */}
         <div className="steam-glass px-3.5 py-2 rounded-xl border border-deadlock-brass/30 flex items-center gap-3 bg-deadlock-dark/40 shadow-inner">

@@ -216,6 +216,19 @@ export function getSubrankFloor(pts: number): number {
   return tierBase + 5000;
 }
 
+/**
+ * Returns the maximum number of demotion protection shields for a given rank and subrank:
+ * - Ranks above Eternus I (rank === 11 && subrank > 1): 0 shields (percentile ladder, no shield system)
+ * - Subranks I & II (including Eternus I): 5 shields
+ * - Subranks III–VI (in Tiers 1–10): 2 shields
+ */
+export function getMaxShieldsForRank(rank: number, subrank: number): number {
+  if (rank === 11 && subrank > 1) {
+    return 0;
+  }
+  return subrank <= 2 ? 5 : 2;
+}
+
 // ============================================================================
 // 2. MATCH PROCESSING (Validation, Gaps, Shields, Deltas)
 // ============================================================================
@@ -273,34 +286,96 @@ export function processRankedMatches(rawMatches: Match[]): {
     const isGapBefore = prevEndProgress !== null && currStartProgress !== prevEndProgress;
     const gapPointsBefore = isGapBefore ? currStartProgress - prevEndProgress! : 0;
 
+    // Determine post-match rank & subrank from currEndProgress (since curr.rankedBadge is initial_display_rank before the match)
     const endRankInfo = getRankTierFromFlatProgress(currEndProgress);
+    let currRank: number;
+    let currSubrank: number;
 
-    const currRank = curr.rankedRank ?? (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : endRankInfo.rank);
-    const currSubrank = curr.rankedSubrank ?? (curr.rankedBadge ? (curr.rankedBadge % 10) : endRankInfo.subrank);
-    const currSubrankLabel = (DEADLOCK_RANK_NAMES[currRank] || endRankInfo.tierName) + " " + (ROMAN_NUMERALS[currSubrank] || endRankInfo.subrankRoman);
-    const maxShields = currSubrank <= 2 ? 5 : 2;
+    if (currEndProgress >= 70000) {
+      currRank = 11;
+      const nextMatch = i + 1 < rankedMatches.length ? rankedMatches[i + 1] : null;
+      const nextInitialRank = nextMatch
+        ? (nextMatch.rankedRank ?? (nextMatch.rankedBadge ? Math.floor(nextMatch.rankedBadge / 10) : null))
+        : null;
+      const nextInitialSubrank = nextMatch
+        ? (nextMatch.rankedSubrank ?? (nextMatch.rankedBadge ? nextMatch.rankedBadge % 10 : null))
+        : null;
 
-    const prevRank = prevProcessed ? prevProcessed.rank : null;
-    const prevSubrank = prevProcessed ? prevProcessed.subrank : null;
+      if (
+        nextMatch &&
+        nextMatch.rankedInitialProgress === currEndProgress &&
+        nextInitialRank === 11 &&
+        nextInitialSubrank !== null &&
+        nextInitialSubrank > 0
+      ) {
+        currSubrank = nextInitialSubrank;
+      } else {
+        const currBadgeRank = curr.rankedRank ?? (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : null);
+        const currBadgeSubrank = curr.rankedSubrank ?? (curr.rankedBadge ? curr.rankedBadge % 10 : null);
+        currSubrank = currBadgeRank === 11 && currBadgeSubrank ? currBadgeSubrank : 1;
+      }
+    } else if (currEndProgress > 0) {
+      currRank = endRankInfo.rank;
+      currSubrank = endRankInfo.subrank;
+    } else {
+      currRank = curr.rankedRank ?? (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : endRankInfo.rank);
+      currSubrank = curr.rankedSubrank ?? (curr.rankedBadge ? (curr.rankedBadge % 10) : endRankInfo.subrank);
+    }
+
+    const currSubrankLabel =
+      (DEADLOCK_RANK_NAMES[currRank] || endRankInfo.tierName) +
+      " " +
+      (ROMAN_NUMERALS[currSubrank] || endRankInfo.subrankRoman);
+    const maxShields = getMaxShieldsForRank(currRank, currSubrank);
+
+    // Determine pre-match rank & subrank (at currStartProgress) to detect promotions/demotions on the exact match
+    let beforeRank: number | null = null;
+    let beforeSubrank: number | null = null;
+
+    if (curr.rankedInitialProgress !== null && curr.rankedInitialProgress !== undefined) {
+      if (!isGapBefore && prevProcessed) {
+        beforeRank = prevProcessed.rank;
+        beforeSubrank = prevProcessed.subrank;
+      } else {
+        const startRankInfo = getRankTierFromFlatProgress(currStartProgress);
+        if (currStartProgress >= 70000) {
+          beforeRank = 11;
+          const initBadgeRank = curr.rankedRank ?? (curr.rankedBadge ? Math.floor(curr.rankedBadge / 10) : null);
+          const initBadgeSubrank = curr.rankedSubrank ?? (curr.rankedBadge ? curr.rankedBadge % 10 : null);
+          beforeSubrank = initBadgeRank === 11 && initBadgeSubrank ? initBadgeSubrank : 1;
+        } else {
+          beforeRank = startRankInfo.rank;
+          beforeSubrank = startRankInfo.subrank;
+        }
+      }
+    } else {
+      beforeRank = prevProcessed ? prevProcessed.rank : null;
+      beforeSubrank = prevProcessed ? prevProcessed.subrank : null;
+    }
 
     let shieldEvent: RankedShieldEvent | undefined = undefined;
 
     const isPromotion =
-      prevRank !== null &&
-      (currRank > prevRank || (currRank === prevRank && currSubrank > (prevSubrank ?? 0)));
+      beforeRank !== null &&
+      (currRank > beforeRank || (currRank === beforeRank && currSubrank > (beforeSubrank ?? 0)));
     const isDemotion =
-      prevRank !== null &&
-      (currRank < prevRank || (currRank === prevRank && currSubrank < (prevSubrank ?? 0)));
+      beforeRank !== null &&
+      (currRank < beforeRank || (currRank === beforeRank && currSubrank < (beforeSubrank ?? 0)));
+
+    const initialMaxShields =
+      beforeRank !== null && beforeSubrank !== null
+        ? getMaxShieldsForRank(beforeRank, beforeSubrank)
+        : maxShields;
 
     if (i === 0) {
       runningShields = curr.rankedDemotionProtection !== null && curr.rankedDemotionProtection !== undefined
-        ? Math.min(maxShields, Math.max(0, curr.rankedDemotionProtection))
-        : maxShields;
+        ? Math.min(initialMaxShields, Math.max(0, curr.rankedDemotionProtection))
+        : initialMaxShields;
     } else if (isGapBefore) {
       currentStreak = curr.result === "win" ? 1 : 0;
       runningShields = curr.rankedDemotionProtection !== null && curr.rankedDemotionProtection !== undefined
-        ? Math.min(maxShields, Math.max(0, curr.rankedDemotionProtection))
-        : maxShields;
+        ? Math.min(initialMaxShields, Math.max(0, curr.rankedDemotionProtection))
+        : initialMaxShields;
     } else {
       if (curr.result === "win") {
         currentStreak += 1;
@@ -309,22 +384,39 @@ export function processRankedMatches(rawMatches: Match[]): {
       }
     }
 
-    if (isPromotion || isDemotion) {
-      const resetCount = maxShields;
-      runningShields = resetCount;
-      shieldEvent = {
-        matchId: curr.id,
-        type: "gained",
-        count: resetCount,
-        reason: (isPromotion ? "Promotion" : "Demotion") + " to " + currSubrankLabel + " (" + resetCount + " shields reset)",
-        subrankLabel: currSubrankLabel,
-        shieldsRemaining: runningShields,
-      };
+    if (maxShields === 0) {
+      // No shield system in ranks above Eternus I (Eternus II–VI)
+      runningShields = 0;
+      shieldEvent = undefined;
+    } else if (isPromotion || isDemotion) {
+      // Within Eternus (e.g. Eternus II -> Eternus I), do not emit a subrank shield-reset badge on the curve
+      if (currRank === 11 && beforeRank === 11) {
+        runningShields =
+          curr.rankedDemotionProtection !== null && curr.rankedDemotionProtection !== undefined
+            ? Math.min(maxShields, Math.max(0, curr.rankedDemotionProtection))
+            : maxShields;
+      } else {
+        const resetCount = maxShields;
+        runningShields = resetCount;
+        shieldEvent = {
+          matchId: curr.id,
+          type: "gained",
+          count: resetCount,
+          reason: (isPromotion ? "Promotion" : "Demotion") + " to " + currSubrankLabel + " (" + resetCount + " shields reset)",
+          subrankLabel: currSubrankLabel,
+          shieldsRemaining: runningShields,
+        };
+      }
     } else {
       const isLoss = curr.result === "loss" || effectiveDelta < 0;
       const subrankFloor = getSubrankFloor(currStartProgress);
       const explicitConsumed = curr.rankedConsumedDemotionProtection === true;
-      const isLossAtFloor = isLoss && (effectiveDelta === 0 || currEndProgress <= subrankFloor);
+      // Only treat a floor loss as consuming a shield when the API did not explicitly report false,
+      // and either delta was clamped to 0 at the floor or a partial loss (< 300 pts) was absorbed by the floor.
+      const isLossAtFloor =
+        curr.rankedConsumedDemotionProtection !== false &&
+        isLoss &&
+        (effectiveDelta === 0 || (currEndProgress <= subrankFloor && effectiveDelta > -300));
 
       if (isLoss && runningShields <= 0) {
         // Strict rule: with 0 shields left, defeat cannot be clamped to 0 delta
@@ -343,8 +435,6 @@ export function processRankedMatches(rawMatches: Match[]): {
           subrankLabel: currSubrankLabel,
           shieldsRemaining: runningShields,
         };
-      } else if (curr.rankedDemotionProtection !== null && curr.rankedDemotionProtection !== undefined) {
-        runningShields = Math.min(runningShields, Math.min(maxShields, curr.rankedDemotionProtection));
       }
     }
 

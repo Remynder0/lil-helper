@@ -1,8 +1,9 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   computeRankedShieldEvents,
   getRankTierFromFlatProgress,
 } from '../components/ranked/RankedProgressionView';
+import { getMaxShieldsForRank, processRankedMatches } from '../services/ranked/rankedChart';
 import { Match } from '../types/match';
 
 describe('computeRankedShieldEvents', () => {
@@ -271,5 +272,138 @@ describe('computeRankedShieldEvents', () => {
     // Gap detected between m1 endProgress (57000) and m2 startProgress (56400) = -600 pts
     const gap = matches[1].rankedInitialProgress! - matches[0].rankedProgress!;
     expect(gap).toBe(-600);
+  });
+
+  it('applies shield reset and consumption on the exact match without a 1-game offset when rankedBadge holds initial_display_rank', () => {
+    const matches: Match[] = [
+      // m1: starts in Phantom I (badge 91, 56970 pts) and promotes to Phantom II (57270 pts)
+      createMockMatch({
+        id: 'm1_promote',
+        date: '2026-10-01T10:00:00.000Z',
+        result: 'win',
+        rankedBadge: 91, // initial_display_rank before m1
+        rankedRank: 9,
+        rankedSubrank: 1,
+        rankedInitialProgress: 56970,
+        rankedProgress: 57270,
+        rankedDelta: 300,
+        rankedDemotionProtection: 5,
+        rankedConsumedDemotionProtection: false,
+      }),
+      // m2: starts in Phantom II (badge 92, 57270 pts), loses 270 pts clamped at 57000 floor -> consumes 1st shield
+      createMockMatch({
+        id: 'm2_consume1',
+        date: '2026-10-01T11:00:00.000Z',
+        result: 'loss',
+        rankedBadge: 92,
+        rankedRank: 9,
+        rankedSubrank: 2,
+        rankedInitialProgress: 57270,
+        rankedProgress: 57000,
+        rankedDelta: -270,
+        rankedDemotionProtection: 5,
+        rankedConsumedDemotionProtection: true,
+      }),
+      // m3: wins +300 pts (57000 -> 57300)
+      createMockMatch({
+        id: 'm3_win',
+        date: '2026-10-01T12:00:00.000Z',
+        result: 'win',
+        rankedBadge: 92,
+        rankedRank: 9,
+        rankedSubrank: 2,
+        rankedInitialProgress: 57000,
+        rankedProgress: 57300,
+        rankedDelta: 300,
+        rankedDemotionProtection: 4,
+        rankedConsumedDemotionProtection: false,
+      }),
+      // m4: normal -300 loss landing exactly on floor (57300 -> 57000) with consumed_demotion_protection: false -> MUST NOT consume a shield early!
+      createMockMatch({
+        id: 'm4_loss_to_floor_no_shield',
+        date: '2026-10-01T13:00:00.000Z',
+        result: 'loss',
+        rankedBadge: 92,
+        rankedRank: 9,
+        rankedSubrank: 2,
+        rankedInitialProgress: 57300,
+        rankedProgress: 57000,
+        rankedDelta: -300,
+        rankedDemotionProtection: 4,
+        rankedConsumedDemotionProtection: false,
+      }),
+      // m5: loss at floor (57000 -> 57000) -> consumes 2nd shield on this exact match
+      createMockMatch({
+        id: 'm5_consume2',
+        date: '2026-10-01T14:00:00.000Z',
+        result: 'loss',
+        rankedBadge: 92,
+        rankedRank: 9,
+        rankedSubrank: 2,
+        rankedInitialProgress: 57000,
+        rankedProgress: 57000,
+        rankedDelta: 0,
+        rankedDemotionProtection: 4,
+        rankedConsumedDemotionProtection: true,
+      }),
+    ];
+
+    const { processedMatches, shieldEventsMap } = processRankedMatches(matches);
+
+    // m1: Promotion shield reset happens on m1 itself (not delayed to m2!)
+    expect(shieldEventsMap.get('m1_promote')?.type).toBe('gained');
+    expect(shieldEventsMap.get('m1_promote')?.subrankLabel).toBe('Phantom II');
+    expect(processedMatches[0].runningShields).toBe(5);
+
+    // m2: Shield consumption happens on m2 itself (not overwritten by delayed promotion!)
+    expect(shieldEventsMap.get('m2_consume1')?.type).toBe('used');
+    expect(processedMatches[1].runningShields).toBe(4);
+
+    // m4: Normal -300 loss landing on 57000 does NOT consume a shield early
+    expect(shieldEventsMap.get('m4_loss_to_floor_no_shield')).toBeUndefined();
+    expect(processedMatches[3].runningShields).toBe(4);
+
+    // m5: Shield consumption happens on m5
+    expect(shieldEventsMap.get('m5_consume2')?.type).toBe('used');
+    expect(processedMatches[4].runningShields).toBe(3);
+  });
+
+  it('disables the shield system in ranks above Eternus I (Eternus II–VI)', () => {
+    expect(getMaxShieldsForRank(11, 1)).toBe(5);
+    expect(getMaxShieldsForRank(11, 2)).toBe(0);
+    expect(getMaxShieldsForRank(11, 6)).toBe(0);
+
+    const matches: Match[] = [
+      createMockMatch({
+        id: 'e1',
+        date: '2026-10-01T10:00:00.000Z',
+        result: 'win',
+        rankedBadge: 111,
+        rankedRank: 11,
+        rankedSubrank: 1,
+        rankedInitialProgress: 70200,
+        rankedProgress: 70500,
+        rankedDelta: 300,
+        rankedDemotionProtection: 5,
+      }),
+      createMockMatch({
+        id: 'e2',
+        date: '2026-10-01T11:00:00.000Z',
+        result: 'win',
+        rankedBadge: 112,
+        rankedRank: 11,
+        rankedSubrank: 2,
+        rankedInitialProgress: 70500,
+        rankedProgress: 70800,
+        rankedDelta: 300,
+        rankedDemotionProtection: 5,
+      }),
+    ];
+
+    const { processedMatches, shieldEventsMap } = processRankedMatches(matches);
+    // Above Eternus I (subrank 2), runningShields is 0 and no shield reset event is emitted
+    expect(processedMatches[1].subrank).toBe(2);
+    expect(processedMatches[1].runningShields).toBe(0);
+    expect(shieldEventsMap.get('e2')).toBeUndefined();
   });
 });
