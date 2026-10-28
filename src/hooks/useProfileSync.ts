@@ -8,6 +8,7 @@ import {
   saveAppSettings,
   fetchAppSettings,
   syncMatchesWithCloud,
+  combineMatchesWithPriority,
 } from '../services/storage/storage';
 import { useMatchStore } from '../stores/useMatchStore';
 import {
@@ -25,7 +26,6 @@ import {
   isSupabaseConfigured,
   initializeSupabaseConfig,
 } from '../services/storage/supabaseClient';
-import { fetchCloudMatchHistory } from '../services/storage/cloudSync';
 import { API_AND_TELEMETRY_CONFIG } from '../config';
 
 export const PROFILE_STORAGE_KEY = 'deadlock_connected_profile';
@@ -169,18 +169,7 @@ export function useProfileSync() {
       if (allNewMatches.length > 0) {
         await persistMatches(allNewMatches, targetProfile.accountId);
         syncMatchesWithCloud(targetProfile.accountId, targetProfile).catch(console.error);
-        onMatchesUpdated(() => {
-          const map = new Map<string, Match>();
-          allNewMatches.forEach((m) => map.set(m.id, m));
-          matches.forEach((m) => {
-            if (!map.has(m.id)) {
-              map.set(m.id, m);
-            }
-          });
-          return Array.from(map.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-        });
+        onMatchesUpdated((prev) => combineMatchesWithPriority(prev, allNewMatches));
 
         const recoveredMsg = recoveredMatches.length > 0
           ? ` (${recoveredMatches.length} recovered from logs)`
@@ -192,7 +181,7 @@ export function useProfileSync() {
       }
 
       // Automatically backfill any existing matches missing ranked points
-      const allCurrentMatches = [...matches, ...allNewMatches];
+      const allCurrentMatches = combineMatchesWithPriority(matches, allNewMatches);
       const needsBackfill = allCurrentMatches.some(
         (m) => m.matchId && (m.rankedDelta === undefined || m.rankedDelta === null)
       );
@@ -274,17 +263,7 @@ export function useProfileSync() {
       const imported = result.match;
 
       await persistMatches([imported], profile.accountId);
-      onMatchesUpdated((prev) => {
-        const existingIdx = prev.findIndex((m) => m.id === imported.id || m.matchId === imported.matchId);
-        let nextList: Match[];
-        if (existingIdx >= 0) {
-          nextList = [...prev];
-          nextList[existingIdx] = imported;
-        } else {
-          nextList = [imported, ...prev];
-        }
-        return nextList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      });
+      onMatchesUpdated((prev) => combineMatchesWithPriority(prev, [imported]));
 
       removeTrackedPendingMatch(matchId);
       removeMatchFromQueue(matchId);
@@ -317,39 +296,20 @@ export function useProfileSync() {
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
     await saveAppSettings({ profile: newProfile, activeAccountId: newProfile.accountId });
 
-    // 1. Switch match store to the selected account and load local matches
+    // 1. Switch match store to the selected account and load combined matches (Local + Supabase Cloud)
     await useMatchStore.getState().loadMatches(newProfile.accountId);
-    let currentMatches = useMatchStore.getState().matches;
+    const currentMatches = useMatchStore.getState().matches;
 
-    // 2. If Supabase is configured, check if matches exist in Supabase Cloud
-    if (isSupabaseConfigured()) {
-      setSyncStatusText(`Checking history for ${newProfile.personaName}...`);
-      try {
-        const cloudResult = await fetchCloudMatchHistory(newProfile.accountId);
-        if (cloudResult.found && cloudResult.matches.length > 0) {
-          // Cloud has matches -> sync with cloud and reload into store
-          await syncMatchesWithCloud(newProfile.accountId, newProfile);
-          await useMatchStore.getState().loadMatches(newProfile.accountId);
-          currentMatches = useMatchStore.getState().matches;
-        }
-      } catch (cloudErr) {
-        console.warn('Cloud history query error during connection:', cloudErr);
-      }
-    }
+    // 2. Synchronize store matches to the caller's state
+    onMatchesUpdated(() => currentMatches);
 
-    // 3. If matches exist locally or in Supabase Cloud:
-    // DO NOT refresh from Deadlock API!
+    // 3. Inform user. Deadlock API is only queried when the user explicitly clicks the manual Refresh button.
     if (currentMatches.length > 0) {
-      onMatchesUpdated(() => currentMatches);
-      setSyncStatusText(`Loaded ${currentMatches.length} match${currentMatches.length > 1 ? 'es' : ''} from history.`);
-      setTimeout(() => setSyncStatusText(null), 4000);
-      return;
+      setSyncStatusText(`Loaded ${currentMatches.length} match${currentMatches.length > 1 ? 'es' : ''} from storage.`);
+    } else {
+      setSyncStatusText(`Connected to ${newProfile.personaName}. Click Refresh to import matches.`);
     }
-
-    // 4. Only if no matches exist anywhere (first time connecting this profile):
-    // Refresh matches from Deadlock API
-    setSyncStatusText(`No history found. Fetching initial matches from Deadlock API...`);
-    await handleSyncMatches([], onMatchesUpdated, newProfile, true);
+    setTimeout(() => setSyncStatusText(null), 4000);
   };
 
   const handleDisconnectProfile = async () => {

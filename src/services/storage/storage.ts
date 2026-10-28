@@ -63,6 +63,68 @@ export function isTauriEnvironment(): boolean {
 }
 
 /**
+ * Canonical deduplication key for a match across local storage, cloud, and Deadlock API.
+ */
+export function getMatchDeduplicationKey(m: Match): string {
+  if (m.matchId && m.matchId > 0) {
+    return String(m.matchId);
+  }
+  if (typeof m.id === 'string') {
+    if (m.id.startsWith('api_')) {
+      return m.id.replace(/^api_/, '');
+    }
+    if (m.id.startsWith('pending_') || m.id.startsWith('queue_')) {
+      const parsed = m.id.replace(/^(pending_|queue_)/, '');
+      if (!isNaN(Number(parsed)) && Number(parsed) > 0) {
+        return parsed;
+      }
+    }
+    return m.id;
+  }
+  return String(m.id);
+}
+
+/**
+ * Merges two versions of the same match record.
+ * The higher-priority record's fields take precedence, while preserving any
+ * non-conflicting annotations (e.g. user notes, lane, laneOutcome) from the lower-priority record.
+ */
+export function mergeMatchRecords(lower: Match, higher: Match): Match {
+  const merged: Match = { ...lower, ...higher };
+  for (const key of Object.keys(lower) as (keyof Match)[]) {
+    if (merged[key] === undefined || merged[key] === null || merged[key] === '') {
+      (merged as any)[key] = lower[key];
+    }
+  }
+  return merged;
+}
+
+/**
+ * Combines matches from multiple storage sources into a deduplicated list.
+ * Sources are ordered from lower priority to higher priority.
+ * When duplicates occur, the higher-priority source takes precedence ("fait foi").
+ */
+export function combineMatchesWithPriority(...sources: Match[][]): Match[] {
+  const map = new Map<string, Match>();
+
+  for (const matchSource of sources) {
+    for (const match of matchSource) {
+      const key = getMatchDeduplicationKey(match);
+      const existing = map.get(key);
+      if (existing) {
+        map.set(key, mergeMatchRecords(existing, match));
+      } else {
+        map.set(key, match);
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+/**
  * Safely normalizes and validates matches across schema evolutions.
  */
 function sanitizeMatches(records: unknown[]): Match[] {
@@ -163,43 +225,60 @@ export async function writeLocalMatchesCache(targetAccountId: number | null, mat
 }
 
 /**
- * Retrieves all matches for an account.
- * Prioritizes Supabase Cloud if configured, updates local cache,
- * and falls back to local storage (Tauri JSON or browser localStorage) seamlessly.
+ * Retrieves all matches for an account by combining local storage (Tauri disk or browser localStorage)
+ * and Supabase Cloud storage.
+ * Eliminates duplicates using canonical match IDs and resolves conflicts according to storage priority
+ * (Cloud takes precedence over Local), while ensuring any local matches missing from Cloud are preserved
+ * and vice versa.
  */
 export async function fetchAllMatches(accountId?: number | null): Promise<Match[]> {
   const targetAccountId = resolveAccountId(accountId);
 
+  // 1. Fetch local matches (Tauri disk in desktop app, localStorage in web browser)
+  const localMatches = await fetchLocalMatches(targetAccountId);
+
   // Guest mode strictly uses local storage
   if (!targetAccountId) {
-    return await fetchLocalMatches(null);
+    return localMatches;
   }
 
-  // Priority: Check Supabase Cloud if credentials exist
+  // 2. Fetch Supabase Cloud if configured
+  let cloudMatches: Match[] = [];
+  let cloudFound = false;
+
   if (isSupabaseConfigured()) {
     try {
       const cloud = await fetchCloudMatchHistory(targetAccountId);
-      if (cloud.found) {
-        // Cache locally for offline availability
-        writeLocalMatchesCache(targetAccountId, cloud.matches).catch(console.error);
-        return cloud.matches;
+      if (cloud.found && Array.isArray(cloud.matches)) {
+        cloudMatches = cloud.matches;
+        cloudFound = true;
       }
-
-      // First time on Cloud: check if local disk has matches to push
-      const localMatches = await fetchLocalMatches(targetAccountId);
-      if (localMatches.length > 0) {
-        pushCloudMatchHistory(targetAccountId, localMatches).catch(console.error);
-      } else {
-        pushCloudMatchHistory(targetAccountId, []).catch(console.error);
-      }
-      return localMatches;
     } catch (err) {
-      console.warn('Cloud sync unavailable, falling back to local storage:', err);
+      console.warn('Cloud sync query failed during fetchAllMatches:', err);
     }
   }
 
-  // Fallback to local storage
-  return await fetchLocalMatches(targetAccountId);
+  // If Cloud is unconfigured or returned no data, return local matches
+  if (!cloudFound && cloudMatches.length === 0) {
+    // If first time on cloud and local has matches, push to cloud in background
+    if (isSupabaseConfigured() && localMatches.length > 0) {
+      pushCloudMatchHistory(targetAccountId, localMatches).catch(console.error);
+    }
+    return localMatches;
+  }
+
+  // 3. Combine Local + Cloud storage: Cloud takes precedence over Local in case of duplicates
+  const combined = combineMatchesWithPriority(localMatches, cloudMatches);
+
+  // 4. Update local cache with combined list
+  writeLocalMatchesCache(targetAccountId, combined).catch(console.error);
+
+  // 5. If local had matches that were missing in cloud, push the combined list to Cloud
+  if (isSupabaseConfigured() && combined.length > cloudMatches.length) {
+    pushCloudMatchHistory(targetAccountId, combined).catch(console.error);
+  }
+
+  return combined;
 }
 
 export async function persistMatch(match: Match, accountId?: number | null): Promise<Match> {
@@ -558,22 +637,9 @@ export async function syncMatchesWithCloud(
     const cloud = await fetchCloudMatchHistory(accountId);
     const local = await fetchLocalMatches(accountId);
 
-    const matchMap = new Map<string, Match>();
-
-    if (cloud.found && Array.isArray(cloud.matches)) {
-      cloud.matches.forEach((m) => {
-        const key = String(m.matchId || m.id);
-        matchMap.set(key, m);
-      });
-    }
-
-    local.forEach((m) => {
-      const key = String(m.matchId || m.id);
-      matchMap.set(key, m);
-    });
-
-    const merged = Array.from(matchMap.values()).sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    const merged = combineMatchesWithPriority(
+      local,
+      cloud.found && Array.isArray(cloud.matches) ? cloud.matches : []
     );
 
     // Save locally
