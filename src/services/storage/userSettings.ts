@@ -7,6 +7,7 @@ import { saveAppSettings } from './storage';
 
 export type ShieldDisplayMode = 'badges' | 'tooltip';
 export type DraftMode = 'ocr' | 'manual';
+export type VialDisplayMode = 'echarts' | 'classic';
 
 export interface UserSettings {
   /**
@@ -25,6 +26,12 @@ export interface UserSettings {
    * Bascule automatique vers le Draft Assistant lorsque le jeu entre en phase de draft / sélection
    */
   autoNavigateToDraft: boolean;
+  /**
+   * Mode d'affichage des fioles de lanes :
+   * - 'echarts' : Fioles alchimiques animées (vagues de liquide, géométries immersives de districts Deadlock)
+   * - 'classic' : Fioles alchimiques SVG plates classiques graduées
+   */
+  vialDisplayMode?: VialDisplayMode;
 }
 
 const SETTINGS_KEY = 'deadlock_user_settings_v1';
@@ -33,6 +40,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   shieldDisplayMode: 'badges',
   draftMode: 'ocr',
   autoNavigateToDraft: true,
+  vialDisplayMode: 'echarts',
 };
 
 export function loadUserSettings(): UserSettings {
