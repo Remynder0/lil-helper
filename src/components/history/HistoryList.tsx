@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { HEROES, getHeroById } from '../../data/heroes';
+import { getHeroById } from '../../data/heroes';
 import {
   Match,
   Side,
   MatchResult,
-  SIDE_LABELS,
   ConnectedProfile,
 } from '../../types/match';
 import {
@@ -13,12 +12,11 @@ import {
   buildRankStandingFromLocalMatch,
   fetchSingleMatchResultById,
 } from '../../services/api/deadlockApi';
-import victorianBadge from '../../assets/victorian-metal/badge.svg';
-import victorianDivider from '../../assets/victorian-metal/divider.svg';
 import artDecoBadge from '../../assets/art-deco/badge.svg';
-import { Filter, RotateCcw, Swords, Flame } from 'lucide-react';
+import { RotateCcw, Swords, Flame } from 'lucide-react';
 import { persistMatch } from '../../services/storage/storage';
 import { updateQueuedMatchStatus } from '../../services/logs/matchQueue';
+import { HeroFilter, PlayedHeroItem } from '../HeroFilter';
 import { ReplayRecoveryModal } from './ReplayRecoveryModal';
 import { HistoryRankStandingCards } from './HistoryRankStandingCards';
 import { HistoryMatchCard, getLanedTeamDuos, LaneDuo } from './HistoryMatchCard';
@@ -108,7 +106,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const [heroFilter, setHeroFilter] = useState<number | 'all'>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<MatchResult | 'all'>('all');
   const [sideFilter, setSideFilter] = useState<Side | 'all'>('all');
-  const [matchTypeFilter, setMatchTypeFilter] = useState<'all' | 'ranked' | 'casual'>('all');
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   // Synchronise an incomplete match
@@ -154,15 +151,32 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     }
   };
 
-  // Distinct heroes that the user has played in history
-  const playedHeroIds = useMemo(() => {
-    const ids = new Set<number>();
-    matches.filter((m) => !m.isIncomplete).forEach((m) => ids.add(m.myHeroId));
-    return Array.from(ids).sort((a, b) => {
-      const nameA = getHeroById(a)?.name || '';
-      const nameB = getHeroById(b)?.name || '';
-      return nameA.localeCompare(nameB);
-    });
+  // Distinct heroes that the user has played in history, sorted by match count descending
+  const playedHeroes: PlayedHeroItem[] = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const m of matches) {
+      if (!m.isIncomplete && m.myHeroId) {
+        counts.set(m.myHeroId, (counts.get(m.myHeroId) || 0) + 1);
+      }
+    }
+    const heroList = Array.from(counts.keys())
+      .map((id) => getHeroById(id))
+      .filter((h): h is NonNullable<typeof h> => h !== undefined);
+    heroList.sort((a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0));
+    return heroList.map((hero) => ({ hero, count: counts.get(hero.id) || 0 }));
+  }, [matches]);
+
+  // Match counts per side in history
+  const sideCounts = useMemo(() => {
+    let hiddenKing = 0;
+    let archmother = 0;
+    for (const m of matches) {
+      if (!m.isIncomplete) {
+        if (m.side === 'hidden_king') hiddenKing++;
+        else if (m.side === 'archmother') archmother++;
+      }
+    }
+    return { hiddenKing, archmother, total: hiddenKing + archmother };
   }, [matches]);
 
   // Filtered matches sorted from newest to oldest
@@ -175,7 +189,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           if (sideFilter !== 'all') return false;
           if (heroFilter !== 'all' && match.myHeroId !== 0 && match.myHeroId !== heroFilter)
             return false;
-          if (matchTypeFilter === 'casual') return false;
           return true;
         }
 
@@ -194,29 +207,10 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           return false;
         }
 
-        // Match type filter (Ranked vs Casual)
-        if (matchTypeFilter === 'ranked') {
-          const isRanked =
-            (match.rankedRank !== null && match.rankedRank !== undefined && match.rankedRank > 0) ||
-            (match.rankedBadge !== null &&
-              match.rankedBadge !== undefined &&
-              match.rankedBadge > 0) ||
-            (match.rankedDelta !== null && match.rankedDelta !== undefined);
-          if (!isRanked) return false;
-        } else if (matchTypeFilter === 'casual') {
-          const isRanked =
-            (match.rankedRank !== null && match.rankedRank !== undefined && match.rankedRank > 0) ||
-            (match.rankedBadge !== null &&
-              match.rankedBadge !== undefined &&
-              match.rankedBadge > 0) ||
-            (match.rankedDelta !== null && match.rankedDelta !== undefined);
-          if (isRanked) return false;
-        }
-
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [matches, heroFilter, outcomeFilter, sideFilter, matchTypeFilter]);
+  }, [matches, heroFilter, outcomeFilter, sideFilter]);
 
   // Filtered stats
   const filteredWins = filteredMatches.filter(
@@ -236,15 +230,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     setHeroFilter('all');
     setOutcomeFilter('all');
     setSideFilter('all');
-    setMatchTypeFilter('all');
     onHeroFilterChange?.(null);
   };
 
   const hasActiveFilters =
     heroFilter !== 'all' ||
     outcomeFilter !== 'all' ||
-    sideFilter !== 'all' ||
-    matchTypeFilter !== 'all';
+    sideFilter !== 'all';
 
   const toggleExpand = (id: string) => {
     setExpandedMatchId((prev) => (prev === id ? null : id));
@@ -282,24 +274,23 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         />
       )}
 
-      {/* Filter Toolbar */}
-      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3 relative border border-deadlock-border/80">
-        {/* Top Header of Filter Toolbar: Title & Filtered Winrate badge */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <img
-              src={victorianBadge}
-              alt=""
-              aria-hidden="true"
-              className="w-[18px] h-[18px] shrink-0 animate-[spin_20s_linear_infinite] opacity-70"
-            />
-            <Filter className="w-4 h-4 text-deadlock-accent" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
-              Filter Matches ({filteredMatches.length} of {matches.length})
-            </h3>
-          </div>
-
-          {/* Dynamic Filtered Winrate Badge */}
+      {/* Unified Hero & Match Filter Toolbar */}
+      <HeroFilter
+        playedHeroes={playedHeroes}
+        selectedPlayerHeroId={heroFilter === 'all' ? null : heroFilter}
+        onSelectHeroId={(id) => {
+          const next = id ?? 'all';
+          setHeroFilter(next);
+          onHeroFilterChange?.(id);
+        }}
+        totalTrackedMatches={matches.length}
+        title={`Filter Matches (${filteredMatches.length} of ${matches.length})`}
+        subtitle={(hero) =>
+          hero
+            ? `Filtering matches specifically for ${hero.name}`
+            : 'Filter match history across all your recorded games'
+        }
+        headerExtra={
           <div className="brass-plate px-3 py-1.5 rounded-lg flex items-center gap-3 border border-deadlock-border/80">
             <span className="text-xs text-deadlock-muted">Filtered Winrate:</span>
             <span
@@ -331,149 +322,26 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               </>
             )}
           </div>
+        }
+        selectedSide={sideFilter}
+        onSideChange={setSideFilter}
+        sideCounts={sideCounts}
+      >
+        {/* Outcome Filter */}
+        <div className="flex items-center gap-2 pt-2 border-t border-deadlock-border/40 max-w-xs">
+          <span className="text-xs text-deadlock-muted font-medium shrink-0">Outcome:</span>
+          <select
+            value={outcomeFilter}
+            onChange={(e) => setOutcomeFilter(e.target.value as MatchResult | 'all')}
+            className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-deadlock-muted transition-colors cursor-pointer"
+          >
+            <option value="all">All Outcomes (Wins, Losses, Cancelled)</option>
+            <option value="win">Victories Only</option>
+            <option value="loss">Defeats Only</option>
+            <option value="cancel">Cancelled / AFK Only</option>
+          </select>
         </div>
-
-        <img
-          src={victorianDivider}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-3 object-cover my-3 opacity-60"
-        />
-
-        {/* Hero Icons Filter Bar */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-deadlock-muted">
-            Filter by Played Hero:
-          </span>
-          <div className="flex items-center gap-2 flex-wrap py-1">
-            {/* All Heroes Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setHeroFilter('all');
-                onHeroFilterChange?.(null);
-              }}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                heroFilter === 'all'
-                  ? 'bg-deadlock-steam text-black shadow-md shadow-deadlock-steam/10 ring-2 ring-deadlock-steam/30'
-                  : 'bg-deadlock-dark text-deadlock-muted hover:text-deadlock-steam border border-deadlock-border hover:border-deadlock-brass'
-              }`}
-            >
-              All Heroes ({matches.length})
-            </button>
-
-            {/* Played Hero Icons */}
-            {playedHeroIds.map((id) => {
-              const hero = getHeroById(id);
-              const isSelected = heroFilter === id;
-              const matchesCount = matches.filter((m) => m.myHeroId === id).length;
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    const next = isSelected ? 'all' : id;
-                    setHeroFilter(next);
-                    onHeroFilterChange?.(next === 'all' ? null : next);
-                  }}
-                  title={`${hero?.name || `Hero #${id}`} (${matchesCount} match${matchesCount > 1 ? 'es' : ''})`}
-                  className={`relative group rounded-lg p-1 border transition-all duration-150 flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-deadlock-dark border-deadlock-steam ring-2 ring-deadlock-steam/40 scale-105 shadow-md'
-                      : 'bg-deadlock-dark/60 border-deadlock-border/70 hover:border-deadlock-brass hover:bg-deadlock-card/40'
-                  }`}
-                >
-                  <div className="w-7 h-7 rounded-md overflow-hidden bg-deadlock-panel">
-                    <img
-                      src={hero?.iconUrl}
-                      alt={hero?.name}
-                      className="w-full h-full object-cover select-none"
-                    />
-                  </div>
-                  <span
-                    className={`text-xs font-medium pr-1 ${
-                      isSelected ? 'text-deadlock-steam font-bold' : 'text-gray-300'
-                    }`}
-                  >
-                    {hero?.name}
-                  </span>
-                  <span className="text-[10px] font-mono text-deadlock-muted">
-                    {matchesCount}
-                  </span>
-                </button>
-              );
-            })}
-
-            {/* Any Hero Selector (allows selecting Celeste or any other hero) */}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <span className="text-[11px] text-deadlock-muted font-medium">Hero:</span>
-              <select
-                value={heroFilter === 'all' ? '' : heroFilter}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? 'all' : Number(e.target.value);
-                  setHeroFilter(val);
-                  onHeroFilterChange?.(val === 'all' ? null : val);
-                }}
-                className="bg-deadlock-card border border-deadlock-border rounded-lg px-2.5 py-1.5 text-xs text-deadlock-steam focus:outline-none focus:border-deadlock-accent transition-colors cursor-pointer"
-              >
-                <option value="">Choose any hero...</option>
-                {HEROES.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name} {h.id === 81 ? '★ (Celeste)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Outcome, Patron Faction, and Match Mode Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-deadlock-border/40">
-          {/* Outcome Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-deadlock-muted font-medium shrink-0">Outcome:</span>
-            <select
-              value={outcomeFilter}
-              onChange={(e) => setOutcomeFilter(e.target.value as MatchResult | 'all')}
-              className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-deadlock-muted transition-colors"
-            >
-              <option value="all">All Outcomes (Wins, Losses, Cancelled)</option>
-              <option value="win">Victories Only</option>
-              <option value="loss">Defeats Only</option>
-              <option value="cancel">Cancelled / AFK Only</option>
-            </select>
-          </div>
-
-          {/* Side Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-deadlock-muted font-medium shrink-0">Faction:</span>
-            <select
-              value={sideFilter}
-              onChange={(e) => setSideFilter(e.target.value as Side | 'all')}
-              className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-deadlock-muted transition-colors"
-            >
-              <option value="all">Both Patrons</option>
-              <option value="hidden_king">{SIDE_LABELS.hidden_king}</option>
-              <option value="archmother">{SIDE_LABELS.archmother}</option>
-            </select>
-          </div>
-
-          {/* Mode Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-deadlock-muted font-medium shrink-0">Mode:</span>
-            <select
-              value={matchTypeFilter}
-              onChange={(e) => setMatchTypeFilter(e.target.value as 'all' | 'ranked' | 'casual')}
-              className="w-full bg-deadlock-dark border border-deadlock-border rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-deadlock-muted transition-colors"
-            >
-              <option value="all">All Match Modes</option>
-              <option value="ranked">Ranked Matches Only</option>
-              <option value="casual">Casual / Unranked Only</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      </HeroFilter>
 
       {/* Match Cards List */}
       {matches.length === 0 ? (

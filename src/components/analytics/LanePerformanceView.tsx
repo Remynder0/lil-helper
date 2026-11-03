@@ -20,6 +20,7 @@ import {
   LaneConversionSection,
   LaneMatchupsTable,
 } from './lanes';
+import { SideFilterType } from '../HeroFilter';
 import { ClassicVialGauge } from './vials';
 
 // Re-export for backwards compatibility
@@ -33,6 +34,7 @@ interface LanePerformanceViewProps {
 export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matches }) => {
   const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
   const [matchupTab, setMatchupTab] = useState<MatchupTab>('opponents');
+  const [selectedSide, setSelectedSide] = useState<SideFilterType>('all');
   const [tableSearch, setTableSearch] = useState<string>('');
   const [sortField, setSortField] = useState<TableSortField>('lanes');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
@@ -52,10 +54,29 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
     };
   }, []);
 
+  // Match counts per side for matches with lane data
+  const sideCounts = useMemo(() => {
+    let hiddenKing = 0;
+    let archmother = 0;
+    for (const m of matches) {
+      if (m.lane) {
+        if (m.side === 'hidden_king') hiddenKing++;
+        else if (m.side === 'archmother') archmother++;
+      }
+    }
+    return { hiddenKing, archmother, total: hiddenKing + archmother };
+  }, [matches]);
+
+  // Filter matches based on selected map side
+  const filteredMatches = useMemo(() => {
+    if (selectedSide === 'all') return matches;
+    return matches.filter((m) => m.side === selectedSide);
+  }, [matches, selectedSide]);
+
   // Distinct heroes piloted by player with lane data, sorted by matches played descending
   const playedHeroes = useMemo(() => {
     const heroCounts = new Map<number, number>();
-    for (const m of matches) {
+    for (const m of filteredMatches) {
       if (m.lane) {
         heroCounts.set(m.myHeroId, (heroCounts.get(m.myHeroId) || 0) + 1);
       }
@@ -68,11 +89,11 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
       }))
       .filter((item): item is { hero: NonNullable<typeof item.hero>; count: number } => item.hero !== undefined)
       .sort((a, b) => b.count - a.count);
-  }, [matches]);
+  }, [filteredMatches]);
 
   const laneStats: LaneAnalyticsSummary = useMemo(
-    () => calculateLaneAnalytics(matches, selectedPlayerHeroId),
-    [matches, selectedPlayerHeroId]
+    () => calculateLaneAnalytics(filteredMatches, selectedPlayerHeroId),
+    [filteredMatches, selectedPlayerHeroId]
   );
 
   const selectedHeroObj = selectedPlayerHeroId ? (getHeroById(selectedPlayerHeroId) ?? null) : null;
@@ -232,13 +253,20 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── SECTION 1: FILTER BY YOUR HERO (SORTED BY NUMBER OF GAMES) ── */}
+      {/* ── SECTION 1: FILTER BY YOUR HERO, MATCHUP & MAP SIDE ── */}
       <LaneHeroFilter
         playedHeroes={playedHeroes}
         selectedPlayerHeroId={selectedPlayerHeroId}
         onSelectHeroId={setSelectedPlayerHeroId}
         selectedHeroObj={selectedHeroObj}
         totalTrackedMatches={laneStats.totalLaneTrackedMatches}
+        matchupTab={matchupTab}
+        onTabChange={setMatchupTab}
+        totalOpponentsCount={laneStats.opponents.length}
+        totalAlliesCount={laneStats.allies.length}
+        selectedSide={selectedSide}
+        onSideChange={setSelectedSide}
+        sideCounts={sideCounts}
       />
 
       {/* ── SECTION 2: VERTICAL ALCHEMICAL LIQUID VIALS & LANE SCORE ── */}
@@ -255,7 +283,6 @@ export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matche
       {/* ── SECTION 4: DIRECT LANE MATCHUPS TABLE (CLICKABLE SORTABLE COLUMNS) ── */}
       <LaneMatchupsTable
         matchupTab={matchupTab}
-        onTabChange={setMatchupTab}
         tableSearch={tableSearch}
         onSearchChange={setTableSearch}
         sortField={sortField}

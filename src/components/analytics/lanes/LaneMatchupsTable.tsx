@@ -1,13 +1,13 @@
-import React from 'react';
-import { Swords, Users, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Swords, Users, Search } from 'lucide-react';
 import { DirectLaneOpponentStat, DirectLaneAllyStat } from '../../../services/analytics';
-import { TableSortField, MatchupTab } from './laneTypes';
-import { OpponentRow } from './OpponentRow';
-import { AllyRow } from './AllyRow';
+import { TableSortField, MatchupTab, calculateLaneScore, calculateLaneDominance, getDominanceTier } from './laneTypes';
+import { HeroAvatar } from '../../HeroAvatar';
+import { HeroTable, HeroTableColumn } from '../../template/HeroTable';
 
 export interface LaneMatchupsTableProps {
   matchupTab: MatchupTab;
-  onTabChange: (tab: MatchupTab) => void;
+  onTabChange?: (tab: MatchupTab) => void;
   tableSearch: string;
   onSearchChange: (search: string) => void;
   sortField: TableSortField;
@@ -26,7 +26,6 @@ export interface LaneMatchupsTableProps {
 
 export const LaneMatchupsTable: React.FC<LaneMatchupsTableProps> = ({
   matchupTab,
-  onTabChange,
   tableSearch,
   onSearchChange,
   sortField,
@@ -39,213 +38,212 @@ export const LaneMatchupsTable: React.FC<LaneMatchupsTableProps> = ({
   repAllies,
   lowSampleAllies,
   currentThreshold,
-  sortedOpponentsLength,
-  sortedAlliesLength,
 }) => {
-  return (
-    <div className="steam-glass steam-panel rounded-xl overflow-hidden flex flex-col">
-      {/* Toolbar Header */}
-      <div className="p-4 border-b border-deadlock-border/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Mode Switcher Tabs */}
-        <div className="flex items-center gap-1.5 bg-deadlock-dark/80 p-1 rounded-xl border border-deadlock-border/60">
-          <button
-            type="button"
-            onClick={() => onTabChange('opponents')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              matchupTab === 'opponents'
-                ? 'bg-deadlock-border text-deadlock-steam shadow-sm border border-white/20'
-                : 'text-deadlock-muted hover:text-deadlock-steam'
-            }`}
-          >
-            <Swords className="w-3.5 h-3.5 text-deadlock-hidden-king" />
-            <span>Direct Opponents</span>
-            <span className="text-[10px] font-mono opacity-70">({totalOpponentsCount})</span>
-          </button>
+  // Shared column renderers
+  const renderRecord = (wins: number, evens: number, losses: number) => (
+    <div className="flex items-center gap-1.5 font-mono font-bold">
+      <span className="text-deadlock-win">{wins}W</span>
+      <span className="text-deadlock-muted font-normal">-</span>
+      <span className="text-yellow-400">{evens}E</span>
+      <span className="text-deadlock-muted font-normal">-</span>
+      <span className="text-deadlock-loss">{losses}L</span>
+    </div>
+  );
 
-          <button
-            type="button"
-            onClick={() => onTabChange('allies')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              matchupTab === 'allies'
-                ? 'bg-deadlock-border text-deadlock-steam shadow-sm border border-white/20'
-                : 'text-deadlock-muted hover:text-deadlock-steam'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-sky-400" />
-            <span>Duo Lane Partners</span>
-            <span className="text-[10px] font-mono opacity-70">({totalAlliesCount})</span>
-          </button>
-        </div>
+  const renderDominance = (wins: number, evens: number, losses: number) => {
+    const score = calculateLaneScore(wins, evens, losses);
+    const dominance = calculateLaneDominance(wins, evens, losses);
+    const tier = getDominanceTier(dominance);
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold border font-mono cursor-help transition-all ${tier.bgClass} ${tier.colorClass} ${tier.borderClass}`}
+        title={`Lane Dominance: ${dominance}% (${tier.label})\n• Cumulative score: ${score > 0 ? `+${score}` : score} pts\n• Scoring rules: Win (+2), Even (+1), Loss (-2)`}
+      >
+        <span>{dominance}%</span>
+      </span>
+    );
+  };
 
-        {/* Quick Search & Info Label */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-deadlock-muted hidden sm:inline">Click column headers to sort</span>
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-deadlock-muted absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder={matchupTab === 'opponents' ? 'Search opponent...' : 'Search partner...'}
-              value={tableSearch}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="bg-deadlock-dark border border-deadlock-border text-xs rounded-lg pl-8 pr-3 py-1.5 text-deadlock-steam focus:outline-none focus:border-deadlock-accent w-40 sm:w-48 transition-all"
-            />
+  const renderWinRate = (winRate: number, wins: number, losses: number) => (
+    <div className="flex items-center justify-end font-mono">
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${
+          winRate >= 50
+            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+            : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+        }`}
+      >
+        {winRate}%
+      </span>
+      <span className="text-[11px] text-deadlock-muted ml-2">
+        ({wins}W - {losses}L)
+      </span>
+    </div>
+  );
+
+  // Column definitions for Direct Lane Opponents
+  const opponentColumns: HeroTableColumn<DirectLaneOpponentStat>[] = useMemo(
+    () => [
+      {
+        key: 'hero',
+        header: 'Hero',
+        sortField: 'hero',
+        render: (opp, _idx, isLow) => (
+          <div className="flex items-center gap-2.5">
+            <HeroAvatar heroId={opp.opponentHeroId} size="xs" />
+            <span className="font-bold text-deadlock-steam">{opp.opponentHero?.name}</span>
+            {isLow && (
+              <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                Low Sample
+              </span>
+            )}
           </div>
-        </div>
+        ),
+      },
+      {
+        key: 'lanes',
+        header: 'Lanes Faced',
+        sortField: 'lanes',
+        render: (opp) => (
+          <span className="font-mono text-deadlock-steam font-semibold">{opp.lanesFaced}</span>
+        ),
+      },
+      {
+        key: 'record',
+        header: 'Laning Phase Record (W / E / L)',
+        sortField: 'laneWins',
+        render: (opp) => renderRecord(opp.laneWins, opp.laneEvens, opp.laneLosses),
+      },
+      {
+        key: 'dominance',
+        header: 'Lane Dominance',
+        sortField: 'laneScore',
+        titleTooltip:
+          'Lane Dominance: Normalized rating (0% to 100%) based on Win (+2), Even (+1), Loss (-2) with 5 chromatic performance tiers',
+        render: (opp) => renderDominance(opp.laneWins, opp.laneEvens, opp.laneLosses),
+      },
+      {
+        key: 'gameWinRate',
+        header: 'Final Game Win Rate',
+        sortField: 'gameWinRate',
+        align: 'right',
+        render: (opp) => renderWinRate(opp.gameWinRate, opp.gameWins, opp.gameLosses),
+      },
+    ],
+    []
+  );
+
+  // Column definitions for Duo Lane Partners
+  const allyColumns: HeroTableColumn<DirectLaneAllyStat>[] = useMemo(
+    () => [
+      {
+        key: 'hero',
+        header: 'Hero',
+        sortField: 'hero',
+        render: (ally, _idx, isLow) => (
+          <div className="flex items-center gap-2.5">
+            <HeroAvatar heroId={ally.allyHeroId} size="xs" />
+            <span className="font-bold text-deadlock-steam">{ally.allyHero?.name}</span>
+            {isLow && (
+              <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                Low Sample
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'lanes',
+        header: 'Lanes Together',
+        sortField: 'lanes',
+        render: (ally) => (
+          <span className="font-mono text-deadlock-steam font-semibold">{ally.lanesTogether}</span>
+        ),
+      },
+      {
+        key: 'record',
+        header: 'Laning Phase Record (W / E / L)',
+        sortField: 'laneWins',
+        render: (ally) => renderRecord(ally.laneWins, ally.laneEvens, ally.laneLosses),
+      },
+      {
+        key: 'dominance',
+        header: 'Lane Dominance',
+        sortField: 'laneScore',
+        titleTooltip:
+          'Lane Dominance: Normalized rating (0% to 100%) based on Win (+2), Even (+1), Loss (-2) with 5 chromatic performance tiers',
+        render: (ally) => renderDominance(ally.laneWins, ally.laneEvens, ally.laneLosses),
+      },
+      {
+        key: 'gameWinRate',
+        header: 'Final Game Win Rate',
+        sortField: 'gameWinRate',
+        align: 'right',
+        render: (ally) => renderWinRate(ally.gameWinRate, ally.gameWins, ally.gameLosses),
+      },
+    ],
+    []
+  );
+
+  // Header Toolbar with active dataset indicator & Search Input
+  const headerToolbar = (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Current Dataset Indicator */}
+      <div className="flex items-center gap-2">
+        {matchupTab === 'opponents' ? (
+          <Swords className="w-4 h-4 text-deadlock-hidden-king" />
+        ) : (
+          <Users className="w-4 h-4 text-sky-400" />
+        )}
+        <h3 className="font-bold text-xs uppercase tracking-wider text-deadlock-steam">
+          {matchupTab === 'opponents'
+            ? `Direct Lane Opponents (${totalOpponentsCount})`
+            : `Duo Lane Partners (${totalAlliesCount})`}
+        </h3>
       </div>
 
-      {/* Matchup Table with Clickable Sorting Columns */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-deadlock-card/90 text-deadlock-muted border-b border-deadlock-border/60">
-            <tr>
-              {/* Hero Column */}
-              <th
-                onClick={() => onSort('hero')}
-                className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors select-none"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Hero</span>
-                  {sortField === 'hero' && (
-                    sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                  )}
-                </div>
-              </th>
-
-              {/* Lanes Count Column */}
-              <th
-                onClick={() => onSort('lanes')}
-                className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors select-none"
-              >
-                <div className="flex items-center gap-1">
-                  <span>{matchupTab === 'opponents' ? 'Lanes Faced' : 'Lanes Together'}</span>
-                  {sortField === 'lanes' && (
-                    sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                  )}
-                </div>
-              </th>
-
-              {/* Record Column: xW - xE - xL (with E in Yellow) */}
-              <th
-                onClick={() => onSort('laneWins')}
-                className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors select-none"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Laning Phase Record (W / E / L)</span>
-                  {sortField === 'laneWins' && (
-                    sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                  )}
-                </div>
-              </th>
-
-              {/* Lane Dominance Column */}
-              <th
-                onClick={() => onSort('laneScore')}
-                className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors select-none"
-                title="Lane Dominance: Normalized rating (0% to 100%) based on Win (+2), Even (+1), Loss (-2) with 5 chromatic performance tiers"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Lane Dominance</span>
-                  {sortField === 'laneScore' && (
-                    sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                  )}
-                </div>
-              </th>
-
-              {/* Final Match Win Rate Column */}
-              <th
-                onClick={() => onSort('gameWinRate')}
-                className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors select-none text-right"
-              >
-                <div className="flex items-center justify-end gap-1">
-                  <span>Final Game Win Rate</span>
-                  {sortField === 'gameWinRate' && (
-                    sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                  )}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-deadlock-border/40">
-            {matchupTab === 'opponents' ? (
-              <>
-                {repOpponents.map((opp) => (
-                  <OpponentRow key={opp.opponentHeroId} opp={opp} isLowSample={false} />
-                ))}
-
-                {/* Delimiter row for low-sample opponents */}
-                {lowSampleOpponents.length > 0 && (
-                  <tr className="bg-deadlock-dark/95 border-y border-dashed border-amber-500/40">
-                    <td colSpan={5} className="py-2.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2 text-xs text-amber-200/90 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                        <span>
-                          Low Sample Size (&lt; {currentThreshold} matches) — The following heroes do not have enough data to be statistically conclusive
-                        </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                      </div>
-                    </td>
-                  </tr>
-                )}
-
-                {lowSampleOpponents.map((opp) => (
-                  <OpponentRow
-                    key={opp.opponentHeroId}
-                    opp={opp}
-                    isLowSample={true}
-                    threshold={currentThreshold}
-                  />
-                ))}
-
-                {sortedOpponentsLength === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-deadlock-muted italic">
-                      No direct lane opponents found matching your criteria.
-                    </td>
-                  </tr>
-                )}
-              </>
-            ) : (
-              <>
-                {repAllies.map((ally) => (
-                  <AllyRow key={ally.allyHeroId} ally={ally} isLowSample={false} />
-                ))}
-
-                {/* Delimiter row for low-sample allies */}
-                {lowSampleAllies.length > 0 && (
-                  <tr className="bg-deadlock-dark/95 border-y border-dashed border-amber-500/40">
-                    <td colSpan={5} className="py-2.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-2 text-xs text-amber-200/90 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                        <span>
-                          Low Sample Size (&lt; {currentThreshold} matches) — The following heroes do not have enough data to be statistically conclusive
-                        </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                      </div>
-                    </td>
-                  </tr>
-                )}
-
-                {lowSampleAllies.map((ally) => (
-                  <AllyRow
-                    key={ally.allyHeroId}
-                    ally={ally}
-                    isLowSample={true}
-                    threshold={currentThreshold}
-                  />
-                ))}
-
-                {sortedAlliesLength === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-deadlock-muted italic">
-                      No duo lane partners recorded yet. When playing a duo lane, assign your lane ally in the match editor to track synergies!
-                    </td>
-                  </tr>
-                )}
-              </>
-            )}
-          </tbody>
-        </table>
+      {/* Quick Search & Sort Hint */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-deadlock-muted hidden sm:inline">Click column headers to sort</span>
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-deadlock-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder={matchupTab === 'opponents' ? 'Search opponent...' : 'Search partner...'}
+            value={tableSearch}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="bg-deadlock-dark border border-deadlock-border text-xs rounded-lg pl-8 pr-3 py-1.5 text-deadlock-steam focus:outline-none focus:border-deadlock-accent w-40 sm:w-48 transition-all"
+          />
+        </div>
       </div>
     </div>
+  );
+
+  return matchupTab === 'opponents' ? (
+    <HeroTable<DirectLaneOpponentStat>
+      data={repOpponents}
+      lowSampleData={lowSampleOpponents}
+      threshold={currentThreshold}
+      columns={opponentColumns}
+      getRowKey={(opp) => opp.opponentHeroId}
+      sortField={sortField}
+      sortAsc={sortAsc}
+      onSort={(field) => onSort(field as TableSortField)}
+      headerContent={headerToolbar}
+      emptyMessage="No direct lane opponents found matching your criteria."
+    />
+  ) : (
+    <HeroTable<DirectLaneAllyStat>
+      data={repAllies}
+      lowSampleData={lowSampleAllies}
+      threshold={currentThreshold}
+      columns={allyColumns}
+      getRowKey={(ally) => ally.allyHeroId}
+      sortField={sortField}
+      sortAsc={sortAsc}
+      onSort={(field) => onSort(field as TableSortField)}
+      headerContent={headerToolbar}
+      emptyMessage="No duo lane partners recorded yet. When playing a duo lane, assign your lane ally in the match editor to track synergies!"
+    />
   );
 };

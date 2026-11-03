@@ -16,11 +16,10 @@ import {
   ShieldCheck,
   Sparkles,
   HeartCrack,
-  ChevronDown,
-  ChevronUp,
-  Filter,
   Search,
 } from 'lucide-react';
+import { HeroTable, HeroTableColumn } from '../template/HeroTable';
+import { HeroFilter, SideFilterType } from '../HeroFilter';
 
 interface HeroMatchupsAndSynergiesViewProps {
   matches: Match[];
@@ -32,30 +31,54 @@ type RelationMode = 'against' | 'with';
 export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesViewProps> = ({ matches }) => {
   const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
   const [relationMode, setRelationMode] = useState<RelationMode>('against');
+  const [selectedSide, setSelectedSide] = useState<SideFilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
+  // Match counts per map side
+  const sideCounts = useMemo(() => {
+    let hiddenKing = 0;
+    let archmother = 0;
+    for (const m of matches) {
+      if (m.side === 'hidden_king') hiddenKing++;
+      else if (m.side === 'archmother') archmother++;
+    }
+    return { hiddenKing, archmother, total: hiddenKing + archmother };
+  }, [matches]);
 
+  // Filter matches based on selected side
+  const filteredMatches = useMemo(() => {
+    if (selectedSide === 'all') return matches;
+    return matches.filter((m) => m.side === selectedSide);
+  }, [matches, selectedSide]);
 
-  // Find all distinct heroes piloted by the player
+  const threshold = useMemo(() => getSampleThreshold(filteredMatches.length), [filteredMatches.length]);
+
+  // Find all distinct heroes piloted by the player, sorted by matches descending
   const playedHeroes = useMemo(() => {
-    const playedHeroIds = Array.from(new Set(matches.map((m) => m.myHeroId)));
-    return playedHeroIds
+    const counts = new Map<number, number>();
+    for (const m of filteredMatches) {
+      if (m.myHeroId) {
+        counts.set(m.myHeroId, (counts.get(m.myHeroId) || 0) + 1);
+      }
+    }
+    const heroList = Array.from(counts.keys())
       .map((id) => getHeroById(id))
       .filter((h): h is NonNullable<typeof h> => h !== undefined);
-  }, [matches]);
+    heroList.sort((a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0));
+    return heroList.map((hero) => ({ hero, count: counts.get(hero.id) || 0 }));
+  }, [filteredMatches]);
 
   // Calculate matchups against enemies
   const enemyMatchups = useMemo(() => {
-    return getCachedEnemyMatchups(matches, selectedPlayerHeroId);
-  }, [matches, selectedPlayerHeroId]);
+    return getCachedEnemyMatchups(filteredMatches, selectedPlayerHeroId);
+  }, [filteredMatches, selectedPlayerHeroId]);
 
   // Calculate synergies with allies
   const allySynergies = useMemo(() => {
-    return getCachedAllySynergies(matches, selectedPlayerHeroId);
-  }, [matches, selectedPlayerHeroId]);
+    return getCachedAllySynergies(filteredMatches, selectedPlayerHeroId);
+  }, [filteredMatches, selectedPlayerHeroId]);
 
   // Filtered & Sorted Enemy Matchups
   const sortedEnemyMatchups = useMemo(() => {
@@ -136,120 +159,200 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
     }
   };
 
-  const selectedHeroObj = selectedPlayerHeroId ? getHeroById(selectedPlayerHeroId) : null;
+  // Column definitions for Enemy Hero Matchups
+  const enemyColumns: HeroTableColumn<EnemyMatchupStat>[] = useMemo(
+    () => [
+      {
+        key: 'hero',
+        header: 'Hero',
+        render: (matchup) => (
+          <div className="flex items-center gap-3">
+            <HeroAvatar heroId={matchup.enemyHeroId} size="xs" />
+            <div>
+              <div className="font-bold text-deadlock-steam text-sm">
+                {matchup.enemyHero?.name || `Hero #${matchup.enemyHeroId}`}
+              </div>
+              <div className="text-[11px] text-deadlock-muted capitalize">
+                {matchup.enemyHero?.heroType || matchup.enemyHero?.role || 'Unknown'}
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'matches',
+        header: 'Matches Against',
+        sortField: 'matches',
+        render: (matchup) => (
+          <span className="font-mono font-medium text-deadlock-steam">
+            {matchup.matchesAgainst}
+          </span>
+        ),
+      },
+      {
+        key: 'wins',
+        header: 'Record (W / L / C)',
+        sortField: 'wins',
+        render: (matchup) => (
+          <div className="flex items-center gap-2 font-mono">
+            <span className="text-deadlock-win font-bold">{matchup.wins}W</span>
+            <span className="text-deadlock-muted">-</span>
+            <span className="text-deadlock-loss font-bold">{matchup.losses}L</span>
+            {matchup.cancels > 0 && (
+              <span className="text-deadlock-muted">- {matchup.cancels}C</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'winRate',
+        header: 'Win Rate',
+        sortField: 'winRate',
+        align: 'right',
+        render: (matchup) => {
+          const decided = matchup.wins + matchup.losses;
+          return (
+            <div className="flex items-center justify-end gap-3">
+              <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
+                <div
+                  className={`h-full ${matchup.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'}`}
+                  style={{ width: `${matchup.winRate}%` }}
+                />
+              </div>
+              <span
+                className={`font-mono font-bold text-sm ${
+                  decided > 0
+                    ? matchup.winRate >= 50
+                      ? 'text-deadlock-win'
+                      : 'text-deadlock-loss'
+                    : 'text-deadlock-muted'
+                }`}
+              >
+                {decided > 0 ? `${matchup.winRate}%` : 'N/A'}
+              </span>
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  // Column definitions for Ally Hero Synergies
+  const allyColumns: HeroTableColumn<AllySynergyStat>[] = useMemo(
+    () => [
+      {
+        key: 'hero',
+        header: 'Hero',
+        render: (synergy) => (
+          <div className="flex items-center gap-3">
+            <HeroAvatar heroId={synergy.allyHeroId} size="xs" />
+            <div>
+              <div className="font-bold text-deadlock-steam text-sm">
+                {synergy.allyHero?.name || `Hero #${synergy.allyHeroId}`}
+              </div>
+              <div className="text-[11px] text-deadlock-muted capitalize">
+                {synergy.allyHero?.heroType || synergy.allyHero?.role || 'Unknown'}
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'matches',
+        header: 'Matches With',
+        sortField: 'matches',
+        render: (synergy) => (
+          <span className="font-mono font-medium text-deadlock-steam">
+            {synergy.matchesWith}
+          </span>
+        ),
+      },
+      {
+        key: 'wins',
+        header: 'Record (W / L / C)',
+        sortField: 'wins',
+        render: (synergy) => (
+          <div className="flex items-center gap-2 font-mono">
+            <span className="text-deadlock-win font-bold">{synergy.wins}W</span>
+            <span className="text-deadlock-muted">-</span>
+            <span className="text-deadlock-loss font-bold">{synergy.losses}L</span>
+            {synergy.cancels > 0 && (
+              <span className="text-deadlock-muted">- {synergy.cancels}C</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'winRate',
+        header: 'Win Rate',
+        sortField: 'winRate',
+        align: 'right',
+        render: (synergy) => {
+          const decided = synergy.wins + synergy.losses;
+          return (
+            <div className="flex items-center justify-end gap-3">
+              <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
+                <div
+                  className={`h-full ${synergy.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'}`}
+                  style={{ width: `${synergy.winRate}%` }}
+                />
+              </div>
+              <span
+                className={`font-mono font-bold text-sm ${
+                  decided > 0
+                    ? synergy.winRate >= 50
+                      ? 'text-deadlock-win'
+                      : 'text-deadlock-loss'
+                    : 'text-deadlock-muted'
+                }`}
+              >
+                {decided > 0 ? `${synergy.winRate}%` : 'N/A'}
+              </span>
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 1. SHARED FILTER HEADER: Choose "All My Heroes" or a specific hero */}
-      <div className="steam-glass steam-panel rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-deadlock-accent" />
-            <span className="text-xs font-bold uppercase tracking-wider text-deadlock-steam">
-              Filter by Your Hero:
-            </span>
-          </div>
-          <span className="text-xs text-deadlock-muted">
-            {selectedHeroObj
-              ? `Analyzing performance specifically when you pilot ${selectedHeroObj.name}`
-              : 'Analyzing performance across all your played heroes'}
-          </span>
-        </div>
-
-        {/* Hero Selector Pills */}
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          <button
-            type="button"
-            onClick={() => setSelectedPlayerHeroId(null)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-              selectedPlayerHeroId === null
-                ? 'bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm'
-                : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
-            }`}
-          >
-            All Heroes ({matches.length} matches)
-          </button>
-
-          {playedHeroes.map((hero) => {
-            const isSelected = selectedPlayerHeroId === hero.id;
-            const heroMatchCount = matches.filter((m) => m.myHeroId === hero.id).length;
-            return (
-              <button
-                key={hero.id}
-                type="button"
-                onClick={() => setSelectedPlayerHeroId(hero.id)}
-                className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border transition-all ${
-                  isSelected
-                    ? 'bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40'
-                    : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
-                }`}
-              >
-                <HeroAvatar heroId={hero.id} size="xs" />
-                <span className="font-medium">{hero.name}</span>
-                <span className="text-[10px] opacity-70 font-mono">({heroMatchCount})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. SEGMENTED MODE SWITCH: AGAINST (ENEMIES) vs WITH (ALLIES) */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center bg-deadlock-panel/90 p-1 rounded-xl border border-deadlock-border/80 shadow-md">
-          <button
-            type="button"
-            onClick={() => setRelationMode('against')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-              relationMode === 'against'
-                ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
-                : 'text-deadlock-muted hover:text-deadlock-steam'
-            }`}
-          >
-            <Swords className="w-4 h-4 text-red-400" />
-            <span>How I Perform Against (Enemies)</span>
-            <span className="ml-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60">
-              {enemyMatchups.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setRelationMode('with')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-              relationMode === 'with'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'text-deadlock-muted hover:text-deadlock-steam'
-            }`}
-          >
-            <Users className="w-4 h-4 text-emerald-400" />
-            <span>How I Perform With (Allies)</span>
-            <span className="ml-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60">
-              {allySynergies.length}
-            </span>
-          </button>
-        </div>
-
-        {/* Search filter for matrix */}
-        <div className="relative min-w-[220px]">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-deadlock-muted pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={relationMode === 'against' ? 'Search enemy hero...' : 'Search ally hero...'}
-            className="w-full bg-deadlock-panel/80 border border-deadlock-border/80 rounded-lg pl-8 pr-7 py-2 text-xs text-deadlock-steam placeholder-deadlock-muted/60 focus:outline-none focus:border-deadlock-accent/60 transition-colors"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-deadlock-muted hover:text-deadlock-steam text-xs"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
+      {/* 1. SHARED FILTER HEADER: Hero, Against/With Mode, and Map Side */}
+      <HeroFilter<RelationMode>
+        playedHeroes={playedHeroes}
+        selectedPlayerHeroId={selectedPlayerHeroId}
+        onSelectHeroId={setSelectedPlayerHeroId}
+        totalTrackedMatches={filteredMatches.length}
+        title="Filter by Your Hero:"
+        subtitle={(hero) =>
+          hero
+            ? `Analyzing performance specifically when you pilot ${hero.name}`
+            : 'Analyzing performance across all your played heroes'
+        }
+        matchupTab={relationMode}
+        onTabChange={setRelationMode}
+        tabOptions={[
+          {
+            id: 'against',
+            label: 'How I Perform Against (Enemies)',
+            icon: <Swords className="w-3.5 h-3.5 text-red-400" />,
+            count: enemyMatchups.length,
+            activeClass: 'bg-red-500/20 text-red-300 border-red-500/40 shadow-sm',
+          },
+          {
+            id: 'with',
+            label: 'How I Perform With (Allies)',
+            icon: <Users className="w-3.5 h-3.5 text-emerald-400" />,
+            count: allySynergies.length,
+            activeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm',
+          },
+        ]}
+        selectedSide={selectedSide}
+        onSideChange={setSelectedSide}
+        sideCounts={sideCounts}
+      />
 
       {/* 3. HIGHLIGHT CARDS: Mode-specific */}
       {relationMode === 'against' && enemyQualified.length > 0 && (
@@ -421,202 +524,77 @@ export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesView
       )}
 
       {/* 4. DETAILED BREAKDOWN TABLE */}
-      <div className="steam-glass steam-panel rounded-xl overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-deadlock-border/80 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            {relationMode === 'against' ? (
-              <Swords className="w-4 h-4 text-red-400" />
-            ) : (
-              <Users className="w-4 h-4 text-emerald-400" />
-            )}
-            <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
-              {relationMode === 'against'
-                ? `Enemy Hero Matchup Matrix (${sortedEnemyMatchups.length} Opponents Faced)`
-                : `Ally Hero Synergy Matrix (${sortedAllySynergies.length} Teammates Recorded)`}
-            </h3>
-          </div>
-          <span className="text-xs text-deadlock-muted">Click column headers to sort</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-deadlock-card/80 text-deadlock-muted border-b border-deadlock-border/60">
-              <tr>
-                <th className="py-3 px-4 font-semibold">Hero</th>
-                <th
-                  onClick={() => handleSort('matches')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>{relationMode === 'against' ? 'Matches Against' : 'Matches With'}</span>
-                    {sortField === 'matches' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('wins')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Record (W / L / C)</span>
-                    {sortField === 'wins' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('winRate')}
-                  className="py-3 px-4 font-semibold cursor-pointer hover:text-deadlock-steam transition-colors text-right"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Win Rate</span>
-                    {sortField === 'winRate' && (
-                      sortAsc ? <ChevronUp className="w-3.5 h-3.5 text-deadlock-accent" /> : <ChevronDown className="w-3.5 h-3.5 text-deadlock-accent" />
-                    )}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-deadlock-border/40">
-              {relationMode === 'against'
-                ? sortedEnemyMatchups.map((matchup: EnemyMatchupStat) => {
-                    const decided = matchup.wins + matchup.losses;
-                    const isRep = matchup.matchesAgainst >= threshold;
-                    return (
-                      <tr
-                        key={matchup.enemyHeroId}
-                        className={`transition-all duration-200 ${
-                          !isRep
-                            ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
-                            : 'hover:bg-deadlock-card/40'
-                        }`}
-                        title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <HeroAvatar heroId={matchup.enemyHeroId} size="xs" />
-                            <div>
-                              <div className="font-bold text-deadlock-steam text-sm">
-                                {matchup.enemyHero?.name || `Hero #${matchup.enemyHeroId}`}
-                              </div>
-                              <div className="text-[11px] text-deadlock-muted capitalize">
-                                {matchup.enemyHero?.heroType || matchup.enemyHero?.role || 'Unknown'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
-                          {matchup.matchesAgainst}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2 font-mono">
-                            <span className="text-deadlock-win font-bold">{matchup.wins}W</span>
-                            <span className="text-deadlock-muted">-</span>
-                            <span className="text-deadlock-loss font-bold">{matchup.losses}L</span>
-                            {matchup.cancels > 0 && (
-                              <span className="text-deadlock-muted">- {matchup.cancels}C</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
-                              <div
-                                className={`h-full ${matchup.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'}`}
-                                style={{ width: `${matchup.winRate}%` }}
-                              />
-                            </div>
-                            <span
-                              className={`font-mono font-bold text-sm ${
-                                decided > 0
-                                  ? matchup.winRate >= 50
-                                    ? 'text-deadlock-win'
-                                    : 'text-deadlock-loss'
-                                  : 'text-deadlock-muted'
-                              }`}
-                            >
-                              {decided > 0 ? `${matchup.winRate}%` : 'N/A'}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                : sortedAllySynergies.map((synergy: AllySynergyStat) => {
-                    const decided = synergy.wins + synergy.losses;
-                    const isRep = synergy.matchesWith >= threshold;
-                    return (
-                      <tr
-                        key={synergy.allyHeroId}
-                        className={`transition-all duration-200 ${
-                          !isRep
-                            ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
-                            : 'hover:bg-deadlock-card/40'
-                        }`}
-                        title={!isRep ? `Low sample (< ${threshold} matches)` : undefined}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <HeroAvatar heroId={synergy.allyHeroId} size="xs" />
-                            <div>
-                              <div className="font-bold text-deadlock-steam text-sm">
-                                {synergy.allyHero?.name || `Hero #${synergy.allyHeroId}`}
-                              </div>
-                              <div className="text-[11px] text-deadlock-muted capitalize">
-                                {synergy.allyHero?.heroType || synergy.allyHero?.role || 'Unknown'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-medium text-deadlock-steam">
-                          {synergy.matchesWith}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2 font-mono">
-                            <span className="text-deadlock-win font-bold">{synergy.wins}W</span>
-                            <span className="text-deadlock-muted">-</span>
-                            <span className="text-deadlock-loss font-bold">{synergy.losses}L</span>
-                            {synergy.cancels > 0 && (
-                              <span className="text-deadlock-muted">- {synergy.cancels}C</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            <div className="w-24 bg-deadlock-dark rounded-full h-1.5 overflow-hidden border border-deadlock-border/60 hidden sm:block">
-                              <div
-                                className={`h-full ${synergy.winRate >= 50 ? 'bg-deadlock-win' : 'bg-deadlock-loss'}`}
-                                style={{ width: `${synergy.winRate}%` }}
-                              />
-                            </div>
-                            <span
-                              className={`font-mono font-bold text-sm ${
-                                decided > 0
-                                  ? synergy.winRate >= 50
-                                    ? 'text-deadlock-win'
-                                    : 'text-deadlock-loss'
-                                  : 'text-deadlock-muted'
-                              }`}
-                            >
-                              {decided > 0 ? `${synergy.winRate}%` : 'N/A'}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-            </tbody>
-          </table>
-
-          {((relationMode === 'against' && sortedEnemyMatchups.length === 0) ||
-            (relationMode === 'with' && sortedAllySynergies.length === 0)) && (
-            <div className="text-center py-10 text-xs text-deadlock-muted">
-              No matching hero entries found for "{searchQuery}".
+      {relationMode === 'against' ? (
+        <HeroTable<EnemyMatchupStat>
+          data={sortedEnemyMatchups}
+          isLowSample={(matchup) => matchup.matchesAgainst < threshold}
+          threshold={threshold}
+          columns={enemyColumns}
+          getRowKey={(matchup) => matchup.enemyHeroId}
+          sortField={sortField}
+          sortAsc={sortAsc}
+          onSort={(field) => handleSort(field as SortField)}
+          headerContent={
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Swords className="w-4 h-4 text-red-400" />
+                <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
+                  Enemy Hero Matchup Matrix ({sortedEnemyMatchups.length} Opponents Faced)
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-deadlock-muted hidden sm:inline">Click column headers to sort</span>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-deadlock-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search enemy hero..."
+                    className="bg-deadlock-dark border border-deadlock-border text-xs rounded-lg pl-8 pr-3 py-1.5 text-deadlock-steam focus:outline-none focus:border-deadlock-accent w-40 sm:w-48 transition-all"
+                  />
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          }
+          emptyMessage={`No matching hero entries found for "${searchQuery}".`}
+        />
+      ) : (
+        <HeroTable<AllySynergyStat>
+          data={sortedAllySynergies}
+          isLowSample={(synergy) => synergy.matchesWith < threshold}
+          threshold={threshold}
+          columns={allyColumns}
+          getRowKey={(synergy) => synergy.allyHeroId}
+          sortField={sortField}
+          sortAsc={sortAsc}
+          onSort={(field) => handleSort(field as SortField)}
+          headerContent={
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-bold tracking-wide uppercase text-deadlock-steam">
+                  Ally Hero Synergy Matrix ({sortedAllySynergies.length} Teammates Recorded)
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-deadlock-muted hidden sm:inline">Click column headers to sort</span>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-deadlock-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search ally hero..."
+                    className="bg-deadlock-dark border border-deadlock-border text-xs rounded-lg pl-8 pr-3 py-1.5 text-deadlock-steam focus:outline-none focus:border-deadlock-accent w-40 sm:w-48 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          }
+          emptyMessage={`No matching hero entries found for "${searchQuery}".`}
+        />
+      )}
     </div>
   );
 };
