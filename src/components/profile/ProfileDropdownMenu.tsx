@@ -6,7 +6,6 @@ import {
   Download,
   Upload,
   RefreshCw,
-  Terminal,
   ChevronDown,
   LogOut,
   FolderSync,
@@ -59,7 +58,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
   }, [isOpen]);
 
   return (
-    <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border relative">
+    <div className="flex items-center gap-2 bg-deadlock-dark p-1 rounded-lg border border-deadlock-border relative z-50">
       {/* Profile Pill Dropdown Trigger */}
       <div ref={menuRef} className="relative">
         <button
@@ -87,7 +86,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
 
         {/* Profile Dropdown Menu */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel steam-card border border-deadlock-border shadow-2xl py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
+          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-deadlock-panel border border-deadlock-border/80 shadow-[0_12px_36px_rgba(0,0,0,0.9)] py-1.5 z-50 flex flex-col text-xs animate-fadeIn">
             {/* Header in dropdown */}
             <div className="px-3 py-2 border-b border-deadlock-border/60 flex flex-col">
               <span className="text-[11px] font-bold text-deadlock-steam truncate">
@@ -98,7 +97,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
               </span>
             </div>
 
-            {/* Log Dashboard Option */}
+            {/* Log Dashboard & Console Option */}
             <button
               type="button"
               onClick={() => {
@@ -108,7 +107,7 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
               className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
             >
               <Activity className="w-4 h-4 text-deadlock-accent shrink-0" />
-              <span>Log Dashboard</span>
+              <span>Log Dashboard & Console</span>
             </button>
 
             {/* Import Match by ID */}
@@ -122,19 +121,6 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             >
               <Search className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Import Match by ID</span>
-            </button>
-
-            {/* Debug Console Option */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('logs');
-                setIsOpen(false);
-              }}
-              className="flex items-center gap-2.5 px-3 py-2 text-gray-200 hover:bg-deadlock-card/60 hover:text-deadlock-steam transition-colors text-left"
-            >
-              <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Debug Console</span>
             </button>
 
             {/* Switch Account */}

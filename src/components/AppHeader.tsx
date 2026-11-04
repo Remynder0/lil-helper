@@ -1,14 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { History, BarChart2, Brain, Gauge, Cloud, Loader2 } from 'lucide-react';
+import React from 'react';
+import { History, BarChart2, Brain, Gauge } from 'lucide-react';
 import { ConnectedProfile } from '../types/match';
 import { PlayerStateBadge } from './PlayerStateBadge';
 import { ProfileDropdownMenu } from './profile/ProfileDropdownMenu';
 import { ParsedGameContext } from '../services/logs/logWatcher';
 import { useUIStore, AppTab } from '../stores/useUIStore';
 import { useMatchStore, selectTotalMatches, selectWinRate } from '../stores/useMatchStore';
-import { subscribeToCloudSync, getCloudSyncState, CloudSyncState } from '../services/storage/cloudSync';
-import { syncMatchesWithCloud } from '../services/storage/storage';
-import { useToast } from './Toast';
 import steamLogo from '../assets/steam-logo.svg';
 import artDecoDivider from '../assets/art-deco/divider.svg';
 import artDecoCartouche from '../assets/art-deco/cartouche.svg';
@@ -40,43 +37,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
-  const toast = useToast();
 
   const totalMatches = useMatchStore(selectTotalMatches);
   const winRate = useMatchStore(selectWinRate);
-
-  const [cloudState, setCloudState] = useState<CloudSyncState>(getCloudSyncState());
-  const [isManualCloudSyncing, setIsManualCloudSyncing] = useState(false);
-
-  useEffect(() => {
-    const unsub = subscribeToCloudSync((state) => {
-      setCloudState(state);
-    });
-    return () => unsub();
-  }, []);
-
-  const handleCloudSync = async () => {
-    const targetAccountId = profile?.accountId ?? useMatchStore.getState().currentAccountId;
-    if (!targetAccountId) {
-      setProfileModalOpen(true);
-      return;
-    }
-    if (isManualCloudSyncing || cloudState.isSyncing) return;
-    setIsManualCloudSyncing(true);
-    try {
-      const res = await syncMatchesWithCloud(targetAccountId, profile);
-      if (res.success) {
-        toast.success(res.message);
-        await useMatchStore.getState().loadMatches(targetAccountId);
-      } else {
-        toast.error(res.message);
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Cloud Sync failed');
-    } finally {
-      setIsManualCloudSyncing(false);
-    }
-  };
 
   return (
     <header className="steam-glass border-b-2 border-deadlock-brass/40 px-4 sm:px-6 py-3.5 fixed top-0 left-0 right-0 w-full z-40 shadow-[0_4px_20px_rgba(0,0,0,0.7)]">
@@ -96,7 +59,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
 
         {/* Global Quick Stats & Navigation */}
-        <div className="flex items-center gap-2.5 sm:gap-4 text-xs relative z-10">
+        <div className="flex items-center gap-2.5 sm:gap-4 text-xs relative z-30">
           {/* Art Deco Cartouche Stats: Matches & Winrate */}
           <div className="flex items-center gap-2.5">
             {/* Matches Cartouche */}
@@ -179,37 +142,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               mapName={gameContext.mapName}
             />
 
-            {/* Supabase Cloud Sync Status Pill */}
-            <button
-              type="button"
-              onClick={handleCloudSync}
-              title={
-                cloudState.isConfigured
-                  ? `Supabase Cloud Sync active. Last sync: ${cloudState.lastSyncedAt ? new Date(cloudState.lastSyncedAt).toLocaleTimeString() : 'Never'}. Click to sync now.`
-                  : 'Supabase Cloud is offline or unconfigured. Matches are stored locally.'
-              }
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                cloudState.isSyncing || isManualCloudSyncing
-                  ? 'bg-deadlock-accent/20 text-deadlock-accent border-deadlock-accent/50'
-                  : cloudState.isConfigured
-                  ? 'bg-deadlock-dark/80 text-[#3ecf8e] border-[#3ecf8e]/35 hover:border-[#3ecf8e] shadow-sm'
-                  : 'bg-deadlock-dark/60 text-deadlock-muted border-deadlock-border/40 hover:border-gray-600'
-              }`}
-            >
-              {cloudState.isSyncing || isManualCloudSyncing ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-deadlock-accent" />
-              ) : (
-                <Cloud className={`w-3.5 h-3.5 ${cloudState.isConfigured ? 'text-[#3ecf8e]' : 'text-deadlock-muted'}`} />
-              )}
-              <span className="hidden xl:inline text-[11px]">
-                {cloudState.isSyncing || isManualCloudSyncing
-                  ? 'Syncing...'
-                  : cloudState.isConfigured
-                  ? 'Cloud Synced'
-                  : 'Cloud Offline'}
-              </span>
-            </button>
-
             {profile ? (
               <ProfileDropdownMenu
                 profile={profile}
@@ -235,7 +167,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       </div>
 
       {/* Heavy Steampunk Steam Pipe along bottom edge of header */}
-      <div className="absolute -bottom-1.5 left-0 right-0 pointer-events-none z-30">
+      <div className="absolute -bottom-1.5 left-0 right-0 pointer-events-none z-10">
         <img src={artDecoDivider} alt="" aria-hidden="true" className="w-full h-3 object-cover opacity-70" />
       </div>
     </header>
