@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
+// @ts-expect-error type error without @types/node package
+import crypto from "node:crypto";
 const host = process.env.TAURI_DEV_HOST;
 
 function steamAuthDevPlugin() {
@@ -354,9 +356,33 @@ function steamAuthDevPlugin() {
   };
 }
 
+const DEV_WORKSTATION_SALT = 'lil-helper-dev-workstation-salt-v1';
+const AUTHORIZED_MACHINE_FINGERPRINT =
+  '6ec329fb6e0e578f96d0e2cc94d17b1adf3a866565979917dc0a895a72d6bb8f';
+
+function isAuthorizedDevMachine(mode: string): boolean {
+  if (mode === 'production') return false;
+
+  const username = (process.env.USERNAME || process.env.USER || '').toLowerCase().trim();
+  const computername = (process.env.COMPUTERNAME || process.env.HOSTNAME || '').toLowerCase().trim();
+
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${username}:${computername}:${DEV_WORKSTATION_SALT}`)
+    .digest('hex');
+
+  return hash === AUTHORIZED_MACHINE_FINGERPRINT;
+}
+
 // https://vite.dev/config/
-export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), steamAuthDevPlugin()],
+export default defineConfig(({ mode }) => {
+  const isDevMachine = isAuthorizedDevMachine(mode);
+
+  return {
+    define: {
+      __DEV_MACHINE_AUTHORIZED__: JSON.stringify(isDevMachine),
+    },
+    plugins: [react(), tailwindcss(), steamAuthDevPlugin()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -396,4 +422,5 @@ export default defineConfig(() => ({
       exclude: ['src/test/**'],
     },
   },
-}));
+};
+});

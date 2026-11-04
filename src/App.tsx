@@ -21,6 +21,7 @@ import occultBadge from './assets/occult/badge.svg';
 import { RefreshCw } from 'lucide-react';
 import { ToastProvider, useToast } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useDevAuthorization } from './services/devSecurity';
 import { useUIStore } from './stores/useUIStore';
 import { useMatchStore, selectAllHistoryMatches } from './stores/useMatchStore';
 
@@ -43,6 +44,7 @@ const AppInner: React.FC = () => {
   const setProfileModalOpen = useUIStore((s) => s.setProfileModalOpen);
   const isImportByIdModalOpen = useUIStore((s) => s.isImportByIdModalOpen);
   const setImportByIdModalOpen = useUIStore((s) => s.setImportByIdModalOpen);
+  const isDev = useDevAuthorization();
 
   // ── Match Store (Matches, Queue, CRUD) ──
   const matches = useMatchStore((s) => s.matches);
@@ -104,6 +106,13 @@ const AppInner: React.FC = () => {
       setActiveTab('assistant');
     }
   }, [gameContext.state, setActiveTab]);
+
+  // Guard developer-only tabs from unauthorized access
+  useEffect(() => {
+    if (!isDev && (activeTab === 'logs' || activeTab === 'log_match')) {
+      setActiveTab('history');
+    }
+  }, [isDev, activeTab, setActiveTab]);
 
   // Automatically record active matchId from live game logs into tracked pending list
   useEffect(() => {
@@ -305,14 +314,14 @@ const AppInner: React.FC = () => {
               onMatchSaved={handleMatchSaved}
               onCancel={handleCancelEdit}
             />
-          ) : (
+          ) : isDev ? (
             <LogDashboardView
               profile={profile}
               gameContext={gameContext}
               matches={matches}
               onMatchesUpdated={setMatches}
             />
-          )
+          ) : null
         )}
         {activeTab === 'history' && (
           <ErrorBoundary section="History">
@@ -348,7 +357,7 @@ const AppInner: React.FC = () => {
             <DraftAssistantView matches={matches} gameContext={gameContext} />
           </ErrorBoundary>
         </div>
-        {activeTab === 'logs' && (
+        {activeTab === 'logs' && isDev && (
           <LogDashboardView
             profile={profile}
             gameContext={gameContext}

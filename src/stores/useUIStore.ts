@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isDeveloperAuthorizedSync } from '../services/devSecurity';
 
 export type AppTab = 'log_match' | 'history' | 'analytics' | 'assistant' | 'logs';
 
@@ -13,7 +14,11 @@ const VALID_TABS: Record<string, AppTab> = {
 function getTabFromHash(): AppTab {
   if (typeof window === 'undefined') return 'history';
   const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-  return VALID_TABS[hash] || 'history';
+  const matched = VALID_TABS[hash] || 'history';
+  if ((matched === 'logs' || matched === 'log_match') && !isDeveloperAuthorizedSync()) {
+    return 'history';
+  }
+  return matched;
 }
 
 function updateHash(tab: AppTab): void {
@@ -62,8 +67,11 @@ export const useUIStore = create<UIState>((set) => {
   return {
     activeTab: initialTab,
     setActiveTab: (tab) => {
-      updateHash(tab);
-      set({ activeTab: tab });
+      const targetTab = ((tab === 'logs' || tab === 'log_match') && !isDeveloperAuthorizedSync())
+        ? 'history'
+        : tab;
+      updateHash(targetTab);
+      set({ activeTab: targetTab });
     },
 
     previewHeroId: null,

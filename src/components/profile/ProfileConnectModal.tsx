@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ConnectedProfile } from '../../types/match';
 import { searchSteamProfiles, SteamProfileSearchResult } from '../../services/api/deadlockApi';
 import { isTauriEnvironment, syncMatchesWithCloud } from '../../services/storage/storage';
+import { useDevAuthorization } from '../../services/devSecurity';
 import { getCloudSyncState, subscribeToCloudSync, CloudSyncState } from '../../services/storage/cloudSync';
 import steamLogo from '../../assets/steam-logo.svg';
 import { Search, User, Check, X, Loader2, Cloud, ExternalLink } from 'lucide-react';
@@ -30,6 +31,7 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
   const [cloudState, setCloudState] = useState<CloudSyncState>(getCloudSyncState());
   const [isCloudSyncingManual, setIsCloudSyncingManual] = useState(false);
   const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>(null);
+  const isDev = useDevAuthorization();
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -251,60 +253,62 @@ export const ProfileConnectModal: React.FC<ProfileConnectModalProps> = ({
           )}
 
           {/* Supabase Cloud Sync Status Card */}
-          <div className="p-3 rounded-xl bg-deadlock-dark/75 border border-deadlock-border/70 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-[#3ecf8e]/15 border border-[#3ecf8e]/35 flex items-center justify-center text-[#3ecf8e] shrink-0">
-                <Cloud className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-200">Supabase Cloud</span>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
-                      cloudState.isConfigured
-                        ? 'bg-[#3ecf8e]/20 text-[#3ecf8e] border-[#3ecf8e]/40'
-                        : 'bg-gray-800 text-gray-400 border-gray-700'
-                    }`}
-                  >
-                    {cloudState.isConfigured ? 'Synced / Active' : 'Offline / Unconfigured'}
-                  </span>
+          {isDev && (
+            <div className="p-3 rounded-xl bg-deadlock-dark/75 border border-deadlock-border/70 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-[#3ecf8e]/15 border border-[#3ecf8e]/35 flex items-center justify-center text-[#3ecf8e] shrink-0">
+                  <Cloud className="w-4 h-4" />
                 </div>
-                <div className="text-[10px] text-deadlock-muted truncate mt-0.5">
-                  {cloudSyncMessage ? (
-                    <span className="text-deadlock-accent font-medium">{cloudSyncMessage}</span>
-                  ) : cloudState.lastSyncedAt ? (
-                    `Last synced: ${new Date(cloudState.lastSyncedAt).toLocaleTimeString()}`
-                  ) : cloudState.isConfigured ? (
-                    'Ready — match history auto-syncs with cloud database'
-                  ) : (
-                    'Configure credentials in .env to enable multi-device sync'
-                  )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-200">Supabase Cloud</span>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                        cloudState.isConfigured
+                          ? 'bg-[#3ecf8e]/20 text-[#3ecf8e] border-[#3ecf8e]/40'
+                          : 'bg-gray-800 text-gray-400 border-gray-700'
+                      }`}
+                    >
+                      {cloudState.isConfigured ? 'Synced / Active' : 'Offline / Unconfigured'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-deadlock-muted truncate mt-0.5">
+                    {cloudSyncMessage ? (
+                      <span className="text-deadlock-accent font-medium">{cloudSyncMessage}</span>
+                    ) : cloudState.lastSyncedAt ? (
+                      `Last synced: ${new Date(cloudState.lastSyncedAt).toLocaleTimeString()}`
+                    ) : cloudState.isConfigured ? (
+                      'Ready — match history auto-syncs with cloud database'
+                    ) : (
+                      'Configure credentials in .env to enable multi-device sync'
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {currentProfile && (
-              <button
-                type="button"
-                onClick={handleManualCloudSync}
-                disabled={isCloudSyncingManual || cloudState.isSyncing}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-deadlock-dark border border-deadlock-border hover:border-[#3ecf8e] hover:text-[#3ecf8e] text-gray-200 shrink-0 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                title="Force synchronize local match history with Supabase Cloud"
-              >
-                {isCloudSyncingManual || cloudState.isSyncing ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3ecf8e]" />
-                    <span className="text-[11px]">Syncing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Cloud className="w-3.5 h-3.5 text-[#3ecf8e]" />
-                    <span className="text-[11px]">Sync Cloud</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+              {currentProfile && (
+                <button
+                  type="button"
+                  onClick={handleManualCloudSync}
+                  disabled={isCloudSyncingManual || cloudState.isSyncing}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-deadlock-dark border border-deadlock-border hover:border-[#3ecf8e] hover:text-[#3ecf8e] text-gray-200 shrink-0 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  title="Force synchronize local match history with Supabase Cloud"
+                >
+                  {isCloudSyncingManual || cloudState.isSyncing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3ecf8e]" />
+                      <span className="text-[11px]">Syncing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="w-3.5 h-3.5 text-[#3ecf8e]" />
+                      <span className="text-[11px]">Sync Cloud</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Steam Login Button: Logo + "connect ?" */}
           <div className="flex flex-col gap-2">

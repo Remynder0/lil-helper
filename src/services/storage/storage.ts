@@ -3,6 +3,7 @@ import { Match, ConnectedProfile } from '../../types/match';
 import type { UserSettings } from './userSettings';
 import { fetchCloudMatchHistory, pushCloudMatchHistory, getCloudSyncState } from './cloudSync';
 import { isSupabaseConfigured, initializeSupabaseConfig } from './supabaseClient';
+import { isDeveloperAuthorized } from '../devSecurity';
 
 export const CURRENT_STORAGE_SCHEMA_VERSION = 2;
 const LOCAL_STORAGE_KEY = 'deadlock_matches_v1';
@@ -621,6 +622,15 @@ export async function syncMatchesWithCloud(
   accountId: number,
   profile?: ConnectedProfile | null
 ): Promise<{ success: boolean; count: number; message: string }> {
+  const isDev = await isDeveloperAuthorized();
+  if (!isDev) {
+    return {
+      success: false,
+      count: 0,
+      message: 'Cloud Sync is only available in authorized developer mode.',
+    };
+  }
+
   if (!isSupabaseConfigured()) {
     await initializeSupabaseConfig();
   }
