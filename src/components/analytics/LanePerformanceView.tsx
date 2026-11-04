@@ -29,10 +29,21 @@ export { ClassicVialGauge as AlchemicalVialGauge };
 
 interface LanePerformanceViewProps {
   matches: Match[];
+  selectedPlayerHeroId?: number | null;
+  onSelectHeroId?: (heroId: number | null) => void;
 }
 
-export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({ matches }) => {
-  const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
+export const LanePerformanceView: React.FC<LanePerformanceViewProps> = ({
+  matches,
+  selectedPlayerHeroId: controlledHeroId,
+  onSelectHeroId: controlledOnSelectHeroId,
+}) => {
+  const [internalHeroId, setInternalHeroId] = useState<number | null>(null);
+  const selectedPlayerHeroId = controlledHeroId !== undefined ? controlledHeroId : internalHeroId;
+  const setSelectedPlayerHeroId = (heroId: number | null) => {
+    setInternalHeroId(heroId);
+    controlledOnSelectHeroId?.(heroId);
+  };
   const [matchupTab, setMatchupTab] = useState<MatchupTab>('opponents');
   const [selectedSide, setSelectedSide] = useState<SideFilterType>('all');
   const [tableSearch, setTableSearch] = useState<string>('');

@@ -194,18 +194,30 @@ export function HeroFilter<TTab extends string = string>({
         {/* Individual Hero Buttons */}
         {playedHeroes.map(({ hero, count }) => {
           const isSelected = currentHeroId === hero.id;
+          const isLowSample = count < 5;
           return (
             <button
               key={hero.id}
               type="button"
               onClick={() => onSelectHeroId(hero.id)}
+              title={isLowSample ? `${hero.name} — Low sample size (< 5 matches)` : undefined}
               className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border transition-all ${
                 isSelected
                   ? 'bg-deadlock-border border-white text-deadlock-steam shadow-md ring-1 ring-white/40'
+                  : isLowSample
+                  ? 'bg-deadlock-dark/60 border-deadlock-border/40 text-deadlock-muted/70 hover:text-deadlock-steam hover:border-amber-500/40'
                   : 'bg-deadlock-dark border-deadlock-border text-deadlock-muted hover:text-deadlock-steam hover:border-white/30'
               }`}
             >
-              <HeroAvatar heroId={hero.id} size="xs" />
+              <div className="relative">
+                <HeroAvatar heroId={hero.id} size="xs" />
+                {isLowSample && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/60"
+                    title="Low sample (< 5 matches)"
+                  />
+                )}
+              </div>
               <span className="font-medium">{hero.name}</span>
               <span className="text-[10px] opacity-70 font-mono">({count})</span>
             </button>

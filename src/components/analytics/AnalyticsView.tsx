@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import artDecoCorner from '../../assets/art-deco/corner.svg';
 import { Match, ConnectedProfile } from '../../types/match';
+import { getHeroById } from '../../data/heroes';
 import { HeroAvatar } from '../HeroAvatar';
 import { HeroMatchupsAndSynergiesView } from './HeroMatchupsAndSynergiesView';
 import { LanePerformanceView } from './LanePerformanceView';
@@ -30,6 +31,8 @@ import {
   Shield,
   Search,
   Trophy,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -41,19 +44,32 @@ interface AnalyticsViewProps {
 type SortField = 'matches' | 'winRate' | 'wins';
 type AnalyticsSubTab = 'overview' | 'relations' | 'lanes' | 'ranked';
 
+export const OVERVIEW_LOW_SAMPLE_THRESHOLD = 5;
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, onNavigateToStreak }) => {
   const [subTab, setSubTab] = useState<AnalyticsSubTab>('overview');
   const [sortField, setSortField] = useState<SortField>('matches');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [heroSearch, setHeroSearch] = useState<string>('');
+  const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
 
-  const threshold = useMemo(() => getSampleThreshold(matches.length), [matches.length]);
+  const selectedHeroObj = useMemo(() => {
+    return selectedPlayerHeroId ? getHeroById(selectedPlayerHeroId) ?? null : null;
+  }, [selectedPlayerHeroId]);
 
-  const globalStats = useMemo(() => getCachedGlobalStats(matches), [matches]);
-  const patronStats = useMemo(() => getCachedPatronStats(matches), [matches]);
+  // When a hero is selected in overview, metrics adapt to that specific hero
+  const overviewMatches = useMemo(() => {
+    if (!selectedPlayerHeroId) return matches;
+    return matches.filter((m) => m.myHeroId === selectedPlayerHeroId);
+  }, [matches, selectedPlayerHeroId]);
+
+  const threshold = useMemo(() => getSampleThreshold(overviewMatches.length), [overviewMatches.length]);
+
+  const globalStats = useMemo(() => getCachedGlobalStats(overviewMatches), [overviewMatches]);
+  const patronStats = useMemo(() => getCachedPatronStats(overviewMatches), [overviewMatches]);
   const heroPerformances = useMemo(() => getCachedHeroPerformance(matches), [matches]);
-  const familiarFace = useMemo(() => getCachedFamiliarFace(matches), [matches]);
-  const laneAnalytics = useMemo(() => getCachedLaneAnalytics(matches), [matches]);
+  const familiarFace = useMemo(() => getCachedFamiliarFace(overviewMatches), [overviewMatches]);
+  const laneAnalytics = useMemo(() => getCachedLaneAnalytics(overviewMatches), [overviewMatches]);
 
   const topLanePartner = useMemo(() => {
     return laneAnalytics.allies.length > 0 && laneAnalytics.allies[0].lanesTogether > 0
@@ -83,6 +99,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
     return sortedHeroes.filter((hp) => hp.hero?.name.toLowerCase().includes(q));
   }, [sortedHeroes, heroSearch]);
 
+  // Partition played heroes into representative vs low-sample (< 5 games)
+  const { repHeroes, lowSampleHeroes } = useMemo(() => {
+    const rep: HeroPerformance[] = [];
+    const low: HeroPerformance[] = [];
+    for (const hp of displayedHeroes) {
+      if (hp.matches < OVERVIEW_LOW_SAMPLE_THRESHOLD) {
+        low.push(hp);
+      } else {
+        rep.push(hp);
+      }
+    }
+    return { repHeroes: rep, lowSampleHeroes: low };
+  }, [displayedHeroes]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
@@ -90,6 +120,101 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
       setSortField(field);
       setSortAsc(false);
     }
+  };
+
+  const renderHeroRow = (hp: HeroPerformance, isLowSample: boolean) => {
+    const decided = hp.wins + hp.losses;
+    const isPositive = hp.winRate >= 50;
+    const isSelected = selectedPlayerHeroId === hp.heroId;
+
+    return (
+      <div
+        key={hp.heroId}
+        role="button"
+        tabIndex={0}
+        onClick={() => setSelectedPlayerHeroId(isSelected ? null : hp.heroId)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            setSelectedPlayerHeroId(isSelected ? null : hp.heroId);
+          }
+        }}
+        title={
+          isLowSample
+            ? `${hp.hero?.name || 'Hero'} — Low sample size (< ${OVERVIEW_LOW_SAMPLE_THRESHOLD} matches)`
+            : `Filter analytics overview by ${hp.hero?.name || 'this hero'}`
+        }
+        className={`flex items-center justify-between gap-2.5 min-w-0 p-2 rounded-lg cursor-pointer transition-all duration-200 ${
+          isSelected
+            ? 'bg-deadlock-accent/20 border border-deadlock-accent/60 shadow-sm ring-1 ring-deadlock-accent/30 text-deadlock-steam'
+            : isLowSample
+            ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100 hover:bg-deadlock-card/50 border border-transparent'
+            : 'hover:bg-deadlock-card/60 border border-transparent'
+        }`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative shrink-0">
+            <HeroAvatar heroId={hp.heroId} size="sm" />
+            {isLowSample && (
+              <span
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/60"
+                title="Low sample (< 5 matches)"
+              />
+            )}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span
+                className={`font-bold text-xs truncate ${
+                  isSelected ? 'text-deadlock-accent' : 'text-deadlock-steam'
+                }`}
+              >
+                {hp.hero?.name || `Hero #${hp.heroId}`}
+              </span>
+              {isLowSample && (
+                <span className="text-[9px] font-mono font-semibold px-1 rounded bg-amber-500/20 text-amber-300/90 border border-amber-500/30 shrink-0">
+                  &lt;5g
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-deadlock-muted">
+              <span className="font-mono text-deadlock-steam/90 font-medium">
+                {hp.matches} {hp.matches === 1 ? 'match' : 'matches'}
+              </span>
+              <span>•</span>
+              <span className="text-deadlock-win font-mono font-medium">{hp.wins}W</span>
+              <span className="text-deadlock-loss font-mono font-medium">{hp.losses}L</span>
+              {hp.cancels > 0 && (
+                <span className="text-deadlock-muted/70 font-mono">{hp.cancels}C</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end shrink-0 gap-1">
+          <span
+            className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
+              decided > 0
+                ? isPositive
+                  ? 'bg-deadlock-win/10 text-deadlock-win border-deadlock-win/30'
+                  : 'bg-deadlock-loss/10 text-deadlock-loss border-deadlock-loss/30'
+                : 'bg-deadlock-card text-deadlock-muted border-deadlock-border/40'
+            }`}
+          >
+            {decided > 0 ? `${hp.winRate}%` : 'N/A'}
+          </span>
+          {decided > 0 && (
+            <div className="w-14 bg-deadlock-dark/80 rounded-full h-1 overflow-hidden border border-deadlock-border/40">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  isPositive ? 'bg-deadlock-win' : 'bg-deadlock-loss'
+                }`}
+                style={{ width: `${hp.winRate}%` }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (matches.length === 0) {
@@ -195,8 +320,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
         </span>
       </div>
 
-      {subTab === 'relations' && <HeroMatchupsAndSynergiesView matches={matches} />}
-      {subTab === 'lanes' && <LanePerformanceView matches={matches} />}
+      {subTab === 'relations' && (
+        <HeroMatchupsAndSynergiesView
+          matches={matches}
+          selectedPlayerHeroId={selectedPlayerHeroId}
+          onSelectHeroId={setSelectedPlayerHeroId}
+        />
+      )}
+      {subTab === 'lanes' && (
+        <LanePerformanceView
+          matches={matches}
+          selectedPlayerHeroId={selectedPlayerHeroId}
+          onSelectHeroId={setSelectedPlayerHeroId}
+        />
+      )}
       {subTab === 'ranked' && <RankedProgressionView matches={matches} profile={profile} />}
       {subTab === 'overview' && (
         <div className="flex flex-col lg:flex-row items-start gap-6">
@@ -211,9 +348,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
                     Hero Performance
                   </h2>
                 </div>
-                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60 text-deadlock-muted">
-                  {heroPerformances.length} played
-                </span>
+                <div className="flex items-center gap-2">
+                  {selectedPlayerHeroId !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPlayerHeroId(null)}
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-deadlock-dark hover:bg-deadlock-card text-deadlock-accent border border-deadlock-accent/40 transition-colors"
+                      title="Reset to All Heroes"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-deadlock-card/80 border border-deadlock-border/60 text-deadlock-muted">
+                    {heroPerformances.length} played
+                  </span>
+                </div>
               </div>
 
               {/* Search & Sort Controls */}
@@ -291,60 +440,41 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
 
               {/* Heroes List */}
               <div className="flex flex-col gap-1.5 max-h-[calc(100vh-280px)] min-h-[300px] overflow-y-auto pr-1">
-                {displayedHeroes.map((hp: HeroPerformance) => {
-                  const decided = hp.wins + hp.losses;
-                  const isPositive = hp.winRate >= 50;
-                  return (
-                    <div
-                      key={hp.heroId}
-                      className="flex items-center justify-between gap-2.5 min-w-0"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <HeroAvatar heroId={hp.heroId} size="sm" />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-xs text-deadlock-steam group-hover:text-white truncate">
-                            {hp.hero?.name || `Hero #${hp.heroId}`}
-                          </span>
-                          <div className="flex items-center gap-1.5 text-[11px] text-deadlock-muted">
-                            <span className="font-mono text-deadlock-steam/90 font-medium">
-                              {hp.matches} {hp.matches === 1 ? 'match' : 'matches'}
-                            </span>
-                            <span>•</span>
-                            <span className="text-deadlock-win font-mono font-medium">{hp.wins}W</span>
-                            <span className="text-deadlock-loss font-mono font-medium">{hp.losses}L</span>
-                            {hp.cancels > 0 && (
-                              <span className="text-deadlock-muted/70 font-mono">{hp.cancels}C</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                {/* All Heroes Button */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlayerHeroId(null)}
+                  className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold border transition-all ${
+                    selectedPlayerHeroId === null
+                      ? 'bg-deadlock-accent/20 border-deadlock-accent text-deadlock-steam shadow-sm ring-1 ring-deadlock-accent/40'
+                      : 'bg-deadlock-dark/60 border-deadlock-border/50 text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-deadlock-accent" />
+                    <span>All Heroes</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-deadlock-muted">
+                    {matches.length} matches
+                  </span>
+                </button>
 
-                      <div className="flex flex-col items-end shrink-0 gap-1">
-                        <span
-                          className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
-                            decided > 0
-                              ? isPositive
-                                ? 'bg-deadlock-win/10 text-deadlock-win border-deadlock-win/30'
-                                : 'bg-deadlock-loss/10 text-deadlock-loss border-deadlock-loss/30'
-                              : 'bg-deadlock-card text-deadlock-muted border-deadlock-border/40'
-                          }`}
-                        >
-                          {decided > 0 ? `${hp.winRate}%` : 'N/A'}
-                        </span>
-                        {decided > 0 && (
-                          <div className="w-14 bg-deadlock-dark/80 rounded-full h-1 overflow-hidden border border-deadlock-border/40">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                isPositive ? 'bg-deadlock-win' : 'bg-deadlock-loss'
-                              }`}
-                              style={{ width: `${hp.winRate}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
+                {/* Representative Heroes (>= 5 matches) */}
+                {repHeroes.map((hp) => renderHeroRow(hp, false))}
+
+                {/* Delimiter Banner for Low-Sample Size Heroes (< 5 matches) */}
+                {lowSampleHeroes.length > 0 && (
+                  <div className="my-1.5 py-1.5 px-2 rounded-lg bg-deadlock-dark/95 border-y border-dashed border-amber-500/40 text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-amber-200/90 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
+                      <span>Low Sample Size (&lt; {OVERVIEW_LOW_SAMPLE_THRESHOLD} matches)</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+
+                {/* Low-Sample Heroes (< 5 matches) */}
+                {lowSampleHeroes.map((hp) => renderHeroRow(hp, true))}
 
                 {displayedHeroes.length === 0 && (
                   <div className="text-center py-8 text-xs text-deadlock-muted">
@@ -357,6 +487,48 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
 
           {/* RIGHT MAIN PANEL */}
           <div className="flex-1 min-w-0 flex flex-col gap-6 w-full">
+            {/* Active Selected Hero Filter Banner */}
+            {selectedHeroObj && (
+              <div className="steam-glass steam-panel rounded-xl p-3.5 border border-deadlock-accent/40 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <HeroAvatar heroId={selectedHeroObj.id} size="md" />
+                    {overviewMatches.length < OVERVIEW_LOW_SAMPLE_THRESHOLD && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/70"
+                        title="Low sample (< 5 matches)"
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-base text-white">{selectedHeroObj.name}</span>
+                      {overviewMatches.length < OVERVIEW_LOW_SAMPLE_THRESHOLD ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-400" />
+                          Low Sample Size (&lt; {OVERVIEW_LOW_SAMPLE_THRESHOLD} matches)
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-mono text-emerald-300 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                          Representative Sample
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-deadlock-muted">
+                      Showing overview statistics specifically when piloting {selectedHeroObj.name} ({overviewMatches.length} match{overviewMatches.length !== 1 ? 'es' : ''})
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlayerHeroId(null)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-deadlock-dark hover:bg-deadlock-card border border-deadlock-border text-deadlock-muted hover:text-deadlock-steam transition-colors"
+                >
+                  ✕ Show All Heroes
+                </button>
+              </div>
+            )}
+
             {/* SECTION 1: STREAKS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -646,9 +818,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
           </div>
 
           {topLanePartner && topLanePartner.allyHero ? (
-            <div className="mt-4 flex items-center gap-3.5">
+            <div
+              className={`mt-4 flex items-center gap-3.5 transition-all duration-200 ${
+                topLanePartner.lanesTogether < OVERVIEW_LOW_SAMPLE_THRESHOLD
+                  ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                  : ''
+              }`}
+              title={
+                topLanePartner.lanesTogether < OVERVIEW_LOW_SAMPLE_THRESHOLD
+                  ? `Low sample (< ${OVERVIEW_LOW_SAMPLE_THRESHOLD} duo lanes)`
+                  : undefined
+              }
+            >
               <div className="relative shrink-0">
                 <HeroAvatar heroId={topLanePartner.allyHeroId} size="md" />
+                {topLanePartner.lanesTogether < OVERVIEW_LOW_SAMPLE_THRESHOLD && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/60"
+                    title="Low sample (< 5 duo lanes)"
+                  />
+                )}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-black text-white truncate">
@@ -700,9 +889,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
           </div>
 
           {topRival && topRival.opponentHero ? (
-            <div className="mt-4 flex items-center gap-3.5">
+            <div
+              className={`mt-4 flex items-center gap-3.5 transition-all duration-200 ${
+                topRival.lanesFaced < OVERVIEW_LOW_SAMPLE_THRESHOLD
+                  ? 'opacity-40 blur-[1px] hover:blur-none hover:opacity-100'
+                  : ''
+              }`}
+              title={
+                topRival.lanesFaced < OVERVIEW_LOW_SAMPLE_THRESHOLD
+                  ? `Low sample (< ${OVERVIEW_LOW_SAMPLE_THRESHOLD} lane duels)`
+                  : undefined
+              }
+            >
               <div className="relative shrink-0">
                 <HeroAvatar heroId={topRival.opponentHeroId} size="md" />
+                {topRival.lanesFaced < OVERVIEW_LOW_SAMPLE_THRESHOLD && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/60"
+                    title="Low sample (< 5 lane duels)"
+                  />
+                )}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-black text-white truncate">

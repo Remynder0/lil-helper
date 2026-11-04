@@ -126,4 +126,26 @@ describe('HeroFilter component', () => {
     fireEvent.click(screen.getByText('The Hidden King'));
     expect(handleSideChange).toHaveBeenCalledWith('hidden_king');
   });
+
+  it('identifies and marks heroes with low sample (< 5 matches)', () => {
+    render(
+      <HeroFilter
+        playedHeroes={[
+          { hero: mockHeroes[0], count: 8 },
+          { hero: mockHeroes[1], count: 2 },
+        ]}
+        selectedHeroId={null}
+        onSelectHeroId={vi.fn()}
+        totalMatches={10}
+      />
+    );
+
+    // Hero 2 (Seven, 2 matches) has < 5 matches and should have low-sample title attribute
+    const sevenButton = screen.getByRole('button', { name: /Seven/i });
+    expect(sevenButton.getAttribute('title')).toContain('Low sample size (< 5 matches)');
+
+    // Hero 1 (Infernus, 8 matches) is representative and should not have low sample tooltip
+    const infernusButton = screen.getByRole('button', { name: /Infernus/i });
+    expect(infernusButton.getAttribute('title')).toBeNull();
+  });
 });

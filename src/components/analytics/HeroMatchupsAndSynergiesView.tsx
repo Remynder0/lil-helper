@@ -23,13 +23,24 @@ import { HeroFilter, SideFilterType } from '../HeroFilter';
 
 interface HeroMatchupsAndSynergiesViewProps {
   matches: Match[];
+  selectedPlayerHeroId?: number | null;
+  onSelectHeroId?: (heroId: number | null) => void;
 }
 
 type SortField = 'matches' | 'winRate' | 'wins';
 type RelationMode = 'against' | 'with';
 
-export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesViewProps> = ({ matches }) => {
-  const [selectedPlayerHeroId, setSelectedPlayerHeroId] = useState<number | null>(null);
+export const HeroMatchupsAndSynergiesView: React.FC<HeroMatchupsAndSynergiesViewProps> = ({
+  matches,
+  selectedPlayerHeroId: controlledHeroId,
+  onSelectHeroId: controlledOnSelectHeroId,
+}) => {
+  const [internalHeroId, setInternalHeroId] = useState<number | null>(null);
+  const selectedPlayerHeroId = controlledHeroId !== undefined ? controlledHeroId : internalHeroId;
+  const setSelectedPlayerHeroId = (heroId: number | null) => {
+    setInternalHeroId(heroId);
+    controlledOnSelectHeroId?.(heroId);
+  };
   const [relationMode, setRelationMode] = useState<RelationMode>('against');
   const [selectedSide, setSelectedSide] = useState<SideFilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
