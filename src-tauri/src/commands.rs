@@ -13,6 +13,13 @@
 use crate::models::MatchRecord;
 use crate::storage;
 use crate::log_watcher::{self, LogEvent};
+use sha2::{Digest, Sha256};
+
+const DEV_WORKSTATION_SALT: &str = "lil-helper-dev-workstation-salt-v1";
+// Precomputed salted SHA-256 fingerprint of the authorized developer workstation.
+// Ensures zero personal or sensitive identity information is stored in cleartext.
+const AUTHORIZED_MACHINE_FINGERPRINT: &str =
+    "6ec329fb6e0e578f96d0e2cc94d17b1adf3a866565979917dc0a895a72d6bb8f";
 
 /// Retrieves the complete list of matches for a specific account or default.
 #[tauri::command]
@@ -120,5 +127,32 @@ pub fn is_deadlock_running() -> bool {
 pub fn parse_dem_file(path: String, my_account_id: u32, match_id: u64) -> Result<serde_json::Value, String> {
     let result = crate::dem_parser::parse_dem_file(&path, my_account_id, match_id)?;
     serde_json::to_value(&result).map_err(|e| format!("Erreur de sérialisation : {e}"))
+}
+
+/// Verifies that the app is executing in development mode on an authorized developer workstation.
+/// Enforces debug mode (debug_assertions enabled) and salted cryptographic fingerprint verification.
+/// No personal or sensitive developer identity information is exposed in cleartext.
+#[tauri::command]
+pub fn is_developer_authorized() -> bool {
+    // 1. Must be compiled in debug mode (debug_assertions enabled)
+    if !cfg!(debug_assertions) {
+        return false;
+    }
+
+    // 2. Hardware / OS user salted fingerprint verification
+    let username = std::env::var("USERNAME")
+        .or_else(|_| std::env::var("USER"))
+        .unwrap_or_default()
+        .to_lowercase();
+    let computername = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_default()
+        .to_lowercase();
+
+    let mut hasher = Sha256::new();
+    hasher.update(format!("{}:{}:{}", username.trim(), computername.trim(), DEV_WORKSTATION_SALT).as_bytes());
+    let computed_hash = format!("{:x}", hasher.finalize());
+
+    computed_hash == AUTHORIZED_MACHINE_FINGERPRINT
 }
 

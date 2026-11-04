@@ -23,6 +23,7 @@ pub fn run() {
             commands::capture_screen_image,
             commands::is_deadlock_running,
             commands::parse_dem_file,
+            commands::is_developer_authorized,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
