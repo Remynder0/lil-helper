@@ -263,7 +263,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
 
     <div className="flex flex-col gap-6">
       {/* Subtab Navigation */}
-      <div className="flex items-center justify-between border-b border-deadlock-border pb-3">
+      <div className="flex items-center justify-between pb-3">
         <div className="flex items-center gap-2 steam-glass steam-panel p-1 rounded-lg flex-wrap">
           <button
             type="button"
@@ -315,9 +315,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ matches, profile, 
           </button>
         </div>
 
-        <span className="text-xs text-deadlock-muted hidden sm:inline">
-          Based on {matches.length} recorded match{matches.length !== 1 ? 'es' : ''}
-        </span>
       </div>
 
       {subTab === 'relations' && (

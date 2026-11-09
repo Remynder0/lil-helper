@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700;800&family=MedievalSharp&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Rye&family=Special+Elite&family=VT323&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -334,4 +334,92 @@ h1, h2 {
 @keyframes slideInRight {
   from { transform: translateX(110%); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Official Deadlock Typefaces (Citadel Panorama) */
+@font-face {
+  font-family: 'VALVe Pulp';
+  src: url('/fonts/valvepulp-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Valve Oracle';
+  src: url('/fonts/valveoracle-semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Reaver';
+  src: url('/fonts/reaver-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Jost';
+  src: url('/fonts/jost-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Jost';
+  src: url('/fonts/jost-black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Official Deadlock Font Utilities */
+.font-deadlock-pulp {
+  font-family: 'VALVe Pulp', 'Bebas Neue', sans-serif;
+  letter-spacing: 0.05em;
+}
+.font-deadlock-oracle {
+  font-family: 'Valve Oracle', 'Cinzel', serif;
+  letter-spacing: 0.04em;
+}
+.font-deadlock-reaver {
+  font-family: 'Reaver', 'Cinzel', serif;
+  letter-spacing: 0.03em;
+}
+.font-deadlock-jost {
+  font-family: 'Jost', sans-serif;
+  letter-spacing: 0.06em;
+}
+
+/* Fallback Splash Font Utilities */
+.font-splash-cinzel {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+}
+.font-splash-pixel {
+  font-family: 'VT323', monospace;
+  font-size: 1.35em;
+  letter-spacing: 0.05em;
+}
+
+/* Steampunk-Occult Ethereal Floating Animation (+10° diagonal, corner anchored) */
+@keyframes occultSplashPulse {
+  0%, 100% {
+    transform: rotate(10deg) translateY(0);
+    filter: drop-shadow(0 0 14px rgba(232, 192, 106, 0.65)) drop-shadow(0 0 30px rgba(245, 158, 11, 0.45)) drop-shadow(2px 3px 0px rgba(0, 0, 0, 0.95));
+  }
+  50% {
+    transform: rotate(10deg) translateY(5px);
+    filter: drop-shadow(0 0 26px rgba(254, 240, 138, 0.95)) drop-shadow(0 0 48px rgba(232, 192, 106, 0.75)) drop-shadow(3px 4px 0px rgba(0, 0, 0, 0.95));
+  }
+}
+
+.animate-occult-splash {
+  display: inline-block;
+  animation: occultSplashPulse 3.4s ease-in-out infinite;
+  transform-origin: top left;
+  will-change: transform, filter;
 }

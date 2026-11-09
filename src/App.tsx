@@ -6,6 +6,7 @@ import { DraftAssistantView } from './components/draft/DraftAssistantView';
 import { ProfileConnectModal } from './components/profile/ProfileConnectModal';
 import { LogDashboardView } from './components/logs/LogDashboardView';
 import { AppHeader } from './components/AppHeader';
+import { HideoutSplashQuote } from './components/HideoutSplashQuote';
 import { ImportMatchByIdModal } from './components/history/ImportMatchByIdModal';
 import { DesktopDownloadBanner } from './components/DesktopDownloadBanner';
 import { useProfileSync } from './hooks/useProfileSync';
@@ -196,37 +197,50 @@ const AppInner: React.FC = () => {
     }
   };
 
-  // Dynamic hero background artwork
+  // Resolve active hero for background artwork and hideout quote
   // Priority: 1) filtered/previewed hero, 2) live in-game hero, 3) most-played hero, 4) fallback: Celeste
-  const activeHeroBgUrl = useMemo(() => {
+  const activeHero = useMemo(() => {
     // 1. Manually filtered / previewed hero
     if (previewHeroId) {
       const hero = getHeroById(previewHeroId);
-      if (hero?.backgroundUrl) return hero.backgroundUrl;
-      if (hero) return `/heroes/backgrounds/${hero.key}_bg.webp`;
+      if (hero) return hero;
     }
 
     // 2. Live in-game hero
     if (gameContext.myHeroId) {
       const liveHero = getHeroById(gameContext.myHeroId);
-      if (liveHero?.backgroundUrl) return liveHero.backgroundUrl;
-      if (liveHero) return `/heroes/backgrounds/${liveHero.key}_bg.webp`;
+      if (liveHero) return liveHero;
     }
 
     // 3. Most-played hero from match history
     if (matches.length > 0) {
       const performances = calculateHeroPerformance(matches);
       if (performances.length > 0) {
-        const topHero = performances[0];
-        const hero = getHeroById(topHero.heroId);
-        if (hero?.backgroundUrl) return hero.backgroundUrl;
-        if (hero) return `/heroes/backgrounds/${hero.key}_bg.webp`;
+        const topHero = getHeroById(performances[0].heroId);
+        if (topHero) return topHero;
       }
     }
 
-    // 4. Default showcase: Celeste
-    return '/heroes/backgrounds/celeste_bg.webp';
+    // 4. Default showcase: Celeste or first hero
+    return getHeroById(1) || null;
   }, [previewHeroId, gameContext.myHeroId, matches]);
+
+  const activeHeroBgUrl = useMemo(() => {
+    if (activeHero?.backgroundUrl) return activeHero.backgroundUrl;
+    if (activeHero) return `/heroes/backgrounds/${activeHero.key}_bg.webp`;
+    return '/heroes/backgrounds/celeste_bg.webp';
+  }, [activeHero]);
+
+  // Hideout splash quote for the active hero
+  const hideoutQuote = useMemo(() => {
+    if (activeHero?.hideoutRichPresence) {
+      return activeHero.hideoutRichPresence;
+    }
+    return 'Chilling In The Hideout';
+  }, [activeHero]);
+
+  // Hide the hideout quote only when actively playing in a live match
+  const isActivelyInMatch = gameContext.state === 'in_game' || gameContext.state === 'draft';
 
   return (
     <div className="min-h-screen bg-deadlock-dark text-deadlock-steam flex flex-col relative">
@@ -261,6 +275,12 @@ const AppInner: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-deadlock-dark/35 via-transparent to-deadlock-dark/70" />
         </div>
       )}
+
+      {/* Steampunk-Occult Floating Splash Quote in Valve Oracle (+10° diagonal) */}
+      <HideoutSplashQuote
+        quote={hideoutQuote}
+        visible={!isActivelyInMatch}
+      />
 
       {/* Top Header — Props reduced from 17 to 8 using Zustand */}
       <AppHeader

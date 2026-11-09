@@ -66,3 +66,22 @@
 .animate-heroBgFade {
   animation: heroBgFade 1.2s ease-out forwards;
 }
+
+/* Steampunk-Occult Ethereal Floating Animation (+10° diagonal, corner anchored) */
+@keyframes occultSplashPulse {
+  0%, 100% {
+    transform: rotate(10deg) translateY(0);
+    filter: drop-shadow(0 0 14px rgba(232, 192, 106, 0.65)) drop-shadow(0 0 30px rgba(245, 158, 11, 0.45)) drop-shadow(2px 3px 0px rgba(0, 0, 0, 0.95));
+  }
+  50% {
+    transform: rotate(10deg) translateY(5px);
+    filter: drop-shadow(0 0 26px rgba(254, 240, 138, 0.95)) drop-shadow(0 0 48px rgba(232, 192, 106, 0.75)) drop-shadow(3px 4px 0px rgba(0, 0, 0, 0.95));
+  }
+}
+
+.animate-occult-splash {
+  display: inline-block;
+  animation: occultSplashPulse 3.4s ease-in-out infinite;
+  transform-origin: top left;
+  will-change: transform, filter;
+}
