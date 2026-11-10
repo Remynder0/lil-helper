@@ -168,20 +168,28 @@ export function useProfileSync() {
 
       if (allNewMatches.length > 0) {
         await persistMatches(allNewMatches, targetProfile.accountId);
-        syncMatchesWithCloud(targetProfile.accountId, targetProfile).catch(console.error);
-        onMatchesUpdated((prev) => combineMatchesWithPriority(prev, allNewMatches));
+        // Priority order: Local > SupaCloud > API (Local takes precedence over API)
+        onMatchesUpdated((prev) => combineMatchesWithPriority(allNewMatches, prev));
 
         const recoveredMsg = recoveredMatches.length > 0
           ? ` (${recoveredMatches.length} recovered from logs)`
           : '';
         setSyncStatusText(`+${allNewMatches.length} new ranked match${allNewMatches.length > 1 ? 'es' : ''} imported!${recoveredMsg}`);
       } else {
-        syncMatchesWithCloud(targetProfile.accountId, targetProfile).catch(console.error);
         setSyncStatusText(`Up to date (${totalRankedFound} ranked found in history)`);
       }
 
+      // Synchronize with Supabase Cloud (Local > SupaCloud > API)
+      syncMatchesWithCloud(targetProfile.accountId, targetProfile)
+        .then((cloudRes) => {
+          if (cloudRes.success && cloudRes.count > 0) {
+            useMatchStore.getState().loadMatches(targetProfile.accountId).catch(console.error);
+          }
+        })
+        .catch(console.error);
+
       // Automatically backfill any existing matches missing ranked points
-      const allCurrentMatches = combineMatchesWithPriority(matches, allNewMatches);
+      const allCurrentMatches = combineMatchesWithPriority(allNewMatches, matches);
       const needsBackfill = allCurrentMatches.some(
         (m) => m.matchId && (m.rankedDelta === undefined || m.rankedDelta === null)
       );

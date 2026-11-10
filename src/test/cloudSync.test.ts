@@ -192,6 +192,58 @@ describe('CloudSync & Supabase Priority Architecture', () => {
       expect(combined[0].lane).toBe('blue');
     });
 
+    it('strictly respects the 3-tier priority hierarchy: Local > SupaCloud > API', () => {
+      const apiMatch: Match = {
+        id: 'api_5001',
+        matchId: 5001,
+        date: '2026-10-15T12:00:00Z',
+        side: 'hidden_king',
+        myHeroId: 1,
+        result: 'loss',
+        allies: [2, 3, 4, 5, 6],
+        enemies: [7, 8, 9, 10, 11, 12],
+        notes: 'API raw note',
+        lane: 'yellow',
+        durationSeconds: 1200,
+      };
+
+      const cloudMatch: Match = {
+        id: 'cloud_5001',
+        matchId: 5001,
+        date: '2026-10-15T12:00:00Z',
+        side: 'hidden_king',
+        myHeroId: 1,
+        result: 'win',
+        allies: [2, 3, 4, 5, 6],
+        enemies: [7, 8, 9, 10, 11, 12],
+        notes: 'Cloud note',
+        lane: 'green',
+        rankedProgress: 750,
+      };
+
+      const localMatch: Match = {
+        id: 'local_5001',
+        matchId: 5001,
+        date: '2026-10-15T12:00:00Z',
+        side: 'hidden_king',
+        myHeroId: 1,
+        result: 'win',
+        allies: [2, 3, 4, 5, 6],
+        enemies: [7, 8, 9, 10, 11, 12],
+        notes: 'Authoritative local note',
+        lane: 'blue',
+      };
+
+      const merged = combineMatchesWithPriority([apiMatch], [cloudMatch], [localMatch]);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].notes).toBe('Authoritative local note');
+      expect(merged[0].lane).toBe('blue');
+      expect(merged[0].result).toBe('win');
+      expect(merged[0].rankedProgress).toBe(750);
+      expect(merged[0].durationSeconds).toBe(1200);
+    });
+
     it('unions matches from Local and Cloud storage without losing disjoint records', async () => {
       configureSupabase('https://test.supabase.co', 'sb_secret_dummy_secret_key');
       const originalFetch = globalThis.fetch;

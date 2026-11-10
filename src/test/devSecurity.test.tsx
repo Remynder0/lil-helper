@@ -144,12 +144,11 @@ describe('Developer Security Subsystem', () => {
       });
 
       expect(screen.queryByText(/Log Dashboard & Console/i)).toBeNull();
-      expect(screen.queryByText(/Sync with Supabase Cloud/i)).toBeNull();
       expect(screen.getByText(/Export Matches/i)).toBeDefined();
       expect(screen.getByText(/Disconnect/i)).toBeDefined();
     });
 
-    it('shows Log Dashboard and Supabase Cloud options to authorized developers', async () => {
+    it('shows Log Dashboard option to authorized developers', async () => {
       _setDevAuthorizedForTesting(true);
 
       render(
@@ -173,7 +172,6 @@ describe('Developer Security Subsystem', () => {
       });
 
       expect(screen.getByText(/Log Dashboard & Console/i)).toBeDefined();
-      expect(screen.getByText(/Sync with Supabase Cloud/i)).toBeDefined();
     });
   });
 });

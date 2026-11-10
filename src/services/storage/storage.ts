@@ -268,8 +268,8 @@ export async function fetchAllMatches(accountId?: number | null): Promise<Match[
     return localMatches;
   }
 
-  // 3. Combine Local + Cloud storage: Cloud takes precedence over Local in case of duplicates
-  const combined = combineMatchesWithPriority(localMatches, cloudMatches);
+  // 3. Combine Local + Cloud storage: Local takes precedence over Cloud in case of duplicates
+  const combined = combineMatchesWithPriority(cloudMatches, localMatches);
 
   // 4. Update local cache with combined list
   writeLocalMatchesCache(targetAccountId, combined).catch(console.error);
@@ -647,10 +647,9 @@ export async function syncMatchesWithCloud(
     const cloud = await fetchCloudMatchHistory(accountId);
     const local = await fetchLocalMatches(accountId);
 
-    const merged = combineMatchesWithPriority(
-      local,
-      cloud.found && Array.isArray(cloud.matches) ? cloud.matches : []
-    );
+    const cloudMatches = cloud.found && Array.isArray(cloud.matches) ? cloud.matches : [];
+    // Priority order: Local > SupaCloud (Local takes precedence over Cloud)
+    const merged = combineMatchesWithPriority(cloudMatches, local);
 
     // Save locally
     await writeLocalMatchesCache(accountId, merged);
