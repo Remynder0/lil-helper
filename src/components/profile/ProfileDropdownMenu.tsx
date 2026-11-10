@@ -218,12 +218,21 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
         type="button"
         onClick={onSync}
         disabled={isSyncing || cooldownRemaining > 0}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+        aria-label={
+          isSyncing
+            ? 'Syncing matches...'
+            : cooldownRemaining > 0
+            ? `Cooldown active (${Math.floor(cooldownRemaining / 60)}:${String(cooldownRemaining % 60).padStart(2, '0')})`
+            : 'Refresh & sync matches'
+        }
+        className={`flex items-center justify-center gap-1.5 ${
+          cooldownRemaining > 0 ? 'px-2 py-1 min-w-[54px]' : 'w-7 h-7 p-0'
+        } rounded text-xs font-bold transition-all ${
           isSyncing
             ? 'bg-deadlock-accent/20 text-deadlock-accent cursor-not-allowed'
             : cooldownRemaining > 0
             ? 'bg-deadlock-border/40 text-deadlock-muted border border-deadlock-border/60 cursor-not-allowed'
-            : 'bg-deadlock-accent text-deadlock-steam hover:text-black hover:bg-yellow-400 shadow-sm'
+            : 'bg-deadlock-accent text-deadlock-steam hover:text-black hover:bg-yellow-400 shadow-sm cursor-pointer'
         }`}
         title={
           cooldownRemaining > 0
@@ -231,14 +240,12 @@ export const ProfileDropdownMenu: React.FC<ProfileDropdownMenuProps> = ({
             : 'Refresh & sync new ranked matches from Deadlock API'
         }
       >
-        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-        <span className="hidden md:inline">
-          {isSyncing
-            ? 'Syncing...'
-            : cooldownRemaining > 0
-            ? `Refresh (${Math.floor(cooldownRemaining / 60)}:${String(cooldownRemaining % 60).padStart(2, '0')})`
-            : 'Refresh'}
-        </span>
+        <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />
+        {cooldownRemaining > 0 && (
+          <span className="font-mono text-[11px] tabular-nums leading-none">
+            {Math.floor(cooldownRemaining / 60)}:{String(cooldownRemaining % 60).padStart(2, '0')}
+          </span>
+        )}
       </button>
     </div>
   );

@@ -8,7 +8,6 @@ import { useUIStore, AppTab } from '../stores/useUIStore';
 import { useMatchStore, selectTotalMatches, selectWinRate } from '../stores/useMatchStore';
 import steamLogo from '../assets/steam-logo.svg';
 import artDecoDivider from '../assets/art-deco/divider.svg';
-import artDecoCartouche from '../assets/art-deco/cartouche.svg';
 import lilHelperLogo from '../assets/lil-helper.png';
 
 export type { AppTab };
@@ -46,9 +45,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       {/* Decorative background brass conduit line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-deadlock-accent/60 to-transparent" />
 
-      <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto flex items-center justify-between">
-        {/* Brand & Steampunk Apparatus Emblem */}
-        <div className="flex items-center gap-3 relative z-10">
+      <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1680px] mx-auto flex items-center justify-between relative min-h-[44px]">
+        {/* Brand & Global Quick Stats */}
+        <div className="flex items-center gap-3 sm:gap-4 relative z-10">
           <div className="flex items-center gap-2.5">
             <img src={lilHelperLogo} alt="Lil Helper" className="w-8 h-8 shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] object-contain" />
             <div className="flex flex-col">
@@ -56,42 +55,39 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <span className="text-[10px] text-deadlock-muted tracking-wider font-mono">DEADLOCK COMPANION</span>
             </div>
           </div>
-        </div>
 
-        {/* Global Quick Stats & Navigation */}
-        <div className="flex items-center gap-2.5 sm:gap-4 text-xs relative z-30">
-          {/* Art Deco Cartouche Stats: Matches & Winrate */}
-          <div className="flex items-center gap-2.5">
-            {/* Matches Cartouche */}
-            <div className="relative h-[44px] w-[140px] flex items-center justify-center group drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
-              <img
-                src={artDecoCartouche}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-all duration-300 filter drop-shadow-[0_0_8px_rgba(232,192,106,0.25)] group-hover:drop-shadow-[0_0_14px_rgba(232,192,106,0.5)]"
-              />
-              <div className="relative z-10 flex items-center gap-1.5 text-deadlock-muted text-xs px-2.5">
-                <Gauge className="w-4 h-4 text-deadlock-accent shrink-0" />
-                <span className="truncate">Matches: <strong className="text-deadlock-steam font-mono font-bold text-sm">{totalMatches}</strong></span>
-              </div>
+          {/* Quick Stats Pill (Base format) */}
+          <div className="flex items-center bg-deadlock-dark/80 p-0.5 rounded-lg border border-deadlock-border/80 steam-card text-xs">
+            {/* Account Matches */}
+            <div
+              className="group relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/50 transition-all cursor-default"
+              title="account matches"
+            >
+              <Gauge className="w-3.5 h-3.5 text-deadlock-accent shrink-0 group-hover:scale-110 transition-transform" />
+              <strong className="text-deadlock-steam font-mono font-bold text-xs">{totalMatches}</strong>
+              <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-deadlock-dark/95 px-2 py-0.5 text-[10px] font-medium text-deadlock-steam border border-deadlock-brass/40 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 z-50">
+                account matches
+              </span>
             </div>
 
-            {/* Winrate Cartouche */}
-            <div className="relative h-[44px] w-[140px] flex items-center justify-center group drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
-              <img
-                src={artDecoCartouche}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-all duration-300 filter drop-shadow-[0_0_8px_rgba(232,192,106,0.25)] group-hover:drop-shadow-[0_0_14px_rgba(232,192,106,0.5)]"
-              />
-              <div className="relative z-10 flex items-center gap-1.5 text-deadlock-muted text-xs px-2.5">
-                <BarChart2 className="w-4 h-4 text-deadlock-accent shrink-0" />
-                <span className="truncate">Winrate: <strong className={`font-mono font-bold text-sm ${winRate >= 50 ? 'text-deadlock-win' : 'text-deadlock-loss'}`}>{winRate}%</strong></span>
-              </div>
+            <span className="w-px h-3.5 bg-deadlock-border/60 mx-0.5" />
+
+            {/* Account Winrate */}
+            <div
+              className="group relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-deadlock-muted hover:text-deadlock-steam hover:bg-deadlock-card/50 transition-all cursor-default"
+              title="account winrate"
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-deadlock-accent shrink-0 group-hover:scale-110 transition-transform" />
+              <strong className={`font-mono font-bold text-xs ${winRate >= 50 ? 'text-deadlock-win' : 'text-deadlock-loss'}`}>{winRate}%</strong>
+              <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-deadlock-dark/95 px-2 py-0.5 text-[10px] font-medium text-deadlock-steam border border-deadlock-brass/40 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 z-50">
+                account winrate
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Tab Navigation Controls */}
+        {/* Section Navigation Controls — Centered */}
+        <nav aria-label="Sections principales" className="md:absolute md:left-1/2 md:-translate-x-1/2 flex items-center z-20">
           <div className="flex bg-deadlock-dark/80 p-1 rounded-lg border border-deadlock-border/80 steam-card">
             <button
               type="button"
@@ -130,39 +126,39 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <span>Draft Assistant</span>
             </button>
           </div>
+        </nav>
 
-          {/* Live Player Status & Steam Profile Sync */}
-          <div className="flex items-center gap-2 pl-2 border-l border-deadlock-border/60">
-            <PlayerStateBadge
-              state={gameContext.state}
-              stateLabel={gameContext.stateLabel}
-              playerName={gameContext.playerName}
-              heroName={gameContext.myHeroName}
-              heroId={gameContext.myHeroId}
-              mapName={gameContext.mapName}
+        {/* Live Player Status & Steam Profile Sync */}
+        <div className="flex items-center gap-2 pl-2 relative z-30">
+          <PlayerStateBadge
+            state={gameContext.state}
+            stateLabel={gameContext.stateLabel}
+            playerName={gameContext.playerName}
+            heroName={gameContext.myHeroName}
+            heroId={gameContext.myHeroId}
+            mapName={gameContext.mapName}
+          />
+
+          {profile ? (
+            <ProfileDropdownMenu
+              profile={profile}
+              isSyncing={isSyncing}
+              cooldownRemaining={cooldownRemaining}
+              onSync={onSync}
+              onExport={onExport}
+              onTriggerImportFile={onTriggerImportFile}
+              onDisconnect={onDisconnect}
             />
-
-            {profile ? (
-              <ProfileDropdownMenu
-                profile={profile}
-                isSyncing={isSyncing}
-                cooldownRemaining={cooldownRemaining}
-                onSync={onSync}
-                onExport={onExport}
-                onTriggerImportFile={onTriggerImportFile}
-                onDisconnect={onDisconnect}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setProfileModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-deadlock-dark/80 border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-gray-200 hover:text-white transition-all shadow-sm steam-card cursor-pointer"
-              >
-                <img src={steamLogo} alt="Steam" className="w-4 h-4 shrink-0 drop-shadow" />
-                <span>connect ?</span>
-              </button>
-            )}
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setProfileModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-deadlock-dark/80 border border-deadlock-accent/50 hover:border-deadlock-accent text-xs font-bold text-gray-200 hover:text-white transition-all shadow-sm steam-card cursor-pointer"
+            >
+              <img src={steamLogo} alt="Steam" className="w-4 h-4 shrink-0 drop-shadow" />
+              <span>connect ?</span>
+            </button>
+          )}
         </div>
       </div>
 
