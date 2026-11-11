@@ -15,6 +15,7 @@ import {
   validateMatchInput,
 } from '../../types/match';
 import { persistMatch } from '../../services/storage/storage';
+import { isSeason2Match } from '../../services/ranked/seasonConfig';
 import { Shield, Sparkles, Trophy, Skull, Ban, CheckCircle, AlertCircle, RotateCcw, Save, Compass, Swords, Users } from 'lucide-react';
 
 interface MatchFormProps {
@@ -165,6 +166,14 @@ export const MatchForm: React.FC<MatchFormProps> = ({
         laneOpponents: laneOpponents.length > 0 ? laneOpponents : undefined,
         laneOutcome: laneOutcome || undefined,
       };
+
+      if (isSeason2Match(matchToSave)) {
+        setValidationErrors([
+          'Season 2 match recording is temporarily disabled until Season 2 rules are finalized.',
+        ]);
+        setIsSubmitting(false);
+        return;
+      }
 
       const saved = await persistMatch(matchToSave);
       setSuccessMessage(editingMatch ? 'Match successfully updated!' : 'Match successfully recorded!');

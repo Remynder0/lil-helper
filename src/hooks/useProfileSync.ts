@@ -139,6 +139,9 @@ export function useProfileSync() {
             } else if (directResult.error === 'not_ranked') {
               updateQueuedMatchStatus(item.matchId, 'not_ranked', 'Match is Casual / Unranked.', false);
               removeMatchFromQueue(item.matchId);
+            } else if (directResult.error === 'season_2_blocked') {
+              updateQueuedMatchStatus(item.matchId, 'failed', directResult.message || 'Season 2 match recording is blocked.', false);
+              removeMatchFromQueue(item.matchId);
             } else if (directResult.error === 'not_in_match') {
               updateQueuedMatchStatus(item.matchId, 'failed', 'Profile was not part of this match.', false);
               removeMatchFromQueue(item.matchId);
@@ -255,6 +258,13 @@ export function useProfileSync() {
         if (result.error === 'not_ranked') {
           setImportByIdError(
             `Match #${matchId} exists, but it is not a Ranked match. Only ranked matches are imported.`
+          );
+          return { added: false, matchId };
+        }
+
+        if (result.error === 'season_2_blocked') {
+          setImportByIdError(
+            result.message || `Match #${matchId} belongs to Ranked Season 2. Season 2 matches are not imported yet.`
           );
           return { added: false, matchId };
         }

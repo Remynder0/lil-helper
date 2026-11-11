@@ -4,6 +4,7 @@ import { Match } from '../../types/match';
 import { useDemParser } from '../../hooks/useDemParser';
 import { persistMatch } from '../../services/storage/storage';
 import { removeMatchFromQueue } from '../../services/logs/matchQueue';
+import { isSeason2Match } from '../../services/ranked/seasonConfig';
 
 interface ReplayRecoveryModalProps {
   isOpen: boolean;
@@ -53,6 +54,10 @@ export const ReplayRecoveryModal: React.FC<ReplayRecoveryModalProps> = ({
     if (hasOlderIncomplete) return;
     const importedMatch = await detectAndParse(matchTimestamp);
     if (importedMatch) {
+      if (isSeason2Match(importedMatch)) {
+        console.warn('Replay belongs to Season 2. Discarding import.');
+        return;
+      }
       try {
         await persistMatch(importedMatch);
         onMatchImported(importedMatch);
@@ -67,6 +72,10 @@ export const ReplayRecoveryModal: React.FC<ReplayRecoveryModalProps> = ({
     if (hasOlderIncomplete || !manualPath.trim()) return;
     const importedMatch = await parseFile(manualPath.trim(), matchTimestamp);
     if (importedMatch) {
+      if (isSeason2Match(importedMatch)) {
+        console.warn('Replay belongs to Season 2. Discarding import.');
+        return;
+      }
       try {
         await persistMatch(importedMatch);
         onMatchImported(importedMatch);

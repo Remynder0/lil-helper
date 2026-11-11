@@ -12,6 +12,7 @@ import {
   removeMatchFromQueue,
   QueuedMatch,
 } from '../services/logs/matchQueue';
+import { isSeason2Match } from '../services/ranked/seasonConfig';
 
 interface MatchState {
   matches: Match[];
@@ -62,7 +63,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     set({ isLoading: true, currentAccountId: effectiveAccountId ?? null });
     try {
       const data = await fetchAllMatches(effectiveAccountId);
-      const sorted = [...data].sort(
+      const allowed = data.filter((m) => !isSeason2Match(m));
+      const sorted = [...allowed].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       set({ matches: sorted, isLoading: false });
@@ -73,6 +75,11 @@ export const useMatchStore = create<MatchState>((set, get) => ({
   },
 
   saveMatch: (savedMatch: Match) => {
+    if (isSeason2Match(savedMatch)) {
+      console.warn(`[useMatchStore] Blocked saveMatch for Season 2 match #${savedMatch.matchId || savedMatch.id}`);
+      return;
+    }
+
     set((state) => {
       const existingIdx = state.matches.findIndex((m) => m.id === savedMatch.id);
       let nextList: Match[];

@@ -128,6 +128,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         return;
       }
 
+      if (!result.success && result.error === 'season_2_blocked') {
+        setSyncingMatchId(null);
+        return;
+      }
+
       // API failed or match is not indexed yet
       if (isOlderThan5h) {
         setSelectedRecoveryMatch(m);

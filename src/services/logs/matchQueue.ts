@@ -3,6 +3,7 @@ import {
   saveTrackedPendingMatch,
   removeTrackedPendingMatch,
 } from '../storage/storage';
+import { isSeason2Match } from '../ranked/seasonConfig';
 
 export type QueueMatchStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'not_ranked';
 
@@ -186,6 +187,23 @@ export function addMatchToQueue(
   heroName?: string | null,
   source: 'log' | 'manual' = 'manual'
 ): QueuedMatch {
+  if (isSeason2Match({ matchId, date: detectedAt })) {
+    const existing = memoryQueue.find((m) => m.matchId === matchId);
+    if (existing) {
+      removeMatchFromQueue(matchId);
+    }
+    return {
+      matchId,
+      detectedAt,
+      heroId,
+      heroName,
+      status: 'failed',
+      attempts: 0,
+      source,
+      message: 'Season 2 match recording is temporarily blocked.',
+    };
+  }
+
   const existing = memoryQueue.find((m) => m.matchId === matchId);
   if (existing) {
     if (heroId && !existing.heroId) {

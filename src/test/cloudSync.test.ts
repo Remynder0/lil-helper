@@ -45,7 +45,7 @@ describe('CloudSync & Supabase Priority Architecture', () => {
   it('prioritizes local storage seamlessly when Supabase is unconfigured', async () => {
     const dummyMatch: Match = {
       id: 'test_cloud_fallback_1',
-      date: new Date().toISOString(),
+      date: '2026-10-25T14:00:00.000Z',
       side: 'hidden_king',
       myHeroId: 1,
       allies: [2, 3, 4, 5, 6],
@@ -63,7 +63,7 @@ describe('CloudSync & Supabase Priority Architecture', () => {
   it('never syncs guest mode (null accountId) to Supabase', async () => {
     const guestMatch: Match = {
       id: 'guest_local_1',
-      date: new Date().toISOString(),
+      date: '2026-10-25T14:00:00.000Z',
       side: 'archmother',
       myHeroId: 3,
       allies: [1, 2, 4, 5, 6],
@@ -135,7 +135,7 @@ describe('CloudSync & Supabase Priority Architecture', () => {
     try {
       const match: Match = {
         id: 'auto_sync_test_match_1',
-        date: new Date().toISOString(),
+        date: '2026-10-25T14:00:00.000Z',
         side: 'hidden_king',
         myHeroId: 1,
         allies: [2, 3, 4, 5, 6],

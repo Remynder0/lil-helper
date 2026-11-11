@@ -4,6 +4,7 @@ import type { UserSettings } from './userSettings';
 import { fetchCloudMatchHistory, pushCloudMatchHistory, getCloudSyncState } from './cloudSync';
 import { isSupabaseConfigured, initializeSupabaseConfig } from './supabaseClient';
 import { isDeveloperAuthorized } from '../devSecurity';
+import { isSeason2Match } from '../ranked/seasonConfig';
 
 export const CURRENT_STORAGE_SCHEMA_VERSION = 2;
 const LOCAL_STORAGE_KEY = 'deadlock_matches_v1';
@@ -283,6 +284,11 @@ export async function fetchAllMatches(accountId?: number | null): Promise<Match[
 }
 
 export async function persistMatch(match: Match, accountId?: number | null): Promise<Match> {
+  if (isSeason2Match(match)) {
+    console.warn(`[storage] Blocked persistMatch for Season 2 match #${match.matchId || match.id}`);
+    return match;
+  }
+
   const targetAccountId = resolveAccountId(accountId);
 
   if (isTauriEnvironment()) {
@@ -321,13 +327,14 @@ export async function persistMatch(match: Match, accountId?: number | null): Pro
 }
 
 export async function persistMatches(newMatches: Match[], accountId?: number | null): Promise<Match[]> {
-  if (newMatches.length === 0) return [];
+  const allowedMatches = newMatches.filter((m) => !isSeason2Match(m));
+  if (allowedMatches.length === 0) return [];
   const targetAccountId = resolveAccountId(accountId);
 
   if (isTauriEnvironment()) {
     try {
       await invoke<number>('import_matches', {
-        jsonData: JSON.stringify(newMatches),
+        jsonData: JSON.stringify(allowedMatches),
         accountId: targetAccountId ?? null,
       });
     } catch (err) {
@@ -336,7 +343,7 @@ export async function persistMatches(newMatches: Match[], accountId?: number | n
   }
 
   const current = await fetchLocalMatches(targetAccountId);
-  for (const item of newMatches) {
+  for (const item of allowedMatches) {
     const idx = current.findIndex((m) => m.id === item.id);
     if (idx >= 0) {
       current[idx] = item;
@@ -354,7 +361,7 @@ export async function persistMatches(newMatches: Match[], accountId?: number | n
     });
   }
 
-  return newMatches;
+  return allowedMatches;
 }
 
 export async function removeMatch(id: string, accountId?: number | null): Promise<boolean> {
@@ -436,14 +443,15 @@ export async function importMatchesJson(jsonString: string, accountId?: number |
   const parsed = JSON.parse(jsonString);
   const { matches: importedMatches } = migrateMatchData(parsed);
 
-  if (importedMatches.length === 0) {
-    throw new Error('Import data must contain valid match records.');
+  const allowedMatches = importedMatches.filter((m) => !isSeason2Match(m));
+  if (allowedMatches.length === 0) {
+    throw new Error('Import data contains only Season 2 matches. Season 2 matches are not supported yet.');
   }
 
   if (isTauriEnvironment()) {
     try {
       await invoke<number>('import_matches', {
-        jsonData: JSON.stringify(importedMatches),
+        jsonData: JSON.stringify(allowedMatches),
         accountId: targetAccountId ?? null,
       });
     } catch (err) {
@@ -452,7 +460,7 @@ export async function importMatchesJson(jsonString: string, accountId?: number |
   }
 
   const current = await fetchLocalMatches(targetAccountId);
-  for (const item of importedMatches) {
+  for (const item of allowedMatches) {
     const idx = current.findIndex((m) => m.id === item.id);
     if (idx >= 0) {
       current[idx] = item;
@@ -467,7 +475,7 @@ export async function importMatchesJson(jsonString: string, accountId?: number |
     pushCloudMatchHistory(targetAccountId, current).catch(console.error);
   }
 
-  return importedMatches.length;
+  return allowedMatches.length;
 }
 
 /**
@@ -582,6 +590,10 @@ export function saveTrackedPendingMatch(
   heroName?: string | null,
   source?: 'log' | 'manual'
 ): void {
+  if (isSeason2Match({ matchId, date: detectedAt })) {
+    return;
+  }
+
   const current = getTrackedPendingMatches();
   const existing = current.find((item) => item.matchId === matchId);
   if (existing) {
@@ -647,9 +659,14 @@ export async function syncMatchesWithCloud(
     const cloud = await fetchCloudMatchHistory(accountId);
     const local = await fetchLocalMatches(accountId);
 
-    const cloudMatches = cloud.found && Array.isArray(cloud.matches) ? cloud.matches : [];
+    const cloudMatches = (cloud.found && Array.isArray(cloud.matches) ? cloud.matches : []).filter(
+      (m) => !isSeason2Match(m)
+    );
+    const localMatches = local.filter((m) => !isSeason2Match(m));
     // Priority order: Local > SupaCloud (Local takes precedence over Cloud)
-    const merged = combineMatchesWithPriority(cloudMatches, local);
+    const merged = combineMatchesWithPriority(cloudMatches, localMatches).filter(
+      (m) => !isSeason2Match(m)
+    );
 
     // Save locally
     await writeLocalMatchesCache(accountId, merged);

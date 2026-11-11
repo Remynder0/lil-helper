@@ -5,11 +5,13 @@ import {
   computeLaneOutcome,
   calculateLaneOutcome,
 } from './laneOutcome';
+import { isSeason2Match } from '../ranked/seasonConfig';
 
 export * from './apiClient';
 export * from './steamSearch';
 export * from './laneOutcome';
 export * from './rankStanding';
+export * from '../ranked/seasonConfig';
 
 export interface RawPlayerMatchHistoryEntry {
   account_id: number;
@@ -108,8 +110,8 @@ export async function fetchPlayerRankedMatches(
   const rawMatches: RawPlayerMatchHistoryEntry[] = await res.json();
   if (!Array.isArray(rawMatches)) return [];
 
-  // Strictly filter for Ranked mode only (match_mode === 4)
-  return rawMatches.filter((m) => m.match_mode === 4);
+  // Strictly filter for Ranked mode only (match_mode === 4) and Season 1 only (Season 2 is blocked)
+  return rawMatches.filter((m) => m.match_mode === 4 && !isSeason2Match(m));
 }
 
 
@@ -133,6 +135,7 @@ export type FetchSingleMatchResult =
         | 'not_found'
         | 'not_ranked'
         | 'not_in_match'
+        | 'season_2_blocked'
         | 'server_error'
         | 'network_error';
       status?: number;
@@ -568,7 +571,7 @@ export async function backfillRankedDataForMatches(
   onProgress?: (processed: number, total: number) => void
 ): Promise<{ updatedMatches: Match[]; updatedCount: number }> {
   const matchesToUpdate = matches.filter(
-    (m) => m.matchId && (m.rankedDelta === undefined || m.rankedDelta === null)
+    (m) => m.matchId && !isSeason2Match(m) && (m.rankedDelta === undefined || m.rankedDelta === null)
   );
 
   if (matchesToUpdate.length === 0) {
@@ -721,6 +724,14 @@ export async function fetchSingleMatchResultById(
       success: false,
       error: 'not_ranked',
       message: `Match #${matchId} exists, but it is not a Ranked match (mode: ${matchInfo.match_mode}). Only ranked matches are imported.`,
+    };
+  }
+
+  if (isSeason2Match({ match_id: matchId, match_info: matchInfo, start_time: matchInfo.start_time })) {
+    return {
+      success: false,
+      error: 'season_2_blocked',
+      message: `Match #${matchId} belongs to Ranked Season 2. Season 2 match recording is temporarily suspended until Season 2 rules are finalized.`,
     };
   }
 

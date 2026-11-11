@@ -67,6 +67,8 @@ export const MatchQueuePanel: React.FC<MatchQueuePanelProps> = ({
         }
       } else if (result.error === 'not_ranked') {
         updateQueuedMatchStatus(matchId, 'not_ranked', 'Match is Casual / Unranked.', false);
+      } else if (result.error === 'season_2_blocked') {
+        updateQueuedMatchStatus(matchId, 'failed', result.message || 'Season 2 matches are not supported yet.', false);
       } else if (result.error === 'not_in_match') {
         updateQueuedMatchStatus(matchId, 'failed', 'Profile was not part of this match.', false);
       } else if (result.error === 'rate_limited') {
